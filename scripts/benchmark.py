@@ -4,10 +4,13 @@
     uv run python scripts/benchmark.py --open          # ...then open the HTML dashboard
     uv run python scripts/benchmark.py --live-jev      # real Jev (needs TYPESAFE_API_KEY)
     npm run benchmark:dashboard                        # same as --open
+    uv run python scripts/benchmark.py --simulate-missing   # layout demo, see below
 
 Every arm answers the same three questions from the same policy file: intent route,
-1-5 risk score, and PII/PHI flag. Frontier arms run only if their API key is set;
-they are reported as "not run", never simulated.
+1-5 risk score, and PII/PHI flag. Frontier arms run live only if their API key is
+set. Without a key an arm is reported as "not run", unless --simulate-missing is
+passed, in which case it is filled from scripts/baselines.py and labelled
+"simulated" everywhere. Simulated baselines are assumptions, not measurements.
 
 Each run writes results/benchmark-<timestamp>.json and a self-contained
 results/benchmark-<timestamp>.html dashboard (results/ is gitignored).
@@ -23,6 +26,7 @@ import asyncio
 import json
 import math
 import os
+import random
 import statistics
 import sys
 import time
@@ -33,6 +37,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal, TypedDict
 
+from baselines import SIMULATED_BASELINES
 from dashboard import render_dashboard
 from pricing import PRICES, cost_usd
 
@@ -41,7 +46,7 @@ from paved_gate.gate import PavedGate
 from paved_gate.handlers.deterministic import default_registry
 
 ROOT = Path(__file__).resolve().parent.parent
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 SAMPLE_TIMINGS = 25
 
 CORPUS: list[str] = [
@@ -59,13 +64,20 @@ CORPUS: list[str] = [
     "Patient MRN: 00482913 has new lab results; summarise them for the care team",
 ]
 
+OPENAI_NAMES = {"gpt-4o": "GPT-4o", "gpt-4o-mini": "GPT-4o mini"}
+CLAUDE_NAMES = {
+    "claude-sonnet-5": "Claude Sonnet 5",
+    "claude-opus-5": "Claude Opus 5",
+    "claude-haiku-4-5": "Claude Haiku 4.5",
+}
+
 BANNER = """\
 ================================================================================
  ILLUSTRATIVE ONLY. Mock-mode latency is simulated. Prices are a 2026-09 snapshot
  from scripts/pricing.py and will change. Not a load test. Verify before quoting.
 ================================================================================"""
 
-Mode = Literal["live", "mock", "not_run"]
+Mode = Literal["live", "mock", "simulated", "not_run"]
 
 
 class LatencyJson(TypedDict):
@@ -94,6 +106,23 @@ class ArmJson(TypedDict):
     note: str
 
 
+class DeltaJson(TypedDict):
+    gate_value: float
+    gate_mode: Mode
+    baseline_arm: str
+    baseline_model: str
+    baseline_mode: Mode
+    baseline_value: float
+    reduction_pct: float
+
+
+class ComparisonJson(TypedDict):
+    method: str
+    measured: bool
+    latency_p50: DeltaJson | None
+    cost_per_million: DeltaJson | None
+
+
 class PriceJson(TypedDict):
     input: float
     output: float
@@ -108,6 +137,7 @@ class Report(TypedDict):
     iterations: int
     policy_hash: str
     arms: list[ArmJson]
+    comparison: ComparisonJson
     prices_per_mtok: dict[str, PriceJson]
     caveats: list[str]
 
@@ -175,7 +205,7 @@ async def run_gate_arm(policy_path: Path, live: bool, iterations: int) -> ArmRes
     sink = MemorySink()
     gate = PavedGate(loaded, evaluator=evaluator, audit=sink, deterministic=default_registry(), frontier=None)
     arm = (
-        ArmResult("jev", label, cfg.model, "live", "real Jev API", "provider-reported input tokens x pricing.py")
+        ArmResult("jev", label, cfg.model, "live", "real Jev API", "reported tokens x list price")
         if live
         else ArmResult(
             "jev",
@@ -183,7 +213,7 @@ async def run_gate_arm(policy_path: Path, live: bool, iterations: int) -> ArmRes
             cfg.model,
             "mock",
             "simulated 60-120 ms evaluator latency",
-            "estimated input tokens x pricing.py (mock)",
+            "estimated tokens x list price (mock)",
         )
     )
     try:
@@ -206,9 +236,7 @@ async def run_gate_arm(policy_path: Path, live: bool, iterations: int) -> ArmRes
 async def run_frontier_arm(
     arm_id: str, label: str, model: str, call: Callable[[str], Awaitable[tuple[int, int]]], iterations: int
 ) -> ArmResult:
-    arm = ArmResult(
-        arm_id, label, model, "live", "real API, zero-shot JSON prompt", "provider-reported tokens x pricing.py"
-    )
+    arm = ArmResult(arm_id, label, model, "live", "real API, zero-shot JSON prompt", "reported tokens x list price")
     for _ in range(iterations):
         for text in CORPUS:
             started = time.perf_counter()
@@ -225,6 +253,62 @@ async def run_frontier_arm(
     if model not in PRICES:
         arm.note = (arm.note + "; " if arm.note else "") + f"no price for {model} in pricing.py"
     return arm
+
+
+def simulate_frontier_arm(
+    arm_id: str, label: str, model: str, system: str, iterations: int, rng: random.Random
+) -> ArmResult:
+    baseline = SIMULATED_BASELINES.get(model)
+    if baseline is None:
+        return ArmResult(arm_id, label, model, "not_run", f"API key not set; no simulated baseline for {model}")
+    arm = ArmResult(
+        arm_id,
+        label,
+        model,
+        "simulated",
+        f"SIMULATED BASELINE: {baseline.source}; no API call made",
+        "estimated tokens x list price (simulated)",
+    )
+    for _ in range(iterations):
+        for text in CORPUS:
+            arm.latencies_ms.append(baseline.p50_ms * math.exp(rng.gauss(0.0, baseline.sigma)))
+            c = cost_usd(model, (len(system) + len(text)) // 4, baseline.output_tokens)
+            if c is not None:
+                arm.costs_usd.append(c)
+    arm.note = "assumed values for layout demos; not a measurement"
+    return arm
+
+
+def _delta(gate: ArmJson, frontier: list[ArmJson], value: Callable[[ArmJson], float | None]) -> DeltaJson | None:
+    gate_value = value(gate)
+    candidates = [(v, a) for a in frontier if (v := value(a)) is not None and v > 0]
+    if gate_value is None or not candidates:
+        return None
+    baseline_value, best = min(candidates, key=lambda c: c[0])
+    return {
+        "gate_value": gate_value,
+        "gate_mode": gate["mode"],
+        "baseline_arm": best["label"],
+        "baseline_model": best["model"],
+        "baseline_mode": best["mode"],
+        "baseline_value": baseline_value,
+        "reduction_pct": round((1 - gate_value / baseline_value) * 100, 1),
+    }
+
+
+def build_comparison(arms: list[ArmJson]) -> ComparisonJson:
+    """Gate vs the BEST frontier arm per metric (lowest p50, lowest cost), so savings are never overstated."""
+    gate = next((a for a in arms if a["id"] == "jev" and a["mode"] != "not_run"), None)
+    frontier = [a for a in arms if a["id"] != "jev" and a["mode"] != "not_run"]
+    latency = _delta(gate, frontier, lambda a: a["latency_ms"]["p50"]) if gate else None
+    cost = _delta(gate, frontier, lambda a: a["cost_usd"]["per_million_requests"]) if gate else None
+    used = [d for d in (latency, cost) if d is not None]
+    return {
+        "method": "Paved Gate vs the best frontier arm for each metric (lowest p50 latency, lowest cost)",
+        "measured": bool(used) and all(d["gate_mode"] == "live" and d["baseline_mode"] == "live" for d in used),
+        "latency_p50": latency,
+        "cost_per_million": cost,
+    }
 
 
 def claude_caller(model: str, system: str) -> Callable[[str], Awaitable[tuple[int, int]]]:
@@ -289,7 +373,7 @@ def print_table(report: Report) -> None:
             [
                 a["label"],
                 a["model"],
-                a["mode"],
+                "SIMULATED" if a["mode"] == "simulated" else a["mode"],
                 str(a["n"]),
                 _fmt_ms(lat["p50"]),
                 _fmt_ms(lat["p95"]),
@@ -310,9 +394,32 @@ def print_table(report: Report) -> None:
     print("\nNotes:")
     for n in notes:
         print(f"  - {n}")
+    comp = report["comparison"]
+    print("\nComparison (" + comp["method"] + "):")
+    for name, d in (("p50 latency", comp["latency_p50"]), ("cost per 1M requests", comp["cost_per_million"])):
+        if d is None:
+            print(f"  - {name}: no frontier arm with data")
+        else:
+            print(
+                f"  - {name}: {d['reduction_pct']}% lower than {d['baseline_arm']} ({d['baseline_mode']})"
+                + ("" if comp["measured"] else "  [NOT A MEASUREMENT: includes mock/simulated data]")
+            )
 
 
 def build_report(results: list[ArmResult], *, started_at: datetime, iterations: int, policy_hash: str) -> Report:
+    arms = [r.to_json() for r in results]
+    caveats = [
+        "Mock-mode latency is simulated and mock token counts are estimates.",
+        "Prices are a dated snapshot from scripts/pricing.py and will change.",
+        "Single machine, sequential requests, 12-prompt corpus: not a load test.",
+        "Arms marked 'not run' had no API key and were not simulated.",
+    ]
+    if any(a["mode"] == "simulated" for a in arms):
+        caveats.insert(
+            0,
+            "Arms marked 'simulated' are ASSUMED baselines from scripts/baselines.py (no API call was made). "
+            "Do not publish them as a comparison.",
+        )
     return {
         "schema_version": SCHEMA_VERSION,
         "illustrative": True,
@@ -320,17 +427,13 @@ def build_report(results: list[ArmResult], *, started_at: datetime, iterations: 
         "corpus_size": len(CORPUS),
         "iterations": iterations,
         "policy_hash": policy_hash,
-        "arms": [r.to_json() for r in results],
+        "arms": arms,
+        "comparison": build_comparison(arms),
         "prices_per_mtok": {
             model: {"input": p.input_per_mtok, "output": p.output_per_mtok, "source": p.source}
             for model, p in PRICES.items()
         },
-        "caveats": [
-            "Mock-mode latency is simulated and mock token counts are estimates.",
-            "Prices are a dated snapshot from scripts/pricing.py and will change.",
-            "Single machine, sequential requests, 12-prompt corpus: not a load test.",
-            "Arms marked 'not run' had no API key; they are never simulated.",
-        ],
+        "caveats": caveats,
     }
 
 
@@ -349,9 +452,15 @@ async def main() -> int:
     ap.add_argument("--policy", type=Path, default=ROOT / "policy" / "paved_gate.policy.yaml")
     ap.add_argument("--iterations", type=int, default=1, help="passes over the 12-prompt corpus")
     ap.add_argument("--live-jev", action="store_true", help="call the real Jev API instead of the mock")
-    ap.add_argument("--claude-model", default="claude-opus-5")
+    ap.add_argument("--claude-model", default="claude-sonnet-5")
     ap.add_argument("--openai-model", default="gpt-4o")
     ap.add_argument("--no-frontier", action="store_true", help="only run the gate arm")
+    ap.add_argument(
+        "--simulate-missing",
+        action="store_true",
+        help="fill frontier arms without an API key with a SIMULATED BASELINE (layout demos only; not a measurement)",
+    )
+    ap.add_argument("--seed", type=int, default=0, help="random seed for simulated baselines")
     ap.add_argument("--out-dir", type=Path, default=ROOT / "results", help="where to write JSON + HTML")
     ap.add_argument("--open", action="store_true", help="open the HTML dashboard when done")
     args = ap.parse_args()
@@ -363,34 +472,22 @@ async def main() -> int:
     results = [await run_gate_arm(args.policy, args.live_jev, args.iterations)]
 
     if not args.no_frontier:
-        if os.environ.get("OPENAI_API_KEY"):
-            results.append(
-                await run_frontier_arm(
-                    "openai",
-                    "GPT-4o zero-shot" if args.openai_model == "gpt-4o" else f"{args.openai_model} zero-shot",
-                    args.openai_model,
-                    openai_caller(args.openai_model, system),
-                    args.iterations,
+        rng = random.Random(args.seed)
+        openai_label = f"{OPENAI_NAMES.get(args.openai_model, args.openai_model)} zero-shot"
+        claude_label = f"{CLAUDE_NAMES.get(args.claude_model, args.claude_model)} zero-shot"
+        frontier: list[tuple[str, str, str, str, Callable[[str, str], Callable[[str], Awaitable[tuple[int, int]]]]]] = [
+            ("openai", openai_label, args.openai_model, "OPENAI_API_KEY", openai_caller),
+            ("claude", claude_label, args.claude_model, "ANTHROPIC_API_KEY", claude_caller),
+        ]
+        for arm_id, label, model, key_env, make_caller in frontier:
+            if os.environ.get(key_env):
+                results.append(
+                    await run_frontier_arm(arm_id, label, model, make_caller(model, system), args.iterations)
                 )
-            )
-        else:
-            results.append(
-                ArmResult("openai", "GPT-4o zero-shot", args.openai_model, "not_run", "OPENAI_API_KEY not set")
-            )
-        if os.environ.get("ANTHROPIC_API_KEY"):
-            results.append(
-                await run_frontier_arm(
-                    "claude",
-                    "Claude zero-shot",
-                    args.claude_model,
-                    claude_caller(args.claude_model, system),
-                    args.iterations,
-                )
-            )
-        else:
-            results.append(
-                ArmResult("claude", "Claude zero-shot", args.claude_model, "not_run", "ANTHROPIC_API_KEY not set")
-            )
+            elif args.simulate_missing:
+                results.append(simulate_frontier_arm(arm_id, label, model, system, args.iterations, rng))
+            else:
+                results.append(ArmResult(arm_id, label, model, "not_run", f"{key_env} not set"))
 
     report = build_report(results, started_at=started_at, iterations=args.iterations, policy_hash=loaded.policy_hash)
     print()

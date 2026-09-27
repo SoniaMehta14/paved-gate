@@ -27,6 +27,7 @@
     --badge-live-bg: #e6f4e6;   --badge-live-ink: #006300;
     --badge-mock-bg: #fdf1dc;   --badge-mock-ink: #7a4b00;
     --badge-none-bg: #efeeea;   --badge-none-ink: #52514e;
+    --badge-sim-bg: #ecebfa;    --badge-sim-ink: #3b2f8f;
     --notice-bg: #fdf6e8;       --notice-border: #f0d9a8;
   }
   @media (prefers-color-scheme: dark) {
@@ -38,6 +39,7 @@
       --badge-live-bg: #11301a; --badge-live-ink: #7fd67f;
       --badge-mock-bg: #3a2c10; --badge-mock-ink: #f3c46b;
       --badge-none-bg: #2a2a28; --badge-none-ink: #c3c2b7;
+      --badge-sim-bg: #26223f; --badge-sim-ink: #b9b1f5;
       --notice-bg: #2b2412; --notice-border: #5a4618;
     }
   }
@@ -49,6 +51,7 @@
     --badge-live-bg: #11301a; --badge-live-ink: #7fd67f;
     --badge-mock-bg: #3a2c10; --badge-mock-ink: #f3c46b;
     --badge-none-bg: #2a2a28; --badge-none-ink: #c3c2b7;
+    --badge-sim-bg: #26223f; --badge-sim-ink: #b9b1f5;
     --notice-bg: #2b2412; --notice-border: #5a4618;
   }
 
@@ -63,7 +66,19 @@
   .wrap { max-width: 1040px; margin: 0 auto; padding: 40px 24px 56px; }
   @media (max-width: 600px) { .wrap { padding: 24px 16px 40px; } }
 
-  header { margin-bottom: 24px; }
+  .top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: start; margin-bottom: 24px; }
+  @media (max-width: 860px) { .top { grid-template-columns: minmax(0, 1fr); } }
+  header { min-width: 0; }
+  .delta { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; min-width: 300px; }
+  @media (max-width: 860px) { .delta { min-width: 0; } }
+  .delta-title { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 8px; }
+  .kpis { display: flex; gap: 28px; }
+  .kpi .v { font-size: 34px; font-weight: 650; line-height: 1.1; letter-spacing: -0.01em; }
+  .kpi .v.muted { color: var(--muted); }
+  .kpi .l { font-size: 13px; color: var(--ink-2); }
+  .delta-vs { font-size: 12px; color: var(--ink-2); margin: 10px 0 0; }
+  .delta-flag { display: inline-block; margin: 10px 0 0; font-size: 12px; font-weight: 650; border-radius: 6px; padding: 3px 8px;
+    background: var(--badge-mock-bg); color: var(--badge-mock-ink); }
   .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 6px; }
   h1 { font-size: 28px; line-height: 1.2; font-weight: 650; margin: 0 0 10px; letter-spacing: -0.01em; }
   .meta { color: var(--ink-2); font-size: 14px; margin: 0; }
@@ -91,6 +106,8 @@
   .badge.mock { background: var(--badge-mock-bg); color: var(--badge-mock-ink); }
   .badge.not_run { background: var(--badge-none-bg); color: var(--badge-none-ink); }
   .badge.not_run::before { background: transparent; border: 1.5px solid currentColor; width: 5px; height: 5px; }
+  .badge.simulated { background: var(--badge-sim-bg); color: var(--badge-sim-ink); }
+  .badge.simulated::before { border-radius: 1px; background: repeating-linear-gradient(45deg, currentColor 0 1.5px, transparent 1.5px 3px); width: 8px; height: 8px; }
 
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 20px 16px; margin-bottom: 16px; }
   .card h2 { font-size: 17px; font-weight: 650; margin: 0; }
@@ -98,6 +115,8 @@
   .legend { display: flex; gap: 16px; font-size: 13px; color: var(--ink-2); margin: 0 0 8px; }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .legend i.hatch { background: repeating-linear-gradient(45deg, var(--ink-2) 0 1.5px, transparent 1.5px 4px); box-shadow: inset 0 0 0 1px var(--ink-2); }
+  .legend:empty { display: none; }
   .charts { display: grid; grid-template-columns: 1fr; gap: 16px; }
 
   svg { display: block; width: 100%; overflow: visible; }
@@ -138,11 +157,14 @@
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <p class="eyebrow">Paved Gate · Benchmark</p>
-    <h1>Fast evaluator gate vs. zero-shot frontier classification</h1>
-    <p class="meta" id="meta"></p>
-  </header>
+  <div class="top">
+    <header>
+      <p class="eyebrow">Paved Gate · Benchmark</p>
+      <h1>Fast evaluator gate vs. zero-shot frontier classification</h1>
+      <p class="meta" id="meta"></p>
+    </header>
+    <aside class="delta" id="delta" aria-label="Savings summary"></aside>
+  </div>
 
   <div class="notice" id="notice" hidden></div>
 
@@ -152,7 +174,7 @@
     <section class="card" aria-labelledby="lat-title">
       <h2 id="lat-title">Latency per request</h2>
       <p class="sub">Milliseconds, p50 and p95. Lower is faster.</p>
-      <div class="legend">
+      <div class="legend" id="lat-legend">
         <span><i style="background: var(--series-1)"></i>p50</span>
         <span><i style="background: var(--series-2)"></i>p95</span>
       </div>
@@ -162,6 +184,7 @@
     <section class="card" aria-labelledby="cost-title">
       <h2 id="cost-title">Cost per million requests</h2>
       <p class="sub">USD, from token usage × list prices. Lower is cheaper.</p>
+      <div class="legend" id="cost-legend"></div>
       <div id="cost-chart"></div>
     </section>
   </div>
@@ -175,7 +198,7 @@
           <tr>
             <th>Arm</th><th>Mode</th><th class="num">Requests</th><th class="num">Errors</th>
             <th class="num">p50 ms</th><th class="num">p95 ms</th><th class="num">Mean ms</th>
-            <th class="num">$ / request</th><th class="num">$ / 1M req.</th><th>Cost basis</th>
+            <th class="num">$ / 1M req.</th><th>Cost basis</th>
           </tr>
         </thead>
         <tbody id="results-body"></tbody>
@@ -202,7 +225,8 @@
   "use strict";
   const report = JSON.parse(document.getElementById("benchmark-data").textContent);
   const SVGNS = "http://www.w3.org/2000/svg";
-  const MODE_LABEL = { live: "Live", mock: "Mock", not_run: "Not run" };
+  const MODE_LABEL = { live: "Live", mock: "Mock", simulated: "Simulated baseline", not_run: "Not run" };
+  const MODE_SHORT = { live: "Live", mock: "Mock", simulated: "Simulated", not_run: "Not run" };
 
   const el = (tag, attrs = {}, text) => {
     const node = document.createElement(tag);
@@ -242,10 +266,39 @@
   const notice = document.getElementById("notice");
   const parts = [];
   if (modes.includes("mock")) parts.push("at least one arm ran in <b>mock mode</b> with simulated latency and estimated tokens");
-  if (modes.includes("not_run")) parts.push("at least one arm was <b>not run</b> (no API key) and is shown empty, never simulated");
+  if (modes.includes("simulated")) parts.push("at least one arm is a <b>simulated baseline</b>: assumed values, no API call, not a measurement");
+  if (modes.includes("not_run")) parts.push("at least one arm was <b>not run</b> (no API key) and is shown empty");
   if (parts.length) {
     notice.hidden = false;
-    notice.innerHTML = `<b>Read with care:</b> ${parts.join("; ")}. Only arms marked <b>Live</b> reflect real API calls.`;
+    notice.innerHTML = `<b>Read with care:</b> ${parts.join("; ")}. Only arms marked <b>Live</b> reflect real API calls. Hatched bars are not live measurements.`;
+  }
+
+  // ------------------------------------------------------------ savings summary (computed by benchmark.py)
+  const deltaBox = document.getElementById("delta");
+  const comp = report.comparison;
+  deltaBox.append(el("p", { class: "delta-title" }, "Paved Gate vs. frontier zero-shot"));
+  if (!comp || (!comp.latency_p50 && !comp.cost_per_million)) {
+    deltaBox.append(el("p", { class: "delta-vs", style: "margin-top:0" }, "No frontier arm with data. Run with API keys to compare."));
+  } else {
+    const kpis = el("div", { class: "kpis" });
+    const kpi = (d, what) => {
+      const box = el("div", { class: "kpi" });
+      if (!d) {
+        box.append(el("div", { class: "v muted" }, "–"), el("div", { class: "l" }, what));
+      } else {
+        const pct = d.reduction_pct;
+        box.append(el("div", { class: "v" }, `${Math.abs(pct).toFixed(1)}%`), el("div", { class: "l" }, `${pct >= 0 ? "lower" : "higher"} ${what}`));
+      }
+      return box;
+    };
+    kpis.append(kpi(comp.latency_p50, "p50 latency"), kpi(comp.cost_per_million, "cost per 1M requests"));
+    deltaBox.append(kpis);
+    const lat = comp.latency_p50, cst = comp.cost_per_million;
+    const vs = lat && cst && lat.baseline_arm === cst.baseline_arm
+      ? `vs. ${lat.baseline_arm}, the fastest and cheapest frontier arm`
+      : [lat && `latency vs. ${lat.baseline_arm} (fastest)`, cst && `cost vs. ${cst.baseline_arm} (cheapest)`].filter(Boolean).join(" · ");
+    deltaBox.append(el("p", { class: "delta-vs" }, vs));
+    if (!comp.measured) deltaBox.append(el("p", { class: "delta-flag" }, "Not a measurement: includes mock or simulated data"));
   }
 
   const arms = document.getElementById("arms");
@@ -290,7 +343,7 @@
       const width = Math.max(320, container.clientWidth);
       // Narrow screens stack each arm's label above its bars so the bars get the full width.
       const narrow = width < 560;
-      const labelW = narrow ? 0 : 190;
+      const labelW = narrow ? 0 : 210;
       const headH = narrow ? 22 : 0;
       const valueRoom = narrow ? 72 : 84;
       const barH = 16, barGap = 2, rowPad = 18;
@@ -307,6 +360,15 @@
 
       const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, height, role: "img" });
       svg.setAttribute("aria-label", container.dataset.label || "bar chart");
+      // Non-live arms (mock, simulated) get a hatched fill so they never pass for measurements.
+      const defs = svgEl("defs");
+      series.forEach((s, j) => {
+        const pat = svgEl("pattern", { id: `${container.id}-hatch-${j}`, patternUnits: "userSpaceOnUse", width: 6, height: 6, patternTransform: "rotate(45)" });
+        pat.append(svgEl("rect", { width: 6, height: 6, fill: s.color, "fill-opacity": 0.3 }));
+        pat.append(svgEl("line", { x1: 1.5, y1: 0, x2: 1.5, y2: 6, stroke: s.color, "stroke-width": 3 }));
+        defs.append(pat);
+      });
+      svg.append(defs);
 
       const ticks = Math.round(max / step);
       for (let i = 0; i <= ticks; i++) {
@@ -317,7 +379,7 @@
 
       report.arms.forEach((a, i) => {
         const rowY = top + i * rowH + rowPad / 2;
-        const sub = `${a.model} · ${MODE_LABEL[a.mode]}`;
+        const sub = `${a.model} · ${MODE_SHORT[a.mode]}`;
         let cy;
         if (narrow) {
           const label = svgEl("text", { class: "row-label", x: 0, y: rowY + 14 }, a.label);
@@ -343,8 +405,9 @@
             return;
           }
           const w = Math.max(2, x(v) - plotX);
-          const bar = svgEl("path", { class: "bar", d: barPath(plotX, by, w, barH), fill: s.color });
-          const tipText = `${a.label} · ${s.name ? s.name + ": " : ""}${format(v)}${a.mode === "mock" ? " (mock)" : ""}`;
+          const fill = a.mode === "live" ? s.color : `url(#${container.id}-hatch-${j})`;
+          const bar = svgEl("path", { class: "bar", d: barPath(plotX, by, w, barH), fill });
+          const tipText = `${a.label} · ${s.name ? s.name + ": " : ""}${format(v)}${a.mode === "live" ? "" : ` (${MODE_LABEL[a.mode].toLowerCase()})`}`;
           bar.addEventListener("mousemove", (e) => showTip(e, tipText));
           bar.addEventListener("mouseleave", hideTip);
           const title = svgEl("title", {}, tipText);
@@ -358,6 +421,14 @@
     draw();
     let raf = 0;
     new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); }).observe(container);
+  }
+
+  if (report.arms.some((a) => a.mode === "mock" || a.mode === "simulated")) {
+    for (const id of ["lat-legend", "cost-legend"]) {
+      const key = el("span");
+      key.append(el("i", { class: "hatch" }), "Hatched: not a live measurement");
+      document.getElementById(id).append(key);
+    }
   }
 
   const latency = document.getElementById("latency-chart");
@@ -396,7 +467,6 @@
       el("td", { class: "num" }, run ? fmtMs(a.latency_ms.p50).replace(" ms", "") : "–"),
       el("td", { class: "num" }, run ? fmtMs(a.latency_ms.p95).replace(" ms", "") : "–"),
       el("td", { class: "num" }, run ? fmtMs(a.latency_ms.mean).replace(" ms", "") : "–"),
-      el("td", { class: "num" }, run ? fmtUsd(a.cost_usd.per_request) : "–"),
       el("td", { class: "num" }, run ? fmtUsd(a.cost_usd.per_million_requests) : "–"),
       el("td", { class: "basis" }, run ? a.cost_usd.basis : "not run: no API key"),
     );

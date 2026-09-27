@@ -1,7 +1,7 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "illustrative": true,
-  "run_at": "2026-09-27T18:51:25+00:00",
+  "run_at": "2026-09-27T19:53:11+00:00",
   "corpus_size": 12,
   "iterations": 3,
   "policy_hash": "sha256:33ac7786e77a149a5c59de3feda13509fcc16d6ea7cef2d76ad5bfea5f19d78e",
@@ -15,41 +15,41 @@
       "n": 36,
       "errors": 0,
       "latency_ms": {
-        "p50": 93.37,
-        "p95": 116.74,
-        "mean": 92.73
+        "p50": 103.7,
+        "p95": 120.7,
+        "mean": 100.07
       },
       "cost_usd": {
         "per_request": 1.53685e-05,
         "per_million_requests": 15.37,
-        "basis": "estimated input tokens x pricing.py (mock)"
+        "basis": "estimated tokens x list price (mock)"
       },
       "sample_timings_ms": [
-        84.93,
-        111.7,
-        110.84,
-        116.73,
-        114.5,
-        114.72,
-        83.45,
-        74.69,
-        77.39,
-        97.1,
-        69.94,
-        67.9,
-        99.28,
-        77.94,
-        103.45,
-        116.74,
-        83.34,
-        78.33,
-        106.27,
-        91.16,
-        70.05,
-        94.11,
-        72.4,
-        92.63,
-        115.97
+        111.3,
+        120.94,
+        76.32,
+        73.61,
+        104.42,
+        120.03,
+        112.39,
+        113.43,
+        119.09,
+        95.24,
+        106.46,
+        100.82,
+        106.0,
+        118.73,
+        102.49,
+        117.21,
+        94.8,
+        113.04,
+        79.63,
+        97.66,
+        77.46,
+        114.45,
+        71.57,
+        101.64,
+        113.26
       ],
       "note": "full gate: PII detection, masking, evaluation, decision, audit"
     },
@@ -76,8 +76,8 @@
     },
     {
       "id": "claude",
-      "label": "Claude zero-shot",
-      "model": "claude-opus-5",
+      "label": "Claude Sonnet 5 zero-shot",
+      "model": "claude-sonnet-5",
       "mode": "not_run",
       "mode_detail": "ANTHROPIC_API_KEY not set",
       "n": 0,
@@ -96,6 +96,12 @@
       "note": ""
     }
   ],
+  "comparison": {
+    "method": "Paved Gate vs the best frontier arm for each metric (lowest p50 latency, lowest cost)",
+    "measured": false,
+    "latency_p50": null,
+    "cost_per_million": null
+  },
   "prices_per_mtok": {
     "jev": {
       "input": 0.042,
@@ -121,12 +127,17 @@
       "input": 2.5,
       "output": 10.0,
       "source": "OpenAI list price, last verified by the author; confirm before quoting"
+    },
+    "gpt-4o-mini": {
+      "input": 0.15,
+      "output": 0.6,
+      "source": "OpenAI list price, last verified by the author; confirm before quoting"
     }
   },
   "caveats": [
     "Mock-mode latency is simulated and mock token counts are estimates.",
     "Prices are a dated snapshot from scripts/pricing.py and will change.",
     "Single machine, sequential requests, 12-prompt corpus: not a load test.",
-    "Arms marked 'not run' had no API key; they are never simulated."
+    "Arms marked 'not run' had no API key and were not simulated."
   ]
 }

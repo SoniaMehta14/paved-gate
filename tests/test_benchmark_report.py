@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
+import random
 import re
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from benchmark import SAMPLE_TIMINGS, ArmResult, build_report, write_outputs
+from benchmark import SAMPLE_TIMINGS, ArmResult, Mode, Report, build_report, simulate_frontier_arm, write_outputs
 from dashboard import PLACEHOLDER, render_dashboard
 
 
@@ -63,3 +64,52 @@ def test_missing_placeholder_is_an_error(monkeypatch: pytest.MonkeyPatch, tmp_pa
     monkeypatch.setattr(dashboard, "TEMPLATE", broken)
     with pytest.raises(RuntimeError, match="placeholder"):
         render_dashboard({})
+
+
+def _arm(arm_id: str, mode: Mode, p50: float, cost: float) -> ArmResult:
+    arm = ArmResult(arm_id, arm_id, f"{arm_id}-model", mode, "detail", "basis")
+    arm.latencies_ms = [p50]
+    arm.costs_usd = [cost / 1_000_000]
+    return arm
+
+
+def _report(*arms: ArmResult) -> Report:
+    return build_report(list(arms), started_at=datetime(2026, 9, 27, tzinfo=UTC), iterations=1, policy_hash="h")
+
+
+def test_comparison_uses_best_frontier_arm_per_metric() -> None:
+    comp = _report(
+        _arm("jev", "live", 100.0, 20.0),
+        _arm("openai", "live", 600.0, 3000.0),  # fastest frontier arm
+        _arm("claude", "live", 800.0, 1500.0),  # cheapest frontier arm
+    )["comparison"]
+    assert comp["measured"] is True
+    lat, cost = comp["latency_p50"], comp["cost_per_million"]
+    assert lat is not None and lat["baseline_arm"] == "openai" and lat["reduction_pct"] == 83.3
+    assert cost is not None and cost["baseline_arm"] == "claude" and cost["reduction_pct"] == 98.7
+
+
+def test_comparison_is_flagged_when_any_side_is_not_live() -> None:
+    report = _report(_arm("jev", "mock", 100.0, 20.0), _arm("openai", "simulated", 600.0, 3000.0))
+    assert report["comparison"]["measured"] is False
+    assert report["caveats"][0].startswith("Arms marked 'simulated'")
+
+
+def test_comparison_is_empty_without_frontier_data() -> None:
+    comp = _report(_arm("jev", "live", 100.0, 20.0), ArmResult("openai", "GPT-4o", "gpt-4o", "not_run", "no key"))[
+        "comparison"
+    ]
+    assert comp["latency_p50"] is None and comp["cost_per_million"] is None and comp["measured"] is False
+
+
+def test_simulated_arm_is_labelled_and_reproducible() -> None:
+    a = simulate_frontier_arm("claude", "Claude", "claude-sonnet-5", "system", 1, random.Random(0))
+    b = simulate_frontier_arm("claude", "Claude", "claude-sonnet-5", "system", 1, random.Random(0))
+    assert a.mode == "simulated" and "SIMULATED BASELINE" in a.mode_detail
+    assert a.latencies_ms == b.latencies_ms and len(a.latencies_ms) == 12
+    assert all(c > 0 for c in a.costs_usd)
+
+
+def test_no_simulated_baseline_for_unknown_model() -> None:
+    arm = simulate_frontier_arm("claude", "Claude", "claude-unknown", "system", 1, random.Random(0))
+    assert arm.mode == "not_run" and arm.latencies_ms == []

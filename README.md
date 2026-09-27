@@ -49,7 +49,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync --all-extras                 # install with FastAPI, Anthropic, and OpenAI extras
-uv run pytest                        # 66 tests
+uv run pytest                        # 71 tests
 uv run python examples/server.py     # demo server on :8000, Jev in mock mode, no keys needed
 ```
 
@@ -394,7 +394,8 @@ Both SDKs are optional extras and imported lazily.
 npm run benchmark:dashboard                          # run the benchmark, then open the HTML dashboard
 uv run python scripts/benchmark.py --open            # same thing without npm
 uv run python scripts/benchmark.py --live-jev        # real Jev (needs TYPESAFE_API_KEY)
-uv run python scripts/benchmark.py --iterations 5 --claude-model claude-sonnet-5
+uv run python scripts/benchmark.py --iterations 5 --openai-model gpt-4o-mini
+uv run python scripts/benchmark.py --simulate-missing --open   # layout demo without keys (see below)
 ```
 
 npm is only a task runner here. There are no npm dependencies, but `uv` must be on your PATH. The scripts are listed in [package.json](package.json).
@@ -402,10 +403,20 @@ npm is only a task runner here. There are no npm dependencies, but `uv` must be 
 Each arm answers the **same three questions from the same policy file** over a 12-prompt labelled corpus (deterministic tasks, open-ended tasks, injections, a violation, PII, PHI):
 
 - **Paved Gate (Jev):** the full gate, including detection, masking, decision, and audit.
-- **GPT-4o zero-shot:** one system prompt built from the rubric, asking for `{"intent","risk","pii_or_phi"}` as JSON, sent to `gpt-4o` in JSON mode.
-- **Claude zero-shot:** the same prompt sent to `claude-opus-5` at `effort: low`.
+- **GPT-4o zero-shot:** one system prompt built from the rubric, asking for `{"intent","risk","pii_or_phi"}` as JSON, sent to `gpt-4o` in JSON mode. Use `--openai-model gpt-4o-mini` for the cheaper tier.
+- **Claude Sonnet 5 zero-shot:** the same prompt sent to `claude-sonnet-5` at `effort: low`. Sonnet is the default because it is the model class a team would realistically use for classification; comparing a ~100 ms gate against a flagship reasoning model (`--claude-model claude-opus-5`) would flatter the gate.
 
-Frontier arms run only if `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` is set. **An arm without a key is reported as "not run", never simulated.** Cost is the provider-reported token usage multiplied by the snapshot in [scripts/pricing.py](scripts/pricing.py).
+Frontier arms run only if `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` is set. An arm without a key is reported as **not run**. Cost is the provider-reported token usage multiplied by the snapshot in [scripts/pricing.py](scripts/pricing.py).
+
+**Simulated baselines (`--simulate-missing`).** For a layout demo before you have keys, this flag fills each keyless frontier arm from the assumptions in [scripts/baselines.py](scripts/baselines.py): about 600 ms p50 for GPT-4o and about 800 ms for Claude Sonnet 5, sampled log-normally. Cost is the real list price multiplied by an estimated token count. No API call is made.
+- These arms carry mode `simulated` in the JSON, `SIMULATED` in the terminal table, a **Simulated baseline** badge on the dashboard, and a caveat at the top of the report.
+- Their bars are hatched. A cropped screenshot still shows the hatching and the legend key "Hatched: not a live measurement".
+- **Don't publish simulated numbers as a comparison.** They are assumptions, and a reader will take a chart of them as a measurement. Run the arms live before sharing results.
+
+**Savings summary.** The card at the top right shows how much lower the gate's p50 latency and cost per million requests are. `benchmark.py` computes these from the run itself, and they also appear in the JSON under `comparison`.
+- The gate is compared with the **best** frontier arm for each metric (the fastest for latency, the cheapest for cost), so the savings are never overstated.
+- If either side of a comparison is mock or simulated, the card says "Not a measurement: includes mock or simulated data", and `comparison.measured` is `false`.
+- With no frontier data, the card asks for API keys instead of showing a number.
 
 ### Output
 
@@ -413,18 +424,18 @@ Every run prints a table to the terminal and writes two files to `results/`, whi
 
 | File | Contents |
 |---|---|
-| `results/benchmark-<UTC timestamp>.json` | Structured results. For each arm: `mode` (`live`, `mock` or `not_run`), `latency_ms.{p50,p95,mean}`, `cost_usd.{per_request,per_million_requests,basis}`, `sample_timings_ms` (the first 25 raw request timings), `n` and `errors`. Plus the run date, iterations, policy hash, prices used and caveats. |
+| `results/benchmark-<UTC timestamp>.json` | Structured results. For each arm: `mode` (`live`, `mock`, `simulated` or `not_run`), `latency_ms.{p50,p95,mean}`, `cost_usd.{per_request,per_million_requests,basis}`, `sample_timings_ms` (the first 25 raw request timings), `n` and `errors`. Plus the run date, iterations, policy hash, the `comparison` summary, prices used and caveats. |
 | `results/benchmark-<UTC timestamp>.html` | A single self-contained dashboard with that JSON embedded. It needs no server, no build step and no network, so it opens straight from disk. |
 
 To re-render a dashboard from a saved JSON file, run `npm run dashboard -- results/<file>.json` or `uv run python scripts/dashboard.py results/<file>.json --open`. Add `?theme=light` or `?theme=dark` to the file URL to force a theme, for example when taking screenshots.
 
-The dashboard shows the run date and a **Live / Mock / Not run** badge on every arm, in the arm cards, in the chart rows and in the table. Any run that includes a mock or not-run arm also carries a "Read with care" notice. These labels are part of the rendered image, so they stay with a screenshot when it is shared.
+The dashboard shows the run date and a **Live / Mock / Simulated baseline / Not run** badge on every arm, in the arm cards, in the chart rows and in the table. Every bar that is not a live measurement is hatched. Any run that includes a non-live arm also carries a "Read with care" notice. These labels are part of the rendered image, so they stay with a screenshot when it is shared.
 
 ### Sample
 
-![Benchmark dashboard: Paved Gate (Jev) in mock mode, GPT-4o and Claude not run](docs/benchmark/dashboard.png)
+![Benchmark dashboard: Paved Gate (Jev) in mock mode, GPT-4o and Claude Sonnet 5 not run](docs/benchmark/dashboard.png)
 
-*This is a real run on a laptop with no API keys set. Jev ran in **mock mode**, so its latency is simulated and its token counts are estimated. The GPT-4o and Claude arms were **not run**. The committed files are [sample-results.json](docs/benchmark/sample-results.json) and [sample-dashboard.html](docs/benchmark/sample-dashboard.html). After a run with live keys, replace them with that run's output.*
+*This is a real run on a laptop with no API keys set. Jev ran in **mock mode**, so its latency is simulated and its token counts are estimated. The GPT-4o and Claude Sonnet 5 arms were **not run**, so the savings card has nothing to compare against. The committed files are [sample-results.json](docs/benchmark/sample-results.json) and [sample-dashboard.html](docs/benchmark/sample-dashboard.html). After a run with live keys, replace them with that run's output.*
 
 **Read these numbers carefully.**
 - Mock latency is a sleep drawn from 60–120 ms, and mock token counts are estimates.
@@ -460,9 +471,10 @@ scripts/benchmark.py              latency / cost benchmark (illustrative); write
 scripts/dashboard.py              renders a benchmark JSON into the self-contained HTML dashboard
 scripts/dashboard_template.html   dashboard template (inline SVG charts, no dependencies)
 scripts/pricing.py                dated price snapshot
+scripts/baselines.py              assumed values for --simulate-missing (never a measurement)
 docs/benchmark/                   committed sample: dashboard.png, sample-results.json, sample-dashboard.html
 package.json                      npm task aliases (benchmark, benchmark:dashboard, dashboard, test)
-tests/                            66 tests: decision branches, Jev contract, masking, handlers, middleware, latency, benchmark report
+tests/                            71 tests: decision branches, Jev contract, masking, handlers, middleware, latency, benchmark report
 ```
 
 Development: `uv run pytest`, `uv run mypy src tests examples`, `uv run ruff check .` (mypy `--strict`).
