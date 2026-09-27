@@ -478,7 +478,11 @@ async def main() -> int:
     ap.add_argument("--iterations", type=int, default=1, help="passes over the 12-prompt corpus")
     ap.add_argument("--live-jev", action="store_true", help="call the real Jev API instead of the mock")
     ap.add_argument("--claude-model", default="claude-sonnet-5")
-    ap.add_argument("--openai-model", default="gpt-4o")
+    ap.add_argument(
+        "--openai-model",
+        action="append",
+        help="OpenAI model for a zero-shot arm; repeat for several arms (default: gpt-4o)",
+    )
     ap.add_argument("--no-frontier", action="store_true", help="only run the gate arm")
     ap.add_argument(
         "--simulate-missing",
@@ -506,10 +510,18 @@ async def main() -> int:
 
     if not args.no_frontier:
         rng = random.Random(args.seed)
-        openai_label = f"{OPENAI_NAMES.get(args.openai_model, args.openai_model)} zero-shot"
         claude_label = f"{CLAUDE_NAMES.get(args.claude_model, args.claude_model)} zero-shot"
         frontier: list[tuple[str, str, str, str, Callable[[str, str], Callable[[str], Awaitable[tuple[int, int]]]]]] = [
-            ("openai", openai_label, args.openai_model, "OPENAI_API_KEY", openai_caller),
+            *(
+                (
+                    "openai" if i == 0 else f"openai-{m}",
+                    f"{OPENAI_NAMES.get(m, m)} zero-shot",
+                    m,
+                    "OPENAI_API_KEY",
+                    openai_caller,
+                )
+                for i, m in enumerate(dict.fromkeys(args.openai_model or ["gpt-4o"]))
+            ),
             ("claude", claude_label, args.claude_model, "ANTHROPIC_API_KEY", claude_caller),
         ]
         for arm_id, label, model, key_env, make_caller in frontier:

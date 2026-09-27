@@ -21,7 +21,7 @@ request ─▶│ detect PII ─▶ mask ─▶ FastEvaluator: 1 request, 3 type
                                audit log (JSONL): every decision + raw scores
 ```
 
-> **Status:** alpha. The Jev adapter targets Jev's published REST contract and ships with a contract-accurate mock. It has not been run against the live API by the author yet. See [Jev API contract](#jev-api-contract).
+> **Status:** alpha. The Jev adapter targets Jev's published REST contract, ships with a contract-accurate mock, and has been run against the live Jev API: 144 requests across four benchmark runs on 2026-09-27, with no errors. See [Jev API contract](#jev-api-contract).
 
 ---
 
@@ -267,7 +267,7 @@ In live mode the adapter:
 
 ### Jev API contract
 
-Built from Jev's public documentation and developer guides (Cloudflare AI model docs and third-party write-ups, September 2026). **Check it against TypeSafe's official API reference before relying on it in production.** Every assumption is in [jev_models.py](src/paved_gate/evaluator/jev_models.py), and `tests/test_jev.py` pins the documented example request and response.
+Built from Jev's public documentation and developer guides (Cloudflare AI model docs and third-party write-ups, September 2026), then exercised against the live API: 144 requests with no errors or schema mismatches on 2026-09-27. Pin a model version (`jev-1.x`) in production, and re-check against [TypeSafe's API reference](https://docs.typesafe.ai) when you upgrade. Every assumption is in [jev_models.py](src/paved_gate/evaluator/jev_models.py), and `tests/test_jev.py` pins the documented example request and response.
 
 ```
 POST https://api.typesafe.ai/v1/systemone
@@ -410,7 +410,7 @@ Both SDKs are optional extras and imported lazily.
 npm run benchmark:dashboard                          # run the benchmark, then open the HTML dashboard
 uv run python scripts/benchmark.py --open            # same thing without npm
 uv run python scripts/benchmark.py --live-jev        # real Jev (needs TYPESAFE_API_KEY)
-uv run python scripts/benchmark.py --iterations 5 --openai-model gpt-4o-mini
+uv run python scripts/benchmark.py --iterations 5 --openai-model gpt-4o --openai-model gpt-4o-mini   # one arm per model
 uv run python scripts/benchmark.py --simulate-missing --open   # layout demo without keys (see below)
 ```
 
@@ -419,7 +419,7 @@ npm is only a task runner here. There are no npm dependencies, but `uv` must be 
 Each arm answers the **same three questions from the same policy file** over a 12-prompt labelled corpus (deterministic tasks, open-ended tasks, injections, a violation, PII, PHI):
 
 - **Paved Gate (Jev):** the full gate, including detection, masking, decision, and audit.
-- **GPT-4o zero-shot:** one system prompt built from the rubric, asking for `{"intent","risk","pii_or_phi"}` as JSON, sent to `gpt-4o` in JSON mode. Use `--openai-model gpt-4o-mini` for the cheaper tier.
+- **GPT-4o zero-shot:** one system prompt built from the rubric, asking for `{"intent","risk","pii_or_phi"}` as JSON, sent to `gpt-4o` in JSON mode. `--openai-model` can be repeated to add an arm per model, for example `--openai-model gpt-4o --openai-model gpt-4o-mini`.
 - **Claude Sonnet 5 zero-shot:** the same prompt sent to `claude-sonnet-5` at `effort: low`. Sonnet is the default because it is the model class a team would realistically use for classification; comparing a ~100 ms gate against a flagship reasoning model (`--claude-model claude-opus-5`) would flatter the gate.
 
 Frontier arms run only if `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` is set. An arm without a key is reported as **not run**. Cost is the provider-reported token usage multiplied by the snapshot in [scripts/pricing.py](scripts/pricing.py).
@@ -449,9 +449,18 @@ The dashboard shows the run date and a **Live / Mock / Simulated baseline / Not 
 
 ### Sample
 
-![Benchmark dashboard: live run of Paved Gate (Jev), GPT-4o and Claude Sonnet 5 zero-shot](docs/benchmark/dashboard.png)
+![Benchmark dashboard: live run of Paved Gate (Jev) against GPT-4o, GPT-4o mini and Claude Sonnet 5 zero-shot](docs/benchmark/dashboard.png)
 
-*A live run on September 27, 2026: all three arms called the real APIs, 12 prompts × 5 iterations = 60 requests each, with no errors. The whole run cost about $0.17. The gate's p50 was 96.7 ms against 640 ms for GPT-4o and 1,468 ms for Claude Sonnet 5, and it cost $26 per million requests against $1,137 and $1,590. The summary card compares the gate with the best frontier arm, GPT-4o, on both metrics. One laptop, sequential requests and 60 samples per arm is a small sample: re-run on your own network and traffic before quoting it. The committed files are [sample-results.json](docs/benchmark/sample-results.json) and [sample-dashboard.html](docs/benchmark/sample-dashboard.html).*
+*A live run on September 27, 2026. All four arms called the real APIs: 12 prompts × 5 iterations = 60 requests each, with no errors, for about $0.17 in total.*
+
+| Arm | p50 | p95 | Cost per 1M requests |
+|---|---|---|---|
+| Paved Gate (Jev) | 102.3 ms | 150.7 ms | $26.32 |
+| GPT-4o zero-shot | 631.2 ms | 934.5 ms | $1,137 |
+| GPT-4o mini zero-shot | 651.4 ms | 799.0 ms | $66.74 |
+| Claude Sonnet 5 zero-shot | 1,446 ms | 2,012 ms | $1,590 |
+
+*The summary card compares the gate with the **best** frontier arm on each metric: GPT-4o for latency (83.8% lower p50) and gpt-4o-mini for cost (60.6% lower). Against GPT-4o alone the cost reduction is 97.7%, but gpt-4o-mini is the fair baseline for a cost claim. Prices were checked against each provider's pricing page on the day of the run; the source and date are recorded in [scripts/pricing.py](scripts/pricing.py). This is one laptop, sequential requests and 60 samples per arm: re-run on your own network and traffic before relying on the numbers. The committed files are [sample-results.json](docs/benchmark/sample-results.json) and [sample-dashboard.html](docs/benchmark/sample-dashboard.html).*
 
 Each arm card shows the **actual cost of that run**, calculated from the tokens the provider reported for successful requests. Mock and simulated arms show an estimate instead, labelled "Est. cost if run live". The results table keeps `$ / request` and `$ / 1M req.` and adds `Actual cost this run`.
 
@@ -501,7 +510,7 @@ Development: `uv run pytest`, `uv run mypy src tests examples`, `uv run ruff che
 
 ## Limitations
 
-- **Unverified against live Jev.** The adapter follows the published contract and is tested against the documented example, but the author has not yet exercised it against the real API.
+- **Limited live testing of Jev.** The adapter has handled 144 live requests without errors, but only on the 12-prompt benchmark corpus and one model version (`jev-latest` on 2026-09-27). Error paths such as 429, 529 and timeouts are covered by mocked tests, not by live traffic.
 - **The mock and heuristic evaluators are keyword matchers.** They exist to make the pipeline runnable. Do not deploy with `mode: mock`.
 - **A single gate is not defense in depth.** Keep output filtering, tool-level authorization, and least-privilege credentials in your agents. Paved Gate reduces what reaches them; it does not make them safe.
 - **Regex PII detection is US-centric and incomplete.** See [the masking tension](#the-masking-tension).

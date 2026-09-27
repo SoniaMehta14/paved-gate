@@ -91,7 +91,9 @@
   .notice b { font-weight: 650; }
 
   .arms { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
-  @media (max-width: 760px) { .arms { grid-template-columns: 1fr; } }
+  .arms.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  @media (max-width: 960px) { .arms.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 760px) { .arms, .arms.four { grid-template-columns: 1fr; } }
   .arm-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
   .arm-card .name { font-weight: 600; margin: 0 0 2px; }
   .arm-card .model { color: var(--ink-2); font-size: 13px; margin: 0 0 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
@@ -311,6 +313,7 @@
   }
 
   const arms = document.getElementById("arms");
+  if (report.arms.length >= 4) arms.classList.add("four");
   for (const a of report.arms) {
     const card = el("div", { class: "arm-card" });
     card.append(el("p", { class: "name" }, a.label), el("p", { class: "model" }, a.model), badge(a.mode));
