@@ -9,3 +9,6 @@ build/
 .ruff_cache/
 logs/
 .env
+
+# benchmark output (changes every run; see docs/benchmark/ for a committed sample)
+results/

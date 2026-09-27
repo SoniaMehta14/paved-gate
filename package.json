@@ -1,0 +1,11 @@
+{
+  "name": "paved-gate-scripts",
+  "private": true,
+  "description": "Convenience task runner. Paved Gate itself is a Python package managed with uv; these scripts need uv on PATH and no npm dependencies.",
+  "scripts": {
+    "test": "uv run pytest",
+    "benchmark": "uv run python scripts/benchmark.py",
+    "benchmark:dashboard": "uv run python scripts/benchmark.py --open",
+    "dashboard": "uv run python scripts/dashboard.py --open"
+  }
+}

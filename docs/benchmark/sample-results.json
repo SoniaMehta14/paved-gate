@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "illustrative": true,
+  "run_at": "2026-09-27T18:51:25+00:00",
+  "corpus_size": 12,
+  "iterations": 3,
+  "policy_hash": "sha256:33ac7786e77a149a5c59de3feda13509fcc16d6ea7cef2d76ad5bfea5f19d78e",
+  "arms": [
+    {
+      "id": "jev",
+      "label": "Paved Gate (Jev)",
+      "model": "jev-latest",
+      "mode": "mock",
+      "mode_detail": "simulated 60-120 ms evaluator latency",
+      "n": 36,
+      "errors": 0,
+      "latency_ms": {
+        "p50": 93.37,
+        "p95": 116.74,
+        "mean": 92.73
+      },
+      "cost_usd": {
+        "per_request": 1.53685e-05,
+        "per_million_requests": 15.37,
+        "basis": "estimated input tokens x pricing.py (mock)"
+      },
+      "sample_timings_ms": [
+        84.93,
+        111.7,
+        110.84,
+        116.73,
+        114.5,
+        114.72,
+        83.45,
+        74.69,
+        77.39,
+        97.1,
+        69.94,
+        67.9,
+        99.28,
+        77.94,
+        103.45,
+        116.74,
+        83.34,
+        78.33,
+        106.27,
+        91.16,
+        70.05,
+        94.11,
+        72.4,
+        92.63,
+        115.97
+      ],
+      "note": "full gate: PII detection, masking, evaluation, decision, audit"
+    },
+    {
+      "id": "openai",
+      "label": "GPT-4o zero-shot",
+      "model": "gpt-4o",
+      "mode": "not_run",
+      "mode_detail": "OPENAI_API_KEY not set",
+      "n": 0,
+      "errors": 0,
+      "latency_ms": {
+        "p50": null,
+        "p95": null,
+        "mean": null
+      },
+      "cost_usd": {
+        "per_request": null,
+        "per_million_requests": null,
+        "basis": ""
+      },
+      "sample_timings_ms": [],
+      "note": ""
+    },
+    {
+      "id": "claude",
+      "label": "Claude zero-shot",
+      "model": "claude-opus-5",
+      "mode": "not_run",
+      "mode_detail": "ANTHROPIC_API_KEY not set",
+      "n": 0,
+      "errors": 0,
+      "latency_ms": {
+        "p50": null,
+        "p95": null,
+        "mean": null
+      },
+      "cost_usd": {
+        "per_request": null,
+        "per_million_requests": null,
+        "basis": ""
+      },
+      "sample_timings_ms": [],
+      "note": ""
+    }
+  ],
+  "prices_per_mtok": {
+    "jev": {
+      "input": 0.042,
+      "output": 0.0,
+      "source": "TypeSafe Jev list price (2026-09)"
+    },
+    "claude-opus-5": {
+      "input": 5.0,
+      "output": 25.0,
+      "source": "Anthropic list price (2026-09)"
+    },
+    "claude-sonnet-5": {
+      "input": 2.0,
+      "output": 10.0,
+      "source": "Anthropic list price (2026-09)"
+    },
+    "claude-haiku-4-5": {
+      "input": 1.0,
+      "output": 5.0,
+      "source": "Anthropic list price (2026-09)"
+    },
+    "gpt-4o": {
+      "input": 2.5,
+      "output": 10.0,
+      "source": "OpenAI list price, last verified by the author; confirm before quoting"
+    }
+  },
+  "caveats": [
+    "Mock-mode latency is simulated and mock token counts are estimates.",
+    "Prices are a dated snapshot from scripts/pricing.py and will change.",
+    "Single machine, sequential requests, 12-prompt corpus: not a load test.",
+    "Arms marked 'not run' had no API key; they are never simulated."
+  ]
+}

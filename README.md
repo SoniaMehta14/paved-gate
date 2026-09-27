@@ -49,7 +49,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync --all-extras                 # install with FastAPI, Anthropic, and OpenAI extras
-uv run pytest                        # 61 tests
+uv run pytest                        # 66 tests
 uv run python examples/server.py     # demo server on :8000, Jev in mock mode, no keys needed
 ```
 
@@ -391,33 +391,40 @@ Both SDKs are optional extras and imported lazily.
 ## Benchmark
 
 ```bash
-uv run python scripts/benchmark.py                   # Jev mock, plus each frontier arm whose key is set
-uv run python scripts/benchmark.py --live-jev        # real Jev
-uv run python scripts/benchmark.py --iterations 5 --claude-model claude-sonnet-5 --json out.json
+npm run benchmark:dashboard                          # run the benchmark, then open the HTML dashboard
+uv run python scripts/benchmark.py --open            # same thing without npm
+uv run python scripts/benchmark.py --live-jev        # real Jev (needs TYPESAFE_API_KEY)
+uv run python scripts/benchmark.py --iterations 5 --claude-model claude-sonnet-5
 ```
+
+npm is only a task runner here. There are no npm dependencies, but `uv` must be on your PATH. The scripts are listed in [package.json](package.json).
 
 Each arm answers the **same three questions from the same policy file** over a 12-prompt labelled corpus (deterministic tasks, open-ended tasks, injections, a violation, PII, PHI):
 
-- **paved-gate (Jev):** the full gate, including detection, masking, decision, and audit.
-- **zero-shot (Claude):** one system prompt built from the rubric, asking for `{"intent","risk","pii_or_phi"}` as JSON. Default model is `claude-opus-5` at `effort: low`.
-- **zero-shot (OpenAI):** the same prompt to `gpt-4o` in JSON mode.
+- **Paved Gate (Jev):** the full gate, including detection, masking, decision, and audit.
+- **GPT-4o zero-shot:** one system prompt built from the rubric, asking for `{"intent","risk","pii_or_phi"}` as JSON, sent to `gpt-4o` in JSON mode.
+- **Claude zero-shot:** the same prompt sent to `claude-opus-5` at `effort: low`.
 
-Frontier arms run only if `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` is set. **They are skipped, never simulated.** Cost is the provider-reported token usage multiplied by the snapshot in [scripts/pricing.py](scripts/pricing.py).
+Frontier arms run only if `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` is set. **An arm without a key is reported as "not run", never simulated.** Cost is the provider-reported token usage multiplied by the snapshot in [scripts/pricing.py](scripts/pricing.py).
 
-Sample output with no frontier keys set (mock mode, laptop, 36 requests):
+### Output
 
-```
-================================================================================
- ILLUSTRATIVE ONLY. Mock-mode latency is simulated. Prices are a 2026-09 snapshot
- from scripts/pricing.py and will change. Not a load test. Verify before quoting.
-================================================================================
+Every run prints a table to the terminal and writes two files to `results/`, which is gitignored because results change every run:
 
-arm                 model          mode                      n   p50 ms  p95 ms  $/request  $/1M requests
----------------------------------------------------------------------------------------------------------
-paved-gate (Jev)    jev-latest     mock (simulated latency)  36  89.6    117.8   $0.000015  $15
-zero-shot (Claude)  claude-opus-5  skipped                   -   -       -       -          -
-zero-shot (OpenAI)  gpt-4o         skipped                   -   -       -       -          -
-```
+| File | Contents |
+|---|---|
+| `results/benchmark-<UTC timestamp>.json` | Structured results. For each arm: `mode` (`live`, `mock` or `not_run`), `latency_ms.{p50,p95,mean}`, `cost_usd.{per_request,per_million_requests,basis}`, `sample_timings_ms` (the first 25 raw request timings), `n` and `errors`. Plus the run date, iterations, policy hash, prices used and caveats. |
+| `results/benchmark-<UTC timestamp>.html` | A single self-contained dashboard with that JSON embedded. It needs no server, no build step and no network, so it opens straight from disk. |
+
+To re-render a dashboard from a saved JSON file, run `npm run dashboard -- results/<file>.json` or `uv run python scripts/dashboard.py results/<file>.json --open`. Add `?theme=light` or `?theme=dark` to the file URL to force a theme, for example when taking screenshots.
+
+The dashboard shows the run date and a **Live / Mock / Not run** badge on every arm, in the arm cards, in the chart rows and in the table. Any run that includes a mock or not-run arm also carries a "Read with care" notice. These labels are part of the rendered image, so they stay with a screenshot when it is shared.
+
+### Sample
+
+![Benchmark dashboard: Paved Gate (Jev) in mock mode, GPT-4o and Claude not run](docs/benchmark/dashboard.png)
+
+*This is a real run on a laptop with no API keys set. Jev ran in **mock mode**, so its latency is simulated and its token counts are estimated. The GPT-4o and Claude arms were **not run**. The committed files are [sample-results.json](docs/benchmark/sample-results.json) and [sample-dashboard.html](docs/benchmark/sample-dashboard.html). After a run with live keys, replace them with that run's output.*
 
 **Read these numbers carefully.**
 - Mock latency is a sleep drawn from 60–120 ms, and mock token counts are estimates.
@@ -449,9 +456,13 @@ src/paved_gate/
   audit/                          audit record models, JSONL / stdout / memory sinks
   middleware/fastapi.py           ASGI middleware
 examples/server.py                runnable FastAPI demo
-scripts/benchmark.py              latency / cost benchmark (illustrative)
+scripts/benchmark.py              latency / cost benchmark (illustrative); writes results/*.json + *.html
+scripts/dashboard.py              renders a benchmark JSON into the self-contained HTML dashboard
+scripts/dashboard_template.html   dashboard template (inline SVG charts, no dependencies)
 scripts/pricing.py                dated price snapshot
-tests/                            61 tests: decision branches, Jev contract, masking, handlers, middleware, latency
+docs/benchmark/                   committed sample: dashboard.png, sample-results.json, sample-dashboard.html
+package.json                      npm task aliases (benchmark, benchmark:dashboard, dashboard, test)
+tests/                            66 tests: decision branches, Jev contract, masking, handlers, middleware, latency, benchmark report
 ```
 
 Development: `uv run pytest`, `uv run mypy src tests examples`, `uv run ruff check .` (mypy `--strict`).

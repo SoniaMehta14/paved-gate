@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paved Gate Benchmark</title>
+<script>
+  // ?theme=light|dark forces a theme (handy for screenshots); otherwise follow the OS.
+  (() => {
+    const t = new URLSearchParams(location.search).get("theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  })();
+</script>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --badge-live-bg: #e6f4e6;   --badge-live-ink: #006300;
+    --badge-mock-bg: #fdf1dc;   --badge-mock-ink: #7a4b00;
+    --badge-none-bg: #efeeea;   --badge-none-ink: #52514e;
+    --notice-bg: #fdf6e8;       --notice-border: #f0d9a8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
+      --series-1: #3987e5; --series-2: #d95926;
+      --badge-live-bg: #11301a; --badge-live-ink: #7fd67f;
+      --badge-mock-bg: #3a2c10; --badge-mock-ink: #f3c46b;
+      --badge-none-bg: #2a2a28; --badge-none-ink: #c3c2b7;
+      --notice-bg: #2b2412; --notice-border: #5a4618;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
+    --series-1: #3987e5; --series-2: #d95926;
+    --badge-live-bg: #11301a; --badge-live-ink: #7fd67f;
+    --badge-mock-bg: #3a2c10; --badge-mock-ink: #f3c46b;
+    --badge-none-bg: #2a2a28; --badge-none-ink: #c3c2b7;
+    --notice-bg: #2b2412; --notice-border: #5a4618;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 40px 24px 56px; }
+  @media (max-width: 600px) { .wrap { padding: 24px 16px 40px; } }
+
+  header { margin-bottom: 24px; }
+  .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 6px; }
+  h1 { font-size: 28px; line-height: 1.2; font-weight: 650; margin: 0 0 10px; letter-spacing: -0.01em; }
+  .meta { color: var(--ink-2); font-size: 14px; margin: 0; }
+  .meta strong { color: var(--ink); font-weight: 600; }
+
+  .notice {
+    background: var(--notice-bg); border: 1px solid var(--notice-border); border-radius: 10px;
+    padding: 12px 16px; font-size: 14px; margin: 0 0 20px; color: var(--ink);
+  }
+  .notice b { font-weight: 650; }
+
+  .arms { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+  @media (max-width: 760px) { .arms { grid-template-columns: 1fr; } }
+  .arm-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .arm-card .name { font-weight: 600; margin: 0 0 2px; }
+  .arm-card .model { color: var(--ink-2); font-size: 13px; margin: 0 0 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .arm-card .detail { color: var(--ink-2); font-size: 13px; margin: 8px 0 0; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 2px 10px;
+    font-size: 12px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap;
+  }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .badge.live { background: var(--badge-live-bg); color: var(--badge-live-ink); }
+  .badge.mock { background: var(--badge-mock-bg); color: var(--badge-mock-ink); }
+  .badge.not_run { background: var(--badge-none-bg); color: var(--badge-none-ink); }
+  .badge.not_run::before { background: transparent; border: 1.5px solid currentColor; width: 5px; height: 5px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 20px 16px; margin-bottom: 16px; }
+  .card h2 { font-size: 17px; font-weight: 650; margin: 0; }
+  .card .sub { color: var(--ink-2); font-size: 13px; margin: 2px 0 12px; }
+  .legend { display: flex; gap: 16px; font-size: 13px; color: var(--ink-2); margin: 0 0 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .charts { display: grid; grid-template-columns: 1fr; gap: 16px; }
+
+  svg { display: block; width: 100%; overflow: visible; }
+  svg text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .tick { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .row-label { fill: var(--ink); font-size: 14px; font-weight: 600; }
+  .row-sub { fill: var(--ink-2); font-size: 12px; }
+  .value { fill: var(--ink); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .value.secondary { fill: var(--ink-2); }
+  .not-run { fill: var(--muted); font-size: 13px; font-style: italic; }
+  .gridline { stroke: var(--grid); stroke-width: 1; }
+  .baseline { stroke: var(--axis); stroke-width: 1; }
+  .bar { cursor: default; }
+  .bar:hover { opacity: 0.85; }
+
+  .tooltip {
+    position: fixed; pointer-events: none; z-index: 10; background: var(--ink); color: var(--surface);
+    font-size: 13px; padding: 6px 10px; border-radius: 6px; white-space: nowrap; opacity: 0; transition: opacity 80ms;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .table-scroll { overflow-x: auto; }
+  th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  td.arm { white-space: nowrap; }
+  th { font-size: 12px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.basis { color: var(--ink-2); font-size: 13px; min-width: 150px; overflow-wrap: anywhere; }
+  tr:last-child td { border-bottom: none; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+
+  details { margin-top: 12px; font-size: 13px; color: var(--ink-2); }
+  details summary { cursor: pointer; color: var(--ink); font-weight: 600; }
+  details pre { white-space: pre-wrap; word-break: break-word; background: var(--page); border-radius: 8px; padding: 10px 12px; margin: 8px 0 0; }
+  ul.caveats { margin: 6px 0 0; padding-left: 18px; }
+
+  footer { color: var(--muted); font-size: 12px; margin-top: 24px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Paved Gate · Benchmark</p>
+    <h1>Fast evaluator gate vs. zero-shot frontier classification</h1>
+    <p class="meta" id="meta"></p>
+  </header>
+
+  <div class="notice" id="notice" hidden></div>
+
+  <section class="arms" id="arms" aria-label="Arms and run mode"></section>
+
+  <div class="charts">
+    <section class="card" aria-labelledby="lat-title">
+      <h2 id="lat-title">Latency per request</h2>
+      <p class="sub">Milliseconds, p50 and p95. Lower is faster.</p>
+      <div class="legend">
+        <span><i style="background: var(--series-1)"></i>p50</span>
+        <span><i style="background: var(--series-2)"></i>p95</span>
+      </div>
+      <div id="latency-chart"></div>
+    </section>
+
+    <section class="card" aria-labelledby="cost-title">
+      <h2 id="cost-title">Cost per million requests</h2>
+      <p class="sub">USD, from token usage × list prices. Lower is cheaper.</p>
+      <div id="cost-chart"></div>
+    </section>
+  </div>
+
+  <section class="card" aria-labelledby="table-title">
+    <h2 id="table-title">Results</h2>
+    <p class="sub">Raw numbers behind both charts.</p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Arm</th><th>Mode</th><th class="num">Requests</th><th class="num">Errors</th>
+            <th class="num">p50 ms</th><th class="num">p95 ms</th><th class="num">Mean ms</th>
+            <th class="num">$ / request</th><th class="num">$ / 1M req.</th><th>Cost basis</th>
+          </tr>
+        </thead>
+        <tbody id="results-body"></tbody>
+      </table>
+    </div>
+    <details>
+      <summary>Caveats, prices, and raw timing samples</summary>
+      <ul class="caveats" id="caveats"></ul>
+      <pre id="prices"></pre>
+      <pre id="samples"></pre>
+    </details>
+  </section>
+
+  <footer>
+    <span id="footer-left"></span>
+    <span>Illustrative only. Verify before quoting.</span>
+  </footer>
+</div>
+<div class="tooltip" id="tooltip" role="tooltip"></div>
+
+<script id="benchmark-data" type="application/json">{"schema_version":1,"illustrative":true,"run_at":"2026-09-27T18:51:25+00:00","corpus_size":12,"iterations":3,"policy_hash":"sha256:33ac7786e77a149a5c59de3feda13509fcc16d6ea7cef2d76ad5bfea5f19d78e","arms":[{"id":"jev","label":"Paved Gate (Jev)","model":"jev-latest","mode":"mock","mode_detail":"simulated 60-120 ms evaluator latency","n":36,"errors":0,"latency_ms":{"p50":93.37,"p95":116.74,"mean":92.73},"cost_usd":{"per_request":1.53685e-05,"per_million_requests":15.37,"basis":"estimated input tokens x pricing.py (mock)"},"sample_timings_ms":[84.93,111.7,110.84,116.73,114.5,114.72,83.45,74.69,77.39,97.1,69.94,67.9,99.28,77.94,103.45,116.74,83.34,78.33,106.27,91.16,70.05,94.11,72.4,92.63,115.97],"note":"full gate: PII detection, masking, evaluation, decision, audit"},{"id":"openai","label":"GPT-4o zero-shot","model":"gpt-4o","mode":"not_run","mode_detail":"OPENAI_API_KEY not set","n":0,"errors":0,"latency_ms":{"p50":null,"p95":null,"mean":null},"cost_usd":{"per_request":null,"per_million_requests":null,"basis":""},"sample_timings_ms":[],"note":""},{"id":"claude","label":"Claude zero-shot","model":"claude-opus-5","mode":"not_run","mode_detail":"ANTHROPIC_API_KEY not set","n":0,"errors":0,"latency_ms":{"p50":null,"p95":null,"mean":null},"cost_usd":{"per_request":null,"per_million_requests":null,"basis":""},"sample_timings_ms":[],"note":""}],"prices_per_mtok":{"jev":{"input":0.042,"output":0.0,"source":"TypeSafe Jev list price (2026-09)"},"claude-opus-5":{"input":5.0,"output":25.0,"source":"Anthropic list price (2026-09)"},"claude-sonnet-5":{"input":2.0,"output":10.0,"source":"Anthropic list price (2026-09)"},"claude-haiku-4-5":{"input":1.0,"output":5.0,"source":"Anthropic list price (2026-09)"},"gpt-4o":{"input":2.5,"output":10.0,"source":"OpenAI list price, last verified by the author; confirm before quoting"}},"caveats":["Mock-mode latency is simulated and mock token counts are estimates.","Prices are a dated snapshot from scripts/pricing.py and will change.","Single machine, sequential requests, 12-prompt corpus: not a load test.","Arms marked 'not run' had no API key; they are never simulated."]}</script>
+<script>
+(() => {
+  "use strict";
+  const report = JSON.parse(document.getElementById("benchmark-data").textContent);
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const MODE_LABEL = { live: "Live", mock: "Mock", not_run: "Not run" };
+
+  const el = (tag, attrs = {}, text) => {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+  const svgEl = (tag, attrs = {}, text) => {
+    const node = document.createElementNS(SVGNS, tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+  const badge = (mode) => el("span", { class: `badge ${mode}` }, MODE_LABEL[mode] ?? mode);
+
+  const fmtMs = (v) => v == null ? "–" : v >= 1000 ? `${Math.round(v).toLocaleString("en-US")} ms` : `${v.toFixed(1)} ms`;
+  const fmtUsd = (v) => {
+    if (v == null) return "–";
+    if (v >= 100) return `$${Math.round(v).toLocaleString("en-US")}`;
+    if (v >= 0.01) return `$${v.toFixed(2)}`;
+    return `$${v.toPrecision(2)}`;
+  };
+  const fmtTick = (v, unit) => unit === "usd"
+    ? `$${v >= 1000 ? (v / 1000).toLocaleString("en-US") + "k" : v.toLocaleString("en-US")}`
+    : v.toLocaleString("en-US");
+
+  // ------------------------------------------------------------ header + run labels
+  const runAt = new Date(report.run_at);
+  const dateText = runAt.toLocaleString("en-US", {
+    year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC", timeZoneName: "short",
+  });
+  const meta = document.getElementById("meta");
+  meta.append("Run ", el("strong", {}, dateText), ` · ${report.corpus_size} prompts × ${report.iterations} iteration${report.iterations === 1 ? "" : "s"} · policy `);
+  meta.append(el("span", { class: "mono" }, report.policy_hash.slice(0, 19) + "…"));
+
+  const modes = report.arms.map((a) => a.mode);
+  const notice = document.getElementById("notice");
+  const parts = [];
+  if (modes.includes("mock")) parts.push("at least one arm ran in <b>mock mode</b> with simulated latency and estimated tokens");
+  if (modes.includes("not_run")) parts.push("at least one arm was <b>not run</b> (no API key) and is shown empty, never simulated");
+  if (parts.length) {
+    notice.hidden = false;
+    notice.innerHTML = `<b>Read with care:</b> ${parts.join("; ")}. Only arms marked <b>Live</b> reflect real API calls.`;
+  }
+
+  const arms = document.getElementById("arms");
+  for (const a of report.arms) {
+    const card = el("div", { class: "arm-card" });
+    card.append(el("p", { class: "name" }, a.label), el("p", { class: "model" }, a.model), badge(a.mode), el("p", { class: "detail" }, a.mode_detail));
+    arms.append(card);
+  }
+
+  // ------------------------------------------------------------ tooltip
+  const tip = document.getElementById("tooltip");
+  const showTip = (evt, text) => {
+    tip.textContent = text;
+    tip.style.opacity = "1";
+    const pad = 12, w = tip.offsetWidth;
+    const x = Math.min(evt.clientX + pad, window.innerWidth - w - 8);
+    tip.style.left = `${x}px`;
+    tip.style.top = `${evt.clientY + pad}px`;
+  };
+  const hideTip = () => { tip.style.opacity = "0"; };
+
+  // ------------------------------------------------------------ horizontal bar chart
+  // Round tick step (1, 2, 2.5, 5 x 10^k) and an axis max that is a whole number of steps.
+  function niceScale(v, target = 5) {
+    if (!(v > 0)) return { max: 1, step: 0.2 };
+    const raw = v / target;
+    const base = 10 ** Math.floor(Math.log10(raw));
+    const step = [1, 2, 2.5, 5, 10].map((m) => m * base).find((s) => s >= raw);
+    return { max: Math.ceil(v / step) * step, step };
+  }
+
+  // 4px rounded data-end, square at the baseline.
+  function barPath(x, y, w, h) {
+    const r = Math.min(4, w, h / 2);
+    if (w <= 0) return "";
+    return `M${x},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x} Z`;
+  }
+
+  function barChart(container, { series, unit, format }) {
+    const draw = () => {
+      container.textContent = "";
+      const width = Math.max(320, container.clientWidth);
+      // Narrow screens stack each arm's label above its bars so the bars get the full width.
+      const narrow = width < 560;
+      const labelW = narrow ? 0 : 190;
+      const headH = narrow ? 22 : 0;
+      const valueRoom = narrow ? 72 : 84;
+      const barH = 16, barGap = 2, rowPad = 18;
+      const groupH = series.length * barH + (series.length - 1) * barGap;
+      const contentH = narrow ? headH + groupH : Math.max(groupH, 36);
+      const rowH = contentH + rowPad;
+      const top = 4, axisH = 26;
+      const height = top + report.arms.length * rowH + axisH;
+      const plotX = labelW, plotW = width - labelW - valueRoom;
+
+      const values = report.arms.flatMap((a) => a.mode === "not_run" ? [] : series.map((s) => s.value(a))).filter((v) => v != null);
+      const { max, step } = niceScale(Math.max(0, ...values));
+      const x = (v) => plotX + (v / max) * plotW;
+
+      const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, height, role: "img" });
+      svg.setAttribute("aria-label", container.dataset.label || "bar chart");
+
+      const ticks = Math.round(max / step);
+      for (let i = 0; i <= ticks; i++) {
+        const v = step * i, gx = x(v);
+        svg.append(svgEl("line", { class: i === 0 ? "baseline" : "gridline", x1: gx, x2: gx, y1: top, y2: height - axisH }));
+        svg.append(svgEl("text", { class: "tick", x: gx, y: height - 8, "text-anchor": i === 0 ? "start" : "middle" }, fmtTick(+v.toPrecision(6), unit)));
+      }
+
+      report.arms.forEach((a, i) => {
+        const rowY = top + i * rowH + rowPad / 2;
+        const sub = `${a.model} · ${MODE_LABEL[a.mode]}`;
+        let cy;
+        if (narrow) {
+          const label = svgEl("text", { class: "row-label", x: 0, y: rowY + 14 }, a.label);
+          label.append(svgEl("tspan", { class: "row-sub", dx: 8 }, sub));
+          svg.append(label);
+          cy = rowY + headH + groupH / 2;
+        } else {
+          cy = rowY + contentH / 2;
+          svg.append(svgEl("text", { class: "row-label", x: 0, y: cy - 3 }, a.label));
+          svg.append(svgEl("text", { class: "row-sub", x: 0, y: cy + 14 }, sub));
+        }
+
+        if (a.mode === "not_run") {
+          svg.append(svgEl("text", { class: "not-run", x: plotX + 8, y: cy + 4 }, `Not run · ${a.mode_detail}`));
+          return;
+        }
+        const gy = cy - groupH / 2;
+        series.forEach((s, j) => {
+          const v = s.value(a);
+          const by = gy + j * (barH + barGap);
+          if (v == null) {
+            svg.append(svgEl("text", { class: "not-run", x: plotX + 8, y: by + barH - 3 }, "no data"));
+            return;
+          }
+          const w = Math.max(2, x(v) - plotX);
+          const bar = svgEl("path", { class: "bar", d: barPath(plotX, by, w, barH), fill: s.color });
+          const tipText = `${a.label} · ${s.name ? s.name + ": " : ""}${format(v)}${a.mode === "mock" ? " (mock)" : ""}`;
+          bar.addEventListener("mousemove", (e) => showTip(e, tipText));
+          bar.addEventListener("mouseleave", hideTip);
+          const title = svgEl("title", {}, tipText);
+          bar.append(title);
+          svg.append(bar);
+          svg.append(svgEl("text", { class: `value${j > 0 ? " secondary" : ""}`, x: plotX + w + 6, y: by + barH - 3 }, format(v)));
+        });
+      });
+      container.append(svg);
+    };
+    draw();
+    let raf = 0;
+    new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); }).observe(container);
+  }
+
+  const latency = document.getElementById("latency-chart");
+  latency.dataset.label = "Latency per request by arm, p50 and p95 in milliseconds";
+  barChart(latency, {
+    unit: "ms",
+    format: fmtMs,
+    series: [
+      { name: "p50", color: "var(--series-1)", value: (a) => a.latency_ms.p50 },
+      { name: "p95", color: "var(--series-2)", value: (a) => a.latency_ms.p95 },
+    ],
+  });
+
+  const cost = document.getElementById("cost-chart");
+  cost.dataset.label = "Cost per million requests by arm, USD";
+  barChart(cost, {
+    unit: "usd",
+    format: fmtUsd,
+    series: [{ name: "", color: "var(--series-1)", value: (a) => a.cost_usd.per_million_requests }],
+  });
+
+  // ------------------------------------------------------------ table + details
+  const body = document.getElementById("results-body");
+  for (const a of report.arms) {
+    const tr = el("tr");
+    const armCell = el("td", { class: "arm" });
+    armCell.append(el("div", { style: "font-weight:600" }, a.label), el("div", { class: "mono", style: "color:var(--ink-2)" }, a.model));
+    const modeCell = el("td");
+    modeCell.append(badge(a.mode));
+    const run = a.mode !== "not_run";
+    tr.append(
+      armCell,
+      modeCell,
+      el("td", { class: "num" }, run ? String(a.n) : "–"),
+      el("td", { class: "num" }, run ? String(a.errors) : "–"),
+      el("td", { class: "num" }, run ? fmtMs(a.latency_ms.p50).replace(" ms", "") : "–"),
+      el("td", { class: "num" }, run ? fmtMs(a.latency_ms.p95).replace(" ms", "") : "–"),
+      el("td", { class: "num" }, run ? fmtMs(a.latency_ms.mean).replace(" ms", "") : "–"),
+      el("td", { class: "num" }, run ? fmtUsd(a.cost_usd.per_request) : "–"),
+      el("td", { class: "num" }, run ? fmtUsd(a.cost_usd.per_million_requests) : "–"),
+      el("td", { class: "basis" }, run ? a.cost_usd.basis : "not run: no API key"),
+    );
+    body.append(tr);
+  }
+
+  const caveats = document.getElementById("caveats");
+  for (const c of report.caveats) caveats.append(el("li", {}, c));
+  document.getElementById("prices").textContent = "Prices used (USD per 1M tokens, input / output):\n" +
+    Object.entries(report.prices_per_mtok).map(([m, p]) => `  ${m.padEnd(18)} ${p.input} / ${p.output}   ${p.source}`).join("\n");
+  document.getElementById("samples").textContent = "Raw timing samples (ms, first " + report.arms.reduce((m, a) => Math.max(m, a.sample_timings_ms.length), 0) + " requests per arm):\n" +
+    report.arms.map((a) => `  ${a.label}: ${a.sample_timings_ms.length ? a.sample_timings_ms.join(", ") : "not run"}`).join("\n");
+
+  document.getElementById("footer-left").textContent = `Generated by paved-gate scripts/benchmark.py · schema v${report.schema_version} · ${report.run_at}`;
+})();
+</script>
+</body>
+</html>

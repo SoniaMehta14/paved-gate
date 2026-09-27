@@ -1,12 +1,16 @@
 """Latency / cost benchmark: Paved Gate fast evaluator vs zero-shot frontier classification.
 
-    uv run python scripts/benchmark.py                      # Jev mock + any frontier arm with a key
-    uv run python scripts/benchmark.py --live-jev           # real Jev (needs TYPESAFE_API_KEY)
-    uv run python scripts/benchmark.py --iterations 3 --json results.json
+    uv run python scripts/benchmark.py                 # Jev mock + any frontier arm with a key
+    uv run python scripts/benchmark.py --open          # ...then open the HTML dashboard
+    uv run python scripts/benchmark.py --live-jev      # real Jev (needs TYPESAFE_API_KEY)
+    npm run benchmark:dashboard                        # same as --open
 
 Every arm answers the same three questions from the same policy file: intent route,
 1-5 risk score, and PII/PHI flag. Frontier arms run only if their API key is set;
-they are skipped, never simulated.
+they are reported as "not run", never simulated.
+
+Each run writes results/benchmark-<timestamp>.json and a self-contained
+results/benchmark-<timestamp>.html dashboard (results/ is gitignored).
 
 ILLUSTRATIVE ONLY. Mock-mode latency is simulated, prices are a dated snapshot
 (scripts/pricing.py), and a dozen prompts from one machine is not a load test.
@@ -17,14 +21,19 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import math
 import os
 import statistics
 import sys
 import time
+import webbrowser
 from collections.abc import Awaitable, Callable
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal, TypedDict
 
+from dashboard import render_dashboard
 from pricing import PRICES, cost_usd
 
 from paved_gate import JevEvaluator, MemorySink, Policy, load_policy
@@ -32,6 +41,8 @@ from paved_gate.gate import PavedGate
 from paved_gate.handlers.deterministic import default_registry
 
 ROOT = Path(__file__).resolve().parent.parent
+SCHEMA_VERSION = 1
+SAMPLE_TIMINGS = 25
 
 CORPUS: list[str] = [
     "What is (17.5 * 4) - 3^2?",
@@ -54,32 +65,89 @@ BANNER = """\
  from scripts/pricing.py and will change. Not a load test. Verify before quoting.
 ================================================================================"""
 
+Mode = Literal["live", "mock", "not_run"]
+
+
+class LatencyJson(TypedDict):
+    p50: float | None
+    p95: float | None
+    mean: float | None
+
+
+class CostJson(TypedDict):
+    per_request: float | None
+    per_million_requests: float | None
+    basis: str
+
+
+class ArmJson(TypedDict):
+    id: str
+    label: str
+    model: str
+    mode: Mode
+    mode_detail: str
+    n: int
+    errors: int
+    latency_ms: LatencyJson
+    cost_usd: CostJson
+    sample_timings_ms: list[float]
+    note: str
+
+
+class PriceJson(TypedDict):
+    input: float
+    output: float
+    source: str
+
+
+class Report(TypedDict):
+    schema_version: int
+    illustrative: bool
+    run_at: str
+    corpus_size: int
+    iterations: int
+    policy_hash: str
+    arms: list[ArmJson]
+    prices_per_mtok: dict[str, PriceJson]
+    caveats: list[str]
+
 
 @dataclass
 class ArmResult:
-    arm: str
+    id: str
+    label: str
     model: str
-    mode: str
+    mode: Mode
+    mode_detail: str
+    cost_basis: str = ""
     latencies_ms: list[float] = field(default_factory=list)
     costs_usd: list[float] = field(default_factory=list)
     errors: int = 0
     note: str = ""
-    skipped: bool = False
 
-    def summary(self) -> dict[str, object]:
+    def to_json(self) -> ArmJson:
         lat = sorted(self.latencies_ms)
-        p95_idx = max(0, round(0.95 * len(lat)) - 1)
         mean_cost = statistics.fmean(self.costs_usd) if self.costs_usd else None
         return {
-            "arm": self.arm,
+            "id": self.id,
+            "label": self.label,
             "model": self.model,
             "mode": self.mode,
+            "mode_detail": self.mode_detail,
             "n": len(lat),
             "errors": self.errors,
-            "p50_ms": round(statistics.median(lat), 1) if lat else None,
-            "p95_ms": round(lat[p95_idx], 1) if lat else None,
-            "usd_per_request": mean_cost,
-            "usd_per_million_requests": mean_cost * 1_000_000 if mean_cost is not None else None,
+            "latency_ms": {
+                "p50": round(statistics.median(lat), 2) if lat else None,
+                # nearest-rank percentile
+                "p95": round(lat[max(0, math.ceil(0.95 * len(lat)) - 1)], 2) if lat else None,
+                "mean": round(statistics.fmean(lat), 2) if lat else None,
+            },
+            "cost_usd": {
+                "per_request": mean_cost,
+                "per_million_requests": round(mean_cost * 1_000_000, 2) if mean_cost is not None else None,
+                "basis": self.cost_basis,
+            },
+            "sample_timings_ms": [round(t, 2) for t in self.latencies_ms[:SAMPLE_TIMINGS]],
             "note": self.note,
         }
 
@@ -100,12 +168,24 @@ def zero_shot_prompt(policy: Policy) -> str:
 async def run_gate_arm(policy_path: Path, live: bool, iterations: int) -> ArmResult:
     loaded = load_policy(policy_path)
     cfg = loaded.policy.evaluator
+    label = "Paved Gate (Jev)"
     if live and not os.environ.get(cfg.api_key_env):
-        return ArmResult("paved-gate (Jev)", cfg.model, "live", skipped=True, note=f"{cfg.api_key_env} not set")
+        return ArmResult("jev", label, cfg.model, "not_run", f"{cfg.api_key_env} not set")
     evaluator = JevEvaluator.from_config(cfg.model_copy(update={"mode": "live" if live else "mock"}))
     sink = MemorySink()
     gate = PavedGate(loaded, evaluator=evaluator, audit=sink, deterministic=default_registry(), frontier=None)
-    arm = ArmResult("paved-gate (Jev)", cfg.model, "live" if live else "mock (simulated latency)")
+    arm = (
+        ArmResult("jev", label, cfg.model, "live", "real Jev API", "provider-reported input tokens x pricing.py")
+        if live
+        else ArmResult(
+            "jev",
+            label,
+            cfg.model,
+            "mock",
+            "simulated 60-120 ms evaluator latency",
+            "estimated input tokens x pricing.py (mock)",
+        )
+    )
     try:
         for _ in range(iterations):
             for text in CORPUS:
@@ -119,14 +199,16 @@ async def run_gate_arm(policy_path: Path, live: bool, iterations: int) -> ArmRes
                     arm.costs_usd.append(cost_usd("jev", rec.usage.input_tokens, rec.usage.output_tokens or 0) or 0.0)
     finally:
         await gate.aclose()
-    arm.note = "full gate incl. masking + decision; mock token counts are estimates" if not live else "full gate"
+    arm.note = "full gate: PII detection, masking, evaluation, decision, audit"
     return arm
 
 
 async def run_frontier_arm(
-    name: str, model: str, call: Callable[[str], Awaitable[tuple[int, int]]], iterations: int
+    arm_id: str, label: str, model: str, call: Callable[[str], Awaitable[tuple[int, int]]], iterations: int
 ) -> ArmResult:
-    arm = ArmResult(name, model, "live")
+    arm = ArmResult(
+        arm_id, label, model, "live", "real API, zero-shot JSON prompt", "provider-reported tokens x pricing.py"
+    )
     for _ in range(iterations):
         for text in CORPUS:
             started = time.perf_counter()
@@ -182,50 +264,84 @@ def openai_caller(model: str, system: str) -> Callable[[str], Awaitable[tuple[in
     return call
 
 
-def _fmt(v: object, kind: str) -> str:
+def _fmt_ms(v: float | None) -> str:
+    return "-" if v is None else f"{v:.1f}"
+
+
+def _fmt_usd(v: float | None) -> str:
     if v is None:
         return "-"
-    if kind == "usd" and isinstance(v, float):
-        return f"${v:.6f}" if v < 0.01 else f"${v:,.2f}"
-    if kind == "usdm" and isinstance(v, float):
-        return f"${v:,.0f}"
-    return str(v)
+    return f"${v:.6f}" if v < 0.01 else f"${v:,.2f}"
 
 
-def print_table(results: list[ArmResult]) -> None:
-    headers = ["arm", "model", "mode", "n", "p50 ms", "p95 ms", "$/request", "$/1M requests"]
+def print_table(report: Report) -> None:
+    arms = report["arms"]
+    headers = ["arm", "model", "mode", "n", "p50 ms", "p95 ms", "mean ms", "$/request", "$/1M requests"]
     rows: list[list[str]] = []
     notes: list[str] = []
-    for r in results:
-        if r.skipped:
-            rows.append([r.arm, r.model, "skipped", "-", "-", "-", "-", "-"])
-            notes.append(f"{r.arm}: skipped ({r.note})")
+    for a in arms:
+        lat, cost = a["latency_ms"], a["cost_usd"]
+        if a["mode"] == "not_run":
+            rows.append([a["label"], a["model"], "not run", "-", "-", "-", "-", "-", "-"])
+            notes.append(f"{a['label']}: not run ({a['mode_detail']})")
             continue
-        s = r.summary()
         rows.append(
             [
-                r.arm,
-                r.model,
-                r.mode,
-                _fmt(s["n"], ""),
-                _fmt(s["p50_ms"], ""),
-                _fmt(s["p95_ms"], ""),
-                _fmt(s["usd_per_request"], "usd"),
-                _fmt(s["usd_per_million_requests"], "usdm"),
+                a["label"],
+                a["model"],
+                a["mode"],
+                str(a["n"]),
+                _fmt_ms(lat["p50"]),
+                _fmt_ms(lat["p95"]),
+                _fmt_ms(lat["mean"]),
+                _fmt_usd(cost["per_request"]),
+                _fmt_usd(cost["per_million_requests"]),
             ]
         )
-        if r.note or r.errors:
-            notes.append(f"{r.arm}: {r.note}" + (f" ({r.errors} errors)" if r.errors else ""))
+        notes.append(
+            f"{a['label']}: {a['mode_detail']}; {a['note']}" + (f" ({a['errors']} errors)" if a["errors"] else "")
+        )
     widths = [max(len(h), *(len(row[i]) for row in rows)) for i, h in enumerate(headers)]
     line = "  ".join(h.ljust(w) for h, w in zip(headers, widths, strict=True))
     print(line)
     print("-" * len(line))
     for row in rows:
         print("  ".join(c.ljust(w) for c, w in zip(row, widths, strict=True)))
-    if notes:
-        print("\nNotes:")
-        for n in notes:
-            print(f"  - {n}")
+    print("\nNotes:")
+    for n in notes:
+        print(f"  - {n}")
+
+
+def build_report(results: list[ArmResult], *, started_at: datetime, iterations: int, policy_hash: str) -> Report:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "illustrative": True,
+        "run_at": started_at.isoformat(timespec="seconds"),
+        "corpus_size": len(CORPUS),
+        "iterations": iterations,
+        "policy_hash": policy_hash,
+        "arms": [r.to_json() for r in results],
+        "prices_per_mtok": {
+            model: {"input": p.input_per_mtok, "output": p.output_per_mtok, "source": p.source}
+            for model, p in PRICES.items()
+        },
+        "caveats": [
+            "Mock-mode latency is simulated and mock token counts are estimates.",
+            "Prices are a dated snapshot from scripts/pricing.py and will change.",
+            "Single machine, sequential requests, 12-prompt corpus: not a load test.",
+            "Arms marked 'not run' had no API key; they are never simulated.",
+        ],
+    }
+
+
+def write_outputs(report: Report, out_dir: Path, started_at: datetime) -> tuple[Path, Path]:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stem = f"benchmark-{started_at.strftime('%Y%m%d-%H%M%S')}"
+    json_path = out_dir / f"{stem}.json"
+    html_path = out_dir / f"{stem}.html"
+    json_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    html_path.write_text(render_dashboard(report), encoding="utf-8")
+    return json_path, html_path
 
 
 async def main() -> int:
@@ -236,32 +352,22 @@ async def main() -> int:
     ap.add_argument("--claude-model", default="claude-opus-5")
     ap.add_argument("--openai-model", default="gpt-4o")
     ap.add_argument("--no-frontier", action="store_true", help="only run the gate arm")
-    ap.add_argument("--json", type=Path, help="also write raw results to this file")
+    ap.add_argument("--out-dir", type=Path, default=ROOT / "results", help="where to write JSON + HTML")
+    ap.add_argument("--open", action="store_true", help="open the HTML dashboard when done")
     args = ap.parse_args()
 
     print(BANNER)
-    policy = load_policy(args.policy).policy
-    system = zero_shot_prompt(policy)
+    started_at = datetime.now(UTC)
+    loaded = load_policy(args.policy)
+    system = zero_shot_prompt(loaded.policy)
     results = [await run_gate_arm(args.policy, args.live_jev, args.iterations)]
 
     if not args.no_frontier:
-        if os.environ.get("ANTHROPIC_API_KEY"):
-            results.append(
-                await run_frontier_arm(
-                    "zero-shot (Claude)",
-                    args.claude_model,
-                    claude_caller(args.claude_model, system),
-                    args.iterations,
-                )
-            )
-        else:
-            results.append(
-                ArmResult("zero-shot (Claude)", args.claude_model, "", skipped=True, note="ANTHROPIC_API_KEY not set")
-            )
         if os.environ.get("OPENAI_API_KEY"):
             results.append(
                 await run_frontier_arm(
-                    "zero-shot (OpenAI)",
+                    "openai",
+                    "GPT-4o zero-shot" if args.openai_model == "gpt-4o" else f"{args.openai_model} zero-shot",
                     args.openai_model,
                     openai_caller(args.openai_model, system),
                     args.iterations,
@@ -269,22 +375,34 @@ async def main() -> int:
             )
         else:
             results.append(
-                ArmResult("zero-shot (OpenAI)", args.openai_model, "", skipped=True, note="OPENAI_API_KEY not set")
+                ArmResult("openai", "GPT-4o zero-shot", args.openai_model, "not_run", "OPENAI_API_KEY not set")
+            )
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            results.append(
+                await run_frontier_arm(
+                    "claude",
+                    "Claude zero-shot",
+                    args.claude_model,
+                    claude_caller(args.claude_model, system),
+                    args.iterations,
+                )
+            )
+        else:
+            results.append(
+                ArmResult("claude", "Claude zero-shot", args.claude_model, "not_run", "ANTHROPIC_API_KEY not set")
             )
 
+    report = build_report(results, started_at=started_at, iterations=args.iterations, policy_hash=loaded.policy_hash)
     print()
-    print_table(results)
+    print_table(report)
     print("\nPrices used (USD per 1M tokens, input/output):")
     for model, p in PRICES.items():
         print(f"  {model:18s} {p.input_per_mtok:>7.3f} / {p.output_per_mtok:<7.3f} {p.source}")
 
-    if args.json:
-        args.json.write_text(
-            json.dumps(
-                {"illustrative": True, "results": [asdict(r) | {"summary": r.summary()} for r in results]}, indent=2
-            )
-        )
-        print(f"\nWrote {args.json}")
+    json_path, html_path = write_outputs(report, args.out_dir, started_at)
+    print(f"\nResults:   {json_path}\nDashboard: {html_path}")
+    if args.open:
+        webbrowser.open(html_path.resolve().as_uri())
     return 0
 
 
