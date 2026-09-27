@@ -49,7 +49,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync --all-extras                 # install with FastAPI, Anthropic, and OpenAI extras
-uv run pytest                        # 71 tests
+uv run pytest                        # 74 tests
 uv run python examples/server.py     # demo server on :8000, Jev in mock mode, no keys needed
 ```
 
@@ -449,9 +449,11 @@ The dashboard shows the run date and a **Live / Mock / Simulated baseline / Not 
 
 ### Sample
 
-![Benchmark dashboard: Paved Gate (Jev) in mock mode, GPT-4o and Claude Sonnet 5 not run](docs/benchmark/dashboard.png)
+![Benchmark dashboard: live run of Paved Gate (Jev), GPT-4o and Claude Sonnet 5 zero-shot](docs/benchmark/dashboard.png)
 
-*This is a real run on a laptop with no API keys set. Jev ran in **mock mode**, so its latency is simulated and its token counts are estimated. The GPT-4o and Claude Sonnet 5 arms were **not run**, so the savings card has nothing to compare against. The committed files are [sample-results.json](docs/benchmark/sample-results.json) and [sample-dashboard.html](docs/benchmark/sample-dashboard.html). After a run with live keys, replace them with that run's output.*
+*A live run on September 27, 2026: all three arms called the real APIs, 12 prompts × 5 iterations = 60 requests each, with no errors. The whole run cost about $0.17. The gate's p50 was 96.7 ms against 640 ms for GPT-4o and 1,468 ms for Claude Sonnet 5, and it cost $26 per million requests against $1,137 and $1,590. The summary card compares the gate with the best frontier arm, GPT-4o, on both metrics. One laptop, sequential requests and 60 samples per arm is a small sample: re-run on your own network and traffic before quoting it. The committed files are [sample-results.json](docs/benchmark/sample-results.json) and [sample-dashboard.html](docs/benchmark/sample-dashboard.html).*
+
+Each arm card shows the **actual cost of that run**, calculated from the tokens the provider reported for successful requests. Mock and simulated arms show an estimate instead, labelled "Est. cost if run live". The results table keeps `$ / request` and `$ / 1M req.` and adds `Actual cost this run`.
 
 **Read these numbers carefully.**
 - Mock latency is a sleep drawn from 60–120 ms, and mock token counts are estimates.
@@ -490,7 +492,7 @@ scripts/pricing.py                dated price snapshot
 scripts/baselines.py              assumed values for --simulate-missing (never a measurement)
 docs/benchmark/                   committed sample: dashboard.png, sample-results.json, sample-dashboard.html
 package.json                      npm task aliases (benchmark, benchmark:dashboard, dashboard, test)
-tests/                            71 tests: decision branches, Jev contract, masking, handlers, middleware, latency, benchmark report
+tests/                            74 tests: decision branches, Jev contract, masking, handlers, middleware, latency, benchmark report
 ```
 
 Development: `uv run pytest`, `uv run mypy src tests examples`, `uv run ruff check .` (mypy `--strict`).

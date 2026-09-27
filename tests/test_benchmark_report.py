@@ -7,8 +7,18 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from benchmark import SAMPLE_TIMINGS, ArmResult, Mode, Report, build_report, simulate_frontier_arm, write_outputs
+from benchmark import (
+    SAMPLE_TIMINGS,
+    ArmResult,
+    Mode,
+    Report,
+    build_report,
+    run_frontier_arm,
+    simulate_frontier_arm,
+    write_outputs,
+)
 from dashboard import PLACEHOLDER, render_dashboard
+from pricing import cost_usd
 
 
 def _embedded(html: str) -> object:
@@ -113,3 +123,32 @@ def test_simulated_arm_is_labelled_and_reproducible() -> None:
 def test_no_simulated_baseline_for_unknown_model() -> None:
     arm = simulate_frontier_arm("claude", "Claude", "claude-unknown", "system", 1, random.Random(0))
     assert arm.mode == "not_run" and arm.latencies_ms == []
+
+
+async def test_run_cost_counts_successful_requests_only() -> None:
+    calls = 0
+
+    async def flaky(text: str) -> tuple[int, int]:
+        nonlocal calls
+        calls += 1
+        if calls % 3 == 0:  # every third request fails
+            raise RuntimeError("boom")
+        return 1000, 100
+
+    arm = (await run_frontier_arm("openai", "GPT-4o", "gpt-4o", flaky, 1)).to_json()
+    assert arm["errors"] == 4
+    cost = arm["cost_usd"]
+    assert cost["successful_requests"] == 8
+    assert cost["tokens"] == {"input": 8000, "output": 800}
+    # gpt-4o at $2.50 / $10 per 1M: 8 x (1000 x 2.5 + 100 x 10) / 1e6
+    assert cost["run_total"] == 0.028
+    assert cost["per_request"] == 0.0035
+
+
+def test_jev_price_is_input_only() -> None:
+    assert cost_usd("jev", 1_000_000, 1_000_000) == 0.042
+
+
+def test_not_run_arm_has_no_run_cost() -> None:
+    cost = ArmResult("claude", "Claude", "claude-sonnet-5", "not_run", "no key").to_json()["cost_usd"]
+    assert cost["run_total"] is None and cost["successful_requests"] == 0

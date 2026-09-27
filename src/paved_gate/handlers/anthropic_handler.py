@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 from paved_gate.types import FrontierResponse, GateState
@@ -29,19 +30,23 @@ class AnthropicFrontierHandler:
         max_tokens: int = 16000,
         system: str | None = None,
         use_fallbacks: bool = True,
+        workspace_id: str | None = None,
         client: AsyncAnthropic | None = None,
     ) -> None:
         self.model = model
         self.max_tokens = max_tokens
         self.system = system
         self.use_fallbacks = use_fallbacks
+        # Needed only for API keys not scoped to a workspace (the API then requires the header).
+        self.workspace_id = workspace_id or os.environ.get("ANTHROPIC_WORKSPACE_ID") or None
         self._client = client
 
     def _get_client(self) -> AsyncAnthropic:
         if self._client is None:
             from anthropic import AsyncAnthropic
 
-            self._client = AsyncAnthropic()
+            headers = {"anthropic-workspace-id": self.workspace_id} if self.workspace_id else None
+            self._client = AsyncAnthropic(default_headers=headers)
         return self._client
 
     async def respond(self, state: GateState) -> FrontierResponse:

@@ -96,6 +96,9 @@
   .arm-card .name { font-weight: 600; margin: 0 0 2px; }
   .arm-card .model { color: var(--ink-2); font-size: 13px; margin: 0 0 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .arm-card .detail { color: var(--ink-2); font-size: 13px; margin: 8px 0 0; }
+  .arm-card .run-cost { font-size: 13px; margin: 8px 0 0; font-variant-numeric: tabular-nums; }
+  .arm-card .run-cost b { font-weight: 650; }
+  .est { display: block; color: var(--muted); font-size: 12px; }
 
   .badge {
     display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 2px 10px;
@@ -139,11 +142,13 @@
 
   table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   .table-scroll { overflow-x: auto; }
-  th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  th, td { text-align: left; padding: 9px 7px; border-bottom: 1px solid var(--grid); vertical-align: top; }
   td.arm { white-space: nowrap; }
   th { font-size: 12px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  td.basis { color: var(--ink-2); font-size: 13px; min-width: 150px; overflow-wrap: anywhere; }
+  th { vertical-align: bottom; }
+  .table-note { color: var(--ink-2); font-size: 12px; margin: 10px 0 0; }
+  .arm-card .error { color: var(--ink-2); font-size: 12px; margin: 6px 0 0; overflow-wrap: anywhere; }
   tr:last-child td { border-bottom: none; }
   .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
 
@@ -198,12 +203,13 @@
           <tr>
             <th>Arm</th><th>Mode</th><th class="num">Requests</th><th class="num">Errors</th>
             <th class="num">p50 ms</th><th class="num">p95 ms</th><th class="num">Mean ms</th>
-            <th class="num">$ / 1M req.</th><th>Cost basis</th>
+            <th class="num">$ / request</th><th class="num">$ / 1M req.</th><th class="num">Actual cost<br>this run</th>
           </tr>
         </thead>
         <tbody id="results-body"></tbody>
       </table>
     </div>
+    <p class="table-note">Cost basis: live arms use provider-reported tokens × list price. Mock and simulated arms (marked <i>est.</i>) use estimated tokens × list price and made no billed calls. Actual cost this run counts successful requests only.</p>
     <details>
       <summary>Caveats, prices, and raw timing samples</summary>
       <ul class="caveats" id="caveats"></ul>
@@ -249,6 +255,7 @@
     if (v >= 0.01) return `$${v.toFixed(2)}`;
     return `$${v.toPrecision(2)}`;
   };
+  const fmtUsd6 = (v) => v == null ? "–" : `$${v.toFixed(6)}`;
   const fmtTick = (v, unit) => unit === "usd"
     ? `$${v >= 1000 ? (v / 1000).toLocaleString("en-US") + "k" : v.toLocaleString("en-US")}`
     : v.toLocaleString("en-US");
@@ -298,13 +305,28 @@
       ? `vs. ${lat.baseline_arm}, the fastest and cheapest frontier arm`
       : [lat && `latency vs. ${lat.baseline_arm} (fastest)`, cst && `cost vs. ${cst.baseline_arm} (cheapest)`].filter(Boolean).join(" · ");
     deltaBox.append(el("p", { class: "delta-vs" }, vs));
+    const excluded = report.arms.filter((a) => a.id !== "jev" && a.mode !== "not_run" && a.n === 0).map((a) => a.label);
+    if (excluded.length) deltaBox.append(el("p", { class: "delta-vs", style: "margin-top:2px" }, `Excluded (no successful requests): ${excluded.join(", ")}`));
     if (!comp.measured) deltaBox.append(el("p", { class: "delta-flag" }, "Not a measurement: includes mock or simulated data"));
   }
 
   const arms = document.getElementById("arms");
   for (const a of report.arms) {
     const card = el("div", { class: "arm-card" });
-    card.append(el("p", { class: "name" }, a.label), el("p", { class: "model" }, a.model), badge(a.mode), el("p", { class: "detail" }, a.mode_detail));
+    card.append(el("p", { class: "name" }, a.label), el("p", { class: "model" }, a.model), badge(a.mode));
+    if (a.mode !== "not_run") {
+      // Live arms use provider-reported tokens; mock and simulated arms use estimated tokens, so never "actual".
+      const c = a.cost_usd;
+      // Mock/simulated runs make no billed calls: show what the run would cost live, never "actual".
+      const label = a.mode === "live" ? "Actual run cost" : `Est. cost if run live (${MODE_SHORT[a.mode].toLowerCase()})`;
+      const line = el("p", { class: "run-cost" }, `${label}: `);
+      line.append(el("b", {}, fmtUsd6(c.run_total)));
+      const attempted = c.successful_requests + a.errors;
+      if (a.errors > 0) line.append(` (${c.successful_requests} of ${attempted} requests succeeded)`);
+      card.append(line);
+    }
+    card.append(el("p", { class: "detail" }, a.mode_detail));
+    if (a.errors > 0 && a.note) card.append(el("p", { class: "error" }, a.note));
     arms.append(card);
   }
 
@@ -452,12 +474,17 @@
 
   // ------------------------------------------------------------ table + details
   const body = document.getElementById("results-body");
+  const runCostCell = (a) => {
+    const td = el("td", { class: "num" }, a.mode === "not_run" ? "–" : fmtUsd6(a.cost_usd.run_total));
+    if (a.mode === "mock" || a.mode === "simulated") td.append(el("span", { class: "est" }, "est."));
+    return td;
+  };
   for (const a of report.arms) {
     const tr = el("tr");
     const armCell = el("td", { class: "arm" });
     armCell.append(el("div", { style: "font-weight:600" }, a.label), el("div", { class: "mono", style: "color:var(--ink-2)" }, a.model));
     const modeCell = el("td");
-    modeCell.append(badge(a.mode));
+    modeCell.append(el("span", { class: `badge ${a.mode}` }, MODE_SHORT[a.mode]));
     const run = a.mode !== "not_run";
     tr.append(
       armCell,
@@ -467,8 +494,9 @@
       el("td", { class: "num" }, run ? fmtMs(a.latency_ms.p50).replace(" ms", "") : "–"),
       el("td", { class: "num" }, run ? fmtMs(a.latency_ms.p95).replace(" ms", "") : "–"),
       el("td", { class: "num" }, run ? fmtMs(a.latency_ms.mean).replace(" ms", "") : "–"),
+      el("td", { class: "num" }, run ? fmtUsd(a.cost_usd.per_request) : "–"),
       el("td", { class: "num" }, run ? fmtUsd(a.cost_usd.per_million_requests) : "–"),
-      el("td", { class: "basis" }, run ? a.cost_usd.basis : "not run: no API key"),
+      runCostCell(a),
     );
     body.append(tr);
   }

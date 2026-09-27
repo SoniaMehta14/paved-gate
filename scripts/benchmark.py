@@ -5,6 +5,7 @@
     uv run python scripts/benchmark.py --live-jev      # real Jev (needs TYPESAFE_API_KEY)
     npm run benchmark:dashboard                        # same as --open
     uv run python scripts/benchmark.py --simulate-missing   # layout demo, see below
+    uv run python scripts/benchmark.py --mock-all       # no API calls at all, even with keys set
 
 Every arm answers the same three questions from the same policy file: intent route,
 1-5 risk score, and PII/PHI flag. Frontier arms run live only if their API key is
@@ -47,7 +48,7 @@ from paved_gate.gate import PavedGate
 from paved_gate.handlers.deterministic import default_registry
 
 ROOT = Path(__file__).resolve().parent.parent
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 SAMPLE_TIMINGS = 25
 
 CORPUS: list[str] = [
@@ -87,9 +88,17 @@ class LatencyJson(TypedDict):
     mean: float | None
 
 
+class TokensJson(TypedDict):
+    input: int
+    output: int
+
+
 class CostJson(TypedDict):
     per_request: float | None
     per_million_requests: float | None
+    run_total: float | None
+    successful_requests: int
+    tokens: TokensJson
     basis: str
 
 
@@ -152,7 +161,9 @@ class ArmResult:
     mode_detail: str
     cost_basis: str = ""
     latencies_ms: list[float] = field(default_factory=list)
-    costs_usd: list[float] = field(default_factory=list)
+    costs_usd: list[float] = field(default_factory=list)  # one entry per successful, priced request
+    input_tokens: int = 0  # successful requests only
+    output_tokens: int = 0
     errors: int = 0
     note: str = ""
 
@@ -176,6 +187,9 @@ class ArmResult:
             "cost_usd": {
                 "per_request": mean_cost,
                 "per_million_requests": round(mean_cost * 1_000_000, 2) if mean_cost is not None else None,
+                "run_total": round(sum(self.costs_usd), 6) if self.costs_usd else None,
+                "successful_requests": len(self.costs_usd),
+                "tokens": {"input": self.input_tokens, "output": self.output_tokens},
                 "basis": self.cost_basis,
             },
             "sample_timings_ms": [round(t, 2) for t in self.latencies_ms[:SAMPLE_TIMINGS]],
@@ -227,7 +241,10 @@ async def run_gate_arm(policy_path: Path, live: bool, iterations: int) -> ArmRes
                 if rec.error:
                     arm.errors += 1
                 elif rec.usage.input_tokens is not None:
-                    arm.costs_usd.append(cost_usd("jev", rec.usage.input_tokens, rec.usage.output_tokens or 0) or 0.0)
+                    in_tok, out_tok = rec.usage.input_tokens, rec.usage.output_tokens or 0
+                    arm.input_tokens += in_tok
+                    arm.output_tokens += out_tok
+                    arm.costs_usd.append(cost_usd("jev", in_tok, out_tok) or 0.0)
     finally:
         await gate.aclose()
     arm.note = "full gate: PII detection, masking, evaluation, decision, audit"
@@ -248,6 +265,8 @@ async def run_frontier_arm(
                 arm.note = f"last error: {type(exc).__name__}: {str(exc)[:80]}"
                 continue
             arm.latencies_ms.append((time.perf_counter() - started) * 1000)
+            arm.input_tokens += in_tok
+            arm.output_tokens += out_tok
             c = cost_usd(model, in_tok, out_tok)
             if c is not None:
                 arm.costs_usd.append(c)
@@ -273,7 +292,10 @@ def simulate_frontier_arm(
     for _ in range(iterations):
         for text in CORPUS:
             arm.latencies_ms.append(baseline.p50_ms * math.exp(rng.gauss(0.0, baseline.sigma)))
-            c = cost_usd(model, (len(system) + len(text)) // 4, baseline.output_tokens)
+            in_tok = (len(system) + len(text)) // 4
+            arm.input_tokens += in_tok
+            arm.output_tokens += baseline.output_tokens
+            c = cost_usd(model, in_tok, baseline.output_tokens)
             if c is not None:
                 arm.costs_usd.append(c)
     arm.note = "assumed values for layout demos; not a measurement"
@@ -315,7 +337,8 @@ def build_comparison(arms: list[ArmJson]) -> ComparisonJson:
 def claude_caller(model: str, system: str) -> Callable[[str], Awaitable[tuple[int, int]]]:
     from anthropic import AsyncAnthropic
 
-    client = AsyncAnthropic()
+    workspace_id = os.environ.get("ANTHROPIC_WORKSPACE_ID")
+    client = AsyncAnthropic(default_headers={"anthropic-workspace-id": workspace_id} if workspace_id else None)
 
     async def call(text: str) -> tuple[int, int]:
         msg = await client.messages.create(
@@ -361,13 +384,13 @@ def _fmt_usd(v: float | None) -> str:
 
 def print_table(report: Report) -> None:
     arms = report["arms"]
-    headers = ["arm", "model", "mode", "n", "p50 ms", "p95 ms", "mean ms", "$/request", "$/1M requests"]
+    headers = ["arm", "model", "mode", "n", "p50 ms", "p95 ms", "mean ms", "$/request", "$/1M requests", "run cost"]
     rows: list[list[str]] = []
     notes: list[str] = []
     for a in arms:
         lat, cost = a["latency_ms"], a["cost_usd"]
         if a["mode"] == "not_run":
-            rows.append([a["label"], a["model"], "not run", "-", "-", "-", "-", "-", "-"])
+            rows.append([a["label"], a["model"], "not run", "-", "-", "-", "-", "-", "-", "-"])
             notes.append(f"{a['label']}: not run ({a['mode_detail']})")
             continue
         rows.append(
@@ -381,6 +404,7 @@ def print_table(report: Report) -> None:
                 _fmt_ms(lat["mean"]),
                 _fmt_usd(cost["per_request"]),
                 _fmt_usd(cost["per_million_requests"]),
+                "-" if cost["run_total"] is None else f"${cost['run_total']:.6f}",
             ]
         )
         notes.append(
@@ -461,10 +485,17 @@ async def main() -> int:
         action="store_true",
         help="fill frontier arms without an API key with a SIMULATED BASELINE (layout demos only; not a measurement)",
     )
+    ap.add_argument(
+        "--mock-all",
+        action="store_true",
+        help="make no API calls: Jev in mock mode and every frontier arm a SIMULATED BASELINE, even if keys are set",
+    )
     ap.add_argument("--seed", type=int, default=0, help="random seed for simulated baselines")
     ap.add_argument("--out-dir", type=Path, default=ROOT / "results", help="where to write JSON + HTML")
     ap.add_argument("--open", action="store_true", help="open the HTML dashboard when done")
     args = ap.parse_args()
+    if args.mock_all and args.live_jev:
+        ap.error("--mock-all and --live-jev are mutually exclusive")
     load_dotenv(ROOT / ".env")  # keys from .env; real environment variables take precedence
 
     print(BANNER)
@@ -482,7 +513,9 @@ async def main() -> int:
             ("claude", claude_label, args.claude_model, "ANTHROPIC_API_KEY", claude_caller),
         ]
         for arm_id, label, model, key_env, make_caller in frontier:
-            if os.environ.get(key_env):
+            if args.mock_all:
+                results.append(simulate_frontier_arm(arm_id, label, model, system, args.iterations, rng))
+            elif os.environ.get(key_env):
                 results.append(
                     await run_frontier_arm(arm_id, label, model, make_caller(model, system), args.iterations)
                 )
