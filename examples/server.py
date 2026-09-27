@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 
 import uvicorn
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 
 from paved_gate import Frontier, JsonlFileSink, paved_gate
@@ -24,6 +25,7 @@ from paved_gate.middleware.fastapi import PavedGateMiddleware
 ROOT = Path(__file__).resolve().parent.parent
 POLICY = ROOT / "policy" / "paved_gate.policy.yaml"
 
+load_dotenv(ROOT / ".env")  # keys from .env; real environment variables take precedence
 use_claude = bool(os.environ.get("ANTHROPIC_API_KEY"))
 gate = paved_gate(
     POLICY,

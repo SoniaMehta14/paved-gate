@@ -39,6 +39,7 @@ from typing import Literal, TypedDict
 
 from baselines import SIMULATED_BASELINES
 from dashboard import render_dashboard
+from dotenv import load_dotenv
 from pricing import PRICES, cost_usd
 
 from paved_gate import JevEvaluator, MemorySink, Policy, load_policy
@@ -464,6 +465,7 @@ async def main() -> int:
     ap.add_argument("--out-dir", type=Path, default=ROOT / "results", help="where to write JSON + HTML")
     ap.add_argument("--open", action="store_true", help="open the HTML dashboard when done")
     args = ap.parse_args()
+    load_dotenv(ROOT / ".env")  # keys from .env; real environment variables take precedence
 
     print(BANNER)
     started_at = datetime.now(UTC)

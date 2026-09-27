@@ -73,6 +73,22 @@ tail -n 3 logs/paved_gate.audit.jsonl
 
 Set `ANTHROPIC_API_KEY` before starting the server and frontier requests go to Claude instead of the demo echo route.
 
+### API keys
+
+Put keys in a `.env` file at the repo root. Git ignores it, and `.env.example` shows the format:
+
+```bash
+cp .env.example .env    # then uncomment and fill in the keys you have
+```
+
+| Variable | Used by |
+|---|---|
+| `TYPESAFE_API_KEY` | Jev live mode: `benchmark.py --live-jev`, or `evaluator.mode: live` in the policy |
+| `OPENAI_API_KEY` | GPT-4o zero-shot benchmark arm |
+| `ANTHROPIC_API_KEY` | Claude zero-shot benchmark arm and the demo server's frontier handler |
+
+`scripts/benchmark.py` and `examples/server.py` load `.env` automatically. Variables already set in your shell take precedence. The library itself only reads the process environment; it never loads files.
+
 ### As a library
 
 ```python
