@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paved Gate Dashboards</title>
+<meta name="description" content="Published benchmark and classification-eval dashboards for Paved Gate, a fast System 1 ingestion gate for AI agent architectures.">
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --border: rgba(11, 11, 11, 0.10); --link: #256abf;
+    --badge-live-bg: #e6f4e6; --badge-live-ink: #006300;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --border: rgba(255, 255, 255, 0.10); --link: #86b6ef;
+      --badge-live-bg: #11301a; --badge-live-ink: #7fd67f;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --border: rgba(255, 255, 255, 0.10); --link: #86b6ef;
+    --badge-live-bg: #11301a; --badge-live-ink: #7fd67f;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--page); color: var(--ink); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 48px 24px 56px; }
+  @media (max-width: 600px) { .wrap { padding: 28px 16px 40px; } }
+  .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 6px; }
+  h1 { font-size: 30px; line-height: 1.2; font-weight: 650; letter-spacing: -0.01em; margin: 0 0 10px; }
+  .lede { color: var(--ink-2); margin: 0 0 28px; max-width: 640px; }
+  .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 720px) { .cards { grid-template-columns: 1fr; } }
+  a.card { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; color: inherit; text-decoration: none; transition: border-color 120ms, transform 120ms; }
+  a.card:hover, a.card:focus-visible { border-color: var(--ink-2); transform: translateY(-1px); outline: none; }
+  .card h2 { font-size: 18px; font-weight: 650; margin: 0 0 4px; }
+  .card .when { color: var(--ink-2); font-size: 13px; margin: 0 0 12px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 650;
+    letter-spacing: 0.04em; text-transform: uppercase; background: var(--badge-live-bg); color: var(--badge-live-ink); align-self: flex-start; margin-bottom: 12px; }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .card p.desc { margin: 0 0 14px; color: var(--ink-2); font-size: 14px; }
+  .kpis { display: flex; gap: 24px; margin: 0 0 14px; }
+  .kpi .v { font-size: 26px; font-weight: 650; line-height: 1.1; }
+  .kpi .l { font-size: 12.5px; color: var(--ink-2); }
+  .card .open { margin-top: auto; font-weight: 600; color: var(--link); font-size: 14px; }
+  .note { color: var(--ink-2); font-size: 13px; margin: 24px 0 0; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--grid); }
+  footer a, .note a { color: var(--link); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Paved Gate · Dashboards</p>
+  <h1>A fast System 1 gate in front of AI agents</h1>
+  <p class="lede">Published snapshots of two live runs comparing the Paved Gate fast evaluator (Jev) with zero-shot frontier models: one measures latency and cost, the other measures classification accuracy on labelled support tickets.</p>
+
+  <div class="cards">
+    <a class="card" href="./benchmark/">
+      <h2>Latency and cost benchmark</h2>
+      <p class="when">September 27, 2026 · 4 arms × 60 requests</p>
+      <span class="badge">All arms live</span>
+      <p class="desc">Jev vs GPT-4o, GPT-4o mini and Claude Sonnet 5, answering the same three gate questions per request.</p>
+      <div class="kpis">
+        <div class="kpi"><div class="v">83.8%</div><div class="l">lower p50 latency<br>vs GPT-4o</div></div>
+        <div class="kpi"><div class="v">60.6%</div><div class="l">lower cost<br>vs GPT-4o mini</div></div>
+      </div>
+      <span class="open">Open dashboard →</span>
+    </a>
+
+    <a class="card" href="./eval/">
+      <h2>Support ticket classification eval</h2>
+      <p class="when">October 1, 2026 · 3 arms × 1,080 tickets</p>
+      <span class="badge">All arms live</span>
+      <p class="desc">Intent accuracy on a fixed sample of the Bitext customer support dataset (27 intents, CDLA-Sharing-1.0).</p>
+      <div class="kpis">
+        <div class="kpi"><div class="v">91.9%</div><div class="l">Jev accuracy<br>(GPT-4o 92.9%, mini 93.4%)</div></div>
+        <div class="kpi"><div class="v">80.3%</div><div class="l">lower p50 latency<br>vs GPT-4o mini</div></div>
+      </div>
+      <span class="open">Open dashboard →</span>
+    </a>
+  </div>
+
+  <p class="note">The accuracy differences are not statistically significant at this sample size (paired McNemar test on the <a href="./eval/predictions.jsonl">published per-ticket predictions</a>: p = 0.33 vs GPT-4o, p = 0.12 vs GPT-4o mini). Both runs are one machine's snapshot, with list prices verified on the run date; see each dashboard's caveats before quoting a figure.</p>
+
+  <footer>
+    Static copies of dashboards generated by <a href="https://github.com/SoniaMehta14/paved-gate">paved-gate</a> (Apache-2.0). Eval data: Bitext customer support dataset, © Bitext Innovations 2024, CDLA-Sharing-1.0.
+  </footer>
+</div>
+</body>
+</html>

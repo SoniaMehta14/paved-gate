@@ -1,0 +1,736 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paved Gate Benchmark</title>
+<script>
+  // ?theme=light|dark forces a theme (handy for screenshots); otherwise follow the OS.
+  (() => {
+    const t = new URLSearchParams(location.search).get("theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  })();
+</script>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --badge-live-bg: #e6f4e6;   --badge-live-ink: #006300;
+    --badge-mock-bg: #fdf1dc;   --badge-mock-ink: #7a4b00;
+    --badge-none-bg: #efeeea;   --badge-none-ink: #52514e;
+    --badge-sim-bg: #ecebfa;    --badge-sim-ink: #3b2f8f;
+    --notice-bg: #fdf6e8;       --notice-border: #f0d9a8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
+      --series-1: #3987e5; --series-2: #d95926;
+      --badge-live-bg: #11301a; --badge-live-ink: #7fd67f;
+      --badge-mock-bg: #3a2c10; --badge-mock-ink: #f3c46b;
+      --badge-none-bg: #2a2a28; --badge-none-ink: #c3c2b7;
+      --badge-sim-bg: #26223f; --badge-sim-ink: #b9b1f5;
+      --notice-bg: #2b2412; --notice-border: #5a4618;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
+    --series-1: #3987e5; --series-2: #d95926;
+    --badge-live-bg: #11301a; --badge-live-ink: #7fd67f;
+    --badge-mock-bg: #3a2c10; --badge-mock-ink: #f3c46b;
+    --badge-none-bg: #2a2a28; --badge-none-ink: #c3c2b7;
+    --badge-sim-bg: #26223f; --badge-sim-ink: #b9b1f5;
+    --notice-bg: #2b2412; --notice-border: #5a4618;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 40px 24px 56px; }
+  @media (max-width: 600px) { .wrap { padding: 24px 16px 40px; } }
+
+  .top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: start; margin-bottom: 24px; }
+  @media (max-width: 860px) { .top { grid-template-columns: minmax(0, 1fr); } }
+  header { min-width: 0; }
+  .delta { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; min-width: 300px; }
+  @media (max-width: 860px) { .delta { min-width: 0; } }
+  .delta-title { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 8px; }
+  .kpis { display: flex; gap: 28px; }
+  .kpi .v { font-size: 34px; font-weight: 650; line-height: 1.1; letter-spacing: -0.01em; }
+  .kpi .v.muted { color: var(--muted); }
+  .kpi .l { font-size: 13px; color: var(--ink-2); }
+  .delta-vs { font-size: 12px; color: var(--ink-2); margin: 10px 0 0; }
+  .delta-flag { display: inline-block; margin: 10px 0 0; font-size: 12px; font-weight: 650; border-radius: 6px; padding: 3px 8px;
+    background: var(--badge-mock-bg); color: var(--badge-mock-ink); }
+  .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 6px; }
+  h1 { font-size: 28px; line-height: 1.2; font-weight: 650; margin: 0 0 10px; letter-spacing: -0.01em; }
+  .meta { color: var(--ink-2); font-size: 14px; margin: 0; }
+  .meta strong { color: var(--ink); font-weight: 600; }
+
+  .notice {
+    background: var(--notice-bg); border: 1px solid var(--notice-border); border-radius: 10px;
+    padding: 12px 16px; font-size: 14px; margin: 0 0 20px; color: var(--ink);
+  }
+  .notice b { font-weight: 650; }
+
+  .arms { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .arms.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  @media (max-width: 960px) { .arms.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 760px) { .arms, .arms.four { grid-template-columns: 1fr; } }
+  .arm-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .arm-card .name { font-weight: 600; margin: 0 0 2px; }
+  .arm-card .model { color: var(--ink-2); font-size: 13px; margin: 0 0 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .arm-card .detail { color: var(--ink-2); font-size: 13px; margin: 8px 0 0; }
+  .arm-card .run-cost { font-size: 13px; margin: 8px 0 0; font-variant-numeric: tabular-nums; }
+  .arm-card .run-cost b { font-weight: 650; }
+  .est { display: block; color: var(--muted); font-size: 12px; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 2px 10px;
+    font-size: 12px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap;
+  }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .badge.live { background: var(--badge-live-bg); color: var(--badge-live-ink); }
+  .badge.mock { background: var(--badge-mock-bg); color: var(--badge-mock-ink); }
+  .badge.not_run { background: var(--badge-none-bg); color: var(--badge-none-ink); }
+  .badge.not_run::before { background: transparent; border: 1.5px solid currentColor; width: 5px; height: 5px; }
+  .badge.simulated { background: var(--badge-sim-bg); color: var(--badge-sim-ink); }
+  .badge.simulated::before { border-radius: 1px; background: repeating-linear-gradient(45deg, currentColor 0 1.5px, transparent 1.5px 3px); width: 8px; height: 8px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 20px 16px; margin-bottom: 16px; }
+  .card h2 { font-size: 17px; font-weight: 650; margin: 0; }
+  .card .sub { color: var(--ink-2); font-size: 13px; margin: 2px 0 12px; }
+  .legend { display: flex; gap: 16px; font-size: 13px; color: var(--ink-2); margin: 0 0 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .legend i.hatch { background: repeating-linear-gradient(45deg, var(--ink-2) 0 1.5px, transparent 1.5px 4px); box-shadow: inset 0 0 0 1px var(--ink-2); }
+  .legend:empty { display: none; }
+  .charts { display: grid; grid-template-columns: 1fr; gap: 16px; }
+
+  svg { display: block; width: 100%; overflow: visible; }
+  svg text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .tick { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .row-label { fill: var(--ink); font-size: 14px; font-weight: 600; }
+  .row-sub { fill: var(--ink-2); font-size: 12px; }
+  .value { fill: var(--ink); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .value.secondary { fill: var(--ink-2); }
+  .not-run { fill: var(--muted); font-size: 13px; font-style: italic; }
+  .gridline { stroke: var(--grid); stroke-width: 1; }
+  .baseline { stroke: var(--axis); stroke-width: 1; }
+  .bar { cursor: default; }
+  .bar:hover { opacity: 0.85; }
+
+  .tooltip {
+    position: fixed; pointer-events: none; z-index: 10; background: var(--ink); color: var(--surface);
+    font-size: 13px; padding: 6px 10px; border-radius: 6px; white-space: nowrap; opacity: 0; transition: opacity 80ms;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .table-scroll { overflow-x: auto; }
+  th, td { text-align: left; padding: 9px 7px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  td.arm { white-space: nowrap; }
+  th { font-size: 12px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  th { vertical-align: bottom; }
+  .table-note { color: var(--ink-2); font-size: 12px; margin: 10px 0 0; }
+  .arm-card .error { color: var(--ink-2); font-size: 12px; margin: 6px 0 0; overflow-wrap: anywhere; }
+  tr:last-child td { border-bottom: none; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+
+  details { margin-top: 12px; font-size: 13px; color: var(--ink-2); }
+  details summary { cursor: pointer; color: var(--ink); font-weight: 600; }
+  details pre { white-space: pre-wrap; word-break: break-word; background: var(--page); border-radius: 8px; padding: 10px 12px; margin: 8px 0 0; }
+  ul.caveats { margin: 6px 0 0; padding-left: 18px; }
+
+  .intent-table th, .intent-table td { padding: 6px 6px; font-size: 13px; }
+  .intent-table th.grp { text-align: center; border-bottom: 1px solid var(--axis); }
+  .intent-table td.mono, .cm-top td.mono { font-size: 12.5px; }
+  .muted { color: var(--muted); }
+  .seg { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
+  .seg button { font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 999px; cursor: pointer;
+    background: transparent; color: var(--ink-2); border: 1px solid var(--border); }
+  .seg button[aria-selected="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .cm-label { fill: var(--ink-2); font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .cm-axis { fill: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; }
+  .cm-empty { fill: var(--page); stroke: var(--grid); stroke-width: 0.5; }
+  .cm-count { font-size: 10px; font-variant-numeric: tabular-nums; pointer-events: none; }
+  h3.minor { font-size: 14px; font-weight: 650; margin: 16px 0 4px; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 24px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <header>
+      <p class="eyebrow" id="eyebrow">Paved Gate · Benchmark</p>
+      <h1 id="title">Fast evaluator gate vs. zero-shot frontier classification</h1>
+      <p class="meta" id="meta"></p>
+    </header>
+    <aside class="delta" id="delta" aria-label="Savings summary"></aside>
+  </div>
+
+  <div class="notice" id="notice" hidden></div>
+
+  <section class="arms" id="arms" aria-label="Arms and run mode"></section>
+
+  <div class="charts">
+    <section class="card" aria-labelledby="lat-title">
+      <h2 id="lat-title">Latency per request</h2>
+      <p class="sub" id="lat-sub">Milliseconds, p50 and p95. Lower is faster.</p>
+      <div class="legend" id="lat-legend">
+        <span><i style="background: var(--series-1)"></i>p50</span>
+        <span><i style="background: var(--series-2)"></i>p95</span>
+      </div>
+      <div id="latency-chart"></div>
+    </section>
+
+    <section class="card" aria-labelledby="cost-title">
+      <h2 id="cost-title">Cost per million requests</h2>
+      <p class="sub">USD, from token usage × list prices. Lower is cheaper.</p>
+      <div class="legend" id="cost-legend"></div>
+      <div id="cost-chart"></div>
+    </section>
+  </div>
+
+  <section class="card" aria-labelledby="table-title">
+    <h2 id="table-title">Results</h2>
+    <p class="sub">Raw numbers behind both charts.</p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Arm</th><th>Mode</th><th class="num">Requests</th><th class="num">Errors</th>
+            <th class="num">p50 ms</th><th class="num">p95 ms</th><th class="num">Mean ms</th>
+            <th class="num">$ / request</th><th class="num">$ / 1M req.</th><th class="num">Actual cost<br>this run</th>
+          </tr>
+        </thead>
+        <tbody id="results-body"></tbody>
+      </table>
+    </div>
+    <p class="table-note">Cost basis: live arms use provider-reported tokens × list price. Mock and simulated arms (marked <i>est.</i>) use estimated tokens × list price and made no billed calls. Actual cost this run counts successful requests only.</p>
+    <details>
+      <summary>Caveats, prices, and raw timing samples</summary>
+      <ul class="caveats" id="caveats"></ul>
+      <pre id="prices"></pre>
+      <pre id="samples"></pre>
+    </details>
+  </section>
+
+  <section class="card" id="class-section" hidden aria-labelledby="class-title">
+    <h2 id="class-title">Classification accuracy</h2>
+    <p class="sub" id="class-sub"></p>
+    <div id="acc-chart"></div>
+    <div class="table-scroll" style="margin-top:12px">
+      <table>
+        <thead>
+          <tr>
+            <th>Arm</th><th>Mode</th><th class="num">Accuracy</th><th class="num">Correct / n</th>
+            <th class="num">Macro F1</th><th class="num">Weighted F1</th><th class="num">Invalid outputs</th><th class="num">API errors</th>
+          </tr>
+        </thead>
+        <tbody id="class-summary"></tbody>
+      </table>
+    </div>
+    <p class="table-note">Accuracy and F1 are computed only from real label comparisons on live arms. API errors are excluded from n; invalid model outputs (refusals, labels outside the list) count as wrong.</p>
+  </section>
+
+  <section class="card" id="intent-section" hidden aria-labelledby="intent-title">
+    <h2 id="intent-title">Per-intent precision, recall and F1</h2>
+    <p class="sub">P = precision, R = recall. n = tickets with that true intent that were scored.</p>
+    <div class="table-scroll"><table class="intent-table" id="intent-table"></table></div>
+  </section>
+
+  <section class="card" id="cm-section" hidden aria-labelledby="cm-title">
+    <h2 id="cm-title">Confusion matrix</h2>
+    <p class="sub">Rows: true intent. Columns: predicted intent. Shade = share of that row's tickets; numbers are counts.</p>
+    <div class="seg" id="cm-arms" role="tablist" aria-label="Arm"></div>
+    <div id="cm-chart"></div>
+    <h3 class="minor">Most frequent confusions</h3>
+    <div class="table-scroll"><table><thead><tr><th>True intent</th><th>Predicted as</th><th class="num">Count</th><th class="num">Share of true intent</th></tr></thead><tbody id="cm-top"></tbody></table></div>
+  </section>
+
+  <footer>
+    <span id="footer-left"></span>
+    <span>Illustrative only. Verify before quoting.</span>
+  </footer>
+</div>
+<div class="tooltip" id="tooltip" role="tooltip"></div>
+
+<script id="benchmark-data" type="application/json">{"schema_version":3,"kind":"classification","title":"Support ticket classification: Jev vs zero-shot frontier models","illustrative":true,"run_at":"2026-10-01T00:34:59+00:00","corpus_size":1080,"iterations":1,"policy_hash":"sha256:b071666da43163fd01109cdc1ec04aafa143ea6a5f7daa9e44ce7d7cffaf0d34","arms":[{"id":"jev","label":"Jev (typed Choice)","model":"jev-latest","mode":"live","mode_detail":"real Jev API, one Choice question per ticket","n":1080,"errors":0,"latency_ms":{"p50":108.67,"p95":251.69,"mean":133.64},"cost_usd":{"per_request":3.9368505555555555e-05,"per_million_requests":39.37,"run_total":0.042518,"successful_requests":1080,"tokens":{"input":1012333,"output":269517},"basis":"reported tokens x list price"},"sample_timings_ms":[147.16,148.5,161.06,172.66,86.45,87.45,91.31,114.96,87.8,88.47,110.2,101.72,93.19,76.83,93.23,98.53,103.84,109.05,86.66,84.67,93.32,80.28,113.04,93.94,81.38],"note":""},{"id":"openai","label":"GPT-4o zero-shot","model":"gpt-4o","mode":"live","mode_detail":"real API, JSON-schema classification prompt","n":1080,"errors":0,"latency_ms":{"p50":612.78,"p95":1284.33,"mean":741.3},"cost_usd":{"per_request":0.0015572337962962961,"per_million_requests":1557.23,"run_total":1.681812,"successful_requests":1080,"tokens":{"input":644749,"output":6994},"basis":"reported tokens x list price"},"sample_timings_ms":[1138.33,1194.84,1426.56,1976.09,1511.04,1534.85,804.89,563.34,1865.18,713.59,721.4,559.92,975.74,918.02,504.19,4433.87,553.64,930.15,563.2,594.53,1087.31,990.65,1056.9,516.1,846.08],"note":""},{"id":"openai-gpt-4o-mini","label":"GPT-4o mini zero-shot","model":"gpt-4o-mini","mode":"live","mode_detail":"real API, JSON-schema classification prompt","n":1080,"errors":0,"latency_ms":{"p50":551.95,"p95":1111.97,"mean":632.32},"cost_usd":{"per_request":9.344124999999999e-05,"per_million_requests":93.44,"run_total":0.100917,"successful_requests":1080,"tokens":{"input":644749,"output":7007},"basis":"reported tokens x list price"},"sample_timings_ms":[706.14,757.65,814.32,1269.47,567.05,540.45,762.65,512.65,499.95,536.97,516.26,476.4,643.76,2149.5,1953.63,499.22,551.72,588.06,509.36,563.23,2464.84,551.22,528.2,541.27,981.29],"note":""}],"comparison":{"method":"Paved Gate vs the best frontier arm for each metric (lowest p50 latency, lowest cost)","measured":true,"latency_p50":{"gate_value":108.67,"gate_mode":"live","baseline_arm":"GPT-4o mini zero-shot","baseline_model":"gpt-4o-mini","baseline_mode":"live","baseline_value":551.95,"reduction_pct":80.3},"cost_per_million":{"gate_value":39.37,"gate_mode":"live","baseline_arm":"GPT-4o mini zero-shot","baseline_model":"gpt-4o-mini","baseline_mode":"live","baseline_value":93.44,"reduction_pct":57.9}},"classification":{"dataset":{"dataset":"bitext/Bitext-customer-support-llm-chatbot-training-dataset","source_url":"https://huggingface.co/datasets/bitext/Bitext-customer-support-llm-chatbot-training-dataset","revision":"430d1a89bd93bd1fa23c16f29dd53e73f0087443","license":"CDLA-Sharing-1.0","attribution":"(c) Bitext Innovations, 2024","per_intent":40,"seed":20260930,"n":1080},"sample_sha256":"b071666da43163fd01109cdc1ec04aafa143ea6a5f7daa9e44ce7d7cffaf0d34","labels":["cancel_order","change_order","change_shipping_address","check_cancellation_fee","check_invoice","check_payment_methods","check_refund_policy","complaint","contact_customer_service","contact_human_agent","create_account","delete_account","delivery_options","delivery_period","edit_account","get_invoice","get_refund","newsletter_subscription","payment_issue","place_order","recover_password","registration_problems","review","set_up_shipping_address","switch_account","track_order","track_refund"],"invalid_label":"(invalid)","concurrency":4,"arms":[{"id":"jev","label":"Jev (typed Choice)","model":"jev-latest","mode":"live","measured":true,"attempted":1080,"api_errors":0,"metrics":{"n":1080,"correct":993,"accuracy":0.9194,"invalid_predictions":0,"macro":{"precision":0.9287,"recall":0.9194,"f1":0.9191},"weighted":{"precision":0.9287,"recall":0.9194,"f1":0.9191},"per_label":[{"label":"cancel_order","precision":0.975,"recall":0.975,"f1":0.975,"support":40},{"label":"change_order","precision":1.0,"recall":0.975,"f1":0.9873,"support":40},{"label":"change_shipping_address","precision":0.7955,"recall":0.875,"f1":0.8333,"support":40},{"label":"check_cancellation_fee","precision":1.0,"recall":0.95,"f1":0.9744,"support":40},{"label":"check_invoice","precision":1.0,"recall":0.725,"f1":0.8406,"support":40},{"label":"check_payment_methods","precision":1.0,"recall":1.0,"f1":1.0,"support":40},{"label":"check_refund_policy","precision":0.9737,"recall":0.925,"f1":0.9487,"support":40},{"label":"complaint","precision":1.0,"recall":0.9,"f1":0.9474,"support":40},{"label":"contact_customer_service","precision":0.9286,"recall":0.65,"f1":0.7647,"support":40},{"label":"contact_human_agent","precision":0.7308,"recall":0.95,"f1":0.8261,"support":40},{"label":"create_account","precision":0.9722,"recall":0.875,"f1":0.9211,"support":40},{"label":"delete_account","precision":1.0,"recall":0.975,"f1":0.9873,"support":40},{"label":"delivery_options","precision":1.0,"recall":0.8,"f1":0.8889,"support":40},{"label":"delivery_period","precision":0.8298,"recall":0.975,"f1":0.8966,"support":40},{"label":"edit_account","precision":0.8636,"recall":0.95,"f1":0.9048,"support":40},{"label":"get_invoice","precision":0.7843,"recall":1.0,"f1":0.8791,"support":40},{"label":"get_refund","precision":0.78,"recall":0.975,"f1":0.8667,"support":40},{"label":"newsletter_subscription","precision":1.0,"recall":1.0,"f1":1.0,"support":40},{"label":"payment_issue","precision":0.9524,"recall":1.0,"f1":0.9756,"support":40},{"label":"place_order","precision":0.8636,"recall":0.95,"f1":0.9048,"support":40},{"label":"recover_password","precision":1.0,"recall":1.0,"f1":1.0,"support":40},{"label":"registration_problems","precision":0.9286,"recall":0.975,"f1":0.9512,"support":40},{"label":"review","precision":0.9756,"recall":1.0,"f1":0.9877,"support":40},{"label":"set_up_shipping_address","precision":1.0,"recall":0.8,"f1":0.8889,"support":40},{"label":"switch_account","precision":0.8864,"recall":0.975,"f1":0.9286,"support":40},{"label":"track_order","precision":0.9412,"recall":0.8,"f1":0.8649,"support":40},{"label":"track_refund","precision":0.8947,"recall":0.85,"f1":0.8718,"support":40}],"confusion_labels":["cancel_order","change_order","change_shipping_address","check_cancellation_fee","check_invoice","check_payment_methods","check_refund_policy","complaint","contact_customer_service","contact_human_agent","create_account","delete_account","delivery_options","delivery_period","edit_account","get_invoice","get_refund","newsletter_subscription","payment_issue","place_order","recover_password","registration_problems","review","set_up_shipping_address","switch_account","track_order","track_refund","(invalid)"],"confusion_matrix":[[39,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0],[1,39,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,35,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,38,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0],[0,0,0,0,29,0,0,0,0,0,0,0,0,0,0,11,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,40,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,37,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0],[0,0,0,0,0,0,0,36,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,26,14,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,2,38,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,35,0,0,0,0,0,0,0,0,0,0,3,0,0,2,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,39,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0],[0,0,1,0,0,0,0,0,0,0,0,0,32,0,0,0,0,0,0,6,0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,39,0,0,0,0,0,0,0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,38,0,0,0,0,0,0,0,0,0,2,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,39,0,0,0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,38,0,0,1,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,39,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40,0,0,0,0,0],[0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,32,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,39,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,0,0,0,32,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0,0,0,0,0,0,0,0,34,0]]},"note":""},{"id":"openai","label":"GPT-4o zero-shot","model":"gpt-4o","mode":"live","measured":true,"attempted":1080,"api_errors":0,"metrics":{"n":1080,"correct":1003,"accuracy":0.9287,"invalid_predictions":0,"macro":{"precision":0.9363,"recall":0.9287,"f1":0.9287},"weighted":{"precision":0.9363,"recall":0.9287,"f1":0.9287},"per_label":[{"label":"cancel_order","precision":0.975,"recall":0.975,"f1":0.975,"support":40},{"label":"change_order","precision":1.0,"recall":1.0,"f1":1.0,"support":40},{"label":"change_shipping_address","precision":0.8636,"recall":0.95,"f1":0.9048,"support":40},{"label":"check_cancellation_fee","precision":1.0,"recall":0.925,"f1":0.961,"support":40},{"label":"check_invoice","precision":0.975,"recall":0.975,"f1":0.975,"support":40},{"label":"check_payment_methods","precision":1.0,"recall":1.0,"f1":1.0,"support":40},{"label":"check_refund_policy","precision":0.8974,"recall":0.875,"f1":0.8861,"support":40},{"label":"complaint","precision":0.8696,"recall":1.0,"f1":0.9302,"support":40},{"label":"contact_customer_service","precision":0.875,"recall":0.875,"f1":0.875,"support":40},{"label":"contact_human_agent","precision":0.8864,"recall":0.975,"f1":0.9286,"support":40},{"label":"create_account","precision":0.973,"recall":0.9,"f1":0.9351,"support":40},{"label":"delete_account","precision":1.0,"recall":0.95,"f1":0.9744,"support":40},{"label":"delivery_options","precision":1.0,"recall":0.9,"f1":0.9474,"support":40},{"label":"delivery_period","precision":1.0,"recall":0.675,"f1":0.806,"support":40},{"label":"edit_account","precision":0.7547,"recall":1.0,"f1":0.8602,"support":40},{"label":"get_invoice","precision":0.9756,"recall":1.0,"f1":0.9877,"support":40},{"label":"get_refund","precision":0.8462,"recall":0.825,"f1":0.8354,"support":40},{"label":"newsletter_subscription","precision":1.0,"recall":1.0,"f1":1.0,"support":40},{"label":"payment_issue","precision":0.9756,"recall":1.0,"f1":0.9877,"support":40},{"label":"place_order","precision":0.9048,"recall":0.95,"f1":0.9268,"support":40},{"label":"recover_password","precision":1.0,"recall":0.8,"f1":0.8889,"support":40},{"label":"registration_problems","precision":0.907,"recall":0.975,"f1":0.9398,"support":40},{"label":"review","precision":1.0,"recall":0.975,"f1":0.9873,"support":40},{"label":"set_up_shipping_address","precision":1.0,"recall":0.85,"f1":0.9189,"support":40},{"label":"switch_account","precision":1.0,"recall":0.9,"f1":0.9474,"support":40},{"label":"track_order","precision":0.7547,"recall":1.0,"f1":0.8602,"support":40},{"label":"track_refund","precision":0.8462,"recall":0.825,"f1":0.8354,"support":40}],"confusion_labels":["cancel_order","change_order","change_shipping_address","check_cancellation_fee","check_invoice","check_payment_methods","check_refund_policy","complaint","contact_customer_service","contact_human_agent","create_account","delete_account","delivery_options","delivery_period","edit_account","get_invoice","get_refund","newsletter_subscription","payment_issue","place_order","recover_password","registration_problems","review","set_up_shipping_address","switch_account","track_order","track_refund","(invalid)"],"confusion_matrix":[[39,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0],[0,40,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,38,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,37,1,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,39,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,40,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,35,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0],[0,0,0,0,0,0,0,40,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,35,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,1,39,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,36,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0],[1,0,0,0,0,0,0,1,0,0,0,38,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,36,0,0,0,0,0,0,4,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,27,0,0,0,0,0,0,0,0,0,0,0,13,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,40,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,2,4,0,0,0,0,0,0,0,0,33,0,0,0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,38,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0,0,0,32,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,39,0,0,0,0,0,0],[0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,39,0,0,0,0,0],[0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,34,0,0,0,0],[0,0,0,0,0,0,0,0,1,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,36,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40,0,0],[0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,6,0,0,0,0,0,0,0,0,0,33,0]]},"note":""},{"id":"openai-gpt-4o-mini","label":"GPT-4o mini zero-shot","model":"gpt-4o-mini","mode":"live","measured":true,"attempted":1080,"api_errors":0,"metrics":{"n":1080,"correct":1009,"accuracy":0.9343,"invalid_predictions":0,"macro":{"precision":0.939,"recall":0.9343,"f1":0.9342},"weighted":{"precision":0.939,"recall":0.9343,"f1":0.9342},"per_label":[{"label":"cancel_order","precision":0.975,"recall":0.975,"f1":0.975,"support":40},{"label":"change_order","precision":0.975,"recall":0.975,"f1":0.975,"support":40},{"label":"change_shipping_address","precision":0.8636,"recall":0.95,"f1":0.9048,"support":40},{"label":"check_cancellation_fee","precision":0.9487,"recall":0.925,"f1":0.9367,"support":40},{"label":"check_invoice","precision":0.8696,"recall":1.0,"f1":0.9302,"support":40},{"label":"check_payment_methods","precision":0.9756,"recall":1.0,"f1":0.9877,"support":40},{"label":"check_refund_policy","precision":0.8837,"recall":0.95,"f1":0.9157,"support":40},{"label":"complaint","precision":0.8163,"recall":1.0,"f1":0.8989,"support":40},{"label":"contact_customer_service","precision":0.878,"recall":0.9,"f1":0.8889,"support":40},{"label":"contact_human_agent","precision":0.8889,"recall":1.0,"f1":0.9412,"support":40},{"label":"create_account","precision":0.973,"recall":0.9,"f1":0.9351,"support":40},{"label":"delete_account","precision":0.9737,"recall":0.925,"f1":0.9487,"support":40},{"label":"delivery_options","precision":1.0,"recall":0.95,"f1":0.9744,"support":40},{"label":"delivery_period","precision":0.9524,"recall":1.0,"f1":0.9756,"support":40},{"label":"edit_account","precision":0.8478,"recall":0.975,"f1":0.907,"support":40},{"label":"get_invoice","precision":1.0,"recall":0.875,"f1":0.9333,"support":40},{"label":"get_refund","precision":0.85,"recall":0.85,"f1":0.85,"support":40},{"label":"newsletter_subscription","precision":1.0,"recall":1.0,"f1":1.0,"support":40},{"label":"payment_issue","precision":0.9756,"recall":1.0,"f1":0.9877,"support":40},{"label":"place_order","precision":0.9429,"recall":0.825,"f1":0.88,"support":40},{"label":"recover_password","precision":1.0,"recall":0.875,"f1":0.9333,"support":40},{"label":"registration_problems","precision":0.8478,"recall":0.975,"f1":0.907,"support":40},{"label":"review","precision":1.0,"recall":0.95,"f1":0.9744,"support":40},{"label":"set_up_shipping_address","precision":1.0,"recall":0.8,"f1":0.8889,"support":40},{"label":"switch_account","precision":1.0,"recall":0.9,"f1":0.9474,"support":40},{"label":"track_order","precision":1.0,"recall":0.95,"f1":0.9744,"support":40},{"label":"track_refund","precision":0.9143,"recall":0.8,"f1":0.8533,"support":40}],"confusion_labels":["cancel_order","change_order","change_shipping_address","check_cancellation_fee","check_invoice","check_payment_methods","check_refund_policy","complaint","contact_customer_service","contact_human_agent","create_account","delete_account","delivery_options","delivery_period","edit_account","get_invoice","get_refund","newsletter_subscription","payment_issue","place_order","recover_password","registration_problems","review","set_up_shipping_address","switch_account","track_order","track_refund","(invalid)"],"confusion_matrix":[[39,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0],[0,39,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,38,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0],[0,0,0,37,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,40,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,40,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,38,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0],[0,0,0,0,0,0,0,40,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,36,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,40,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,36,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0,0,0],[1,0,0,2,0,0,0,0,0,0,0,37,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,38,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,40,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,1,0,0,0,0,0,39,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,35,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,1,4,0,0,0,0,0,0,0,0,34,0,0,0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40,0,0,0,0,0,0,0,0,0],[0,1,0,0,0,1,0,3,2,0,0,0,0,0,0,0,0,0,0,33,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,1,1,0,0,0,0,3,0,0,0,0,0,35,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,39,0,0,0,0,0,0],[0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,38,0,0,0,0,0],[0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,32,0,0,0,0],[0,0,0,0,0,0,0,0,1,0,1,0,0,0,2,0,0,0,0,0,0,0,0,0,36,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,38,0,0],[0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,6,0,0,0,0,0,0,0,0,0,32,0]]},"note":""}]},"prices_per_mtok":{"jev":{"input":0.042,"output":0.0,"source":"TypeSafe list price, verified 2026-09-27 at docs.typesafe.ai/models"},"claude-opus-5":{"input":5.0,"output":25.0,"source":"Anthropic list price, verified 2026-09-27 at claude.com/pricing"},"claude-sonnet-5":{"input":2.0,"output":10.0,"source":"Anthropic list price, verified 2026-09-27 at claude.com/pricing"},"claude-haiku-4-5":{"input":1.0,"output":5.0,"source":"Anthropic list price, verified 2026-09-27 at claude.com/pricing"},"gpt-4o":{"input":2.5,"output":10.0,"source":"OpenAI list price, verified 2026-09-27 at developers.openai.com/api/docs/pricing"},"gpt-4o-mini":{"input":0.15,"output":0.6,"source":"OpenAI list price, verified 2026-09-27 at developers.openai.com/api/docs/pricing"}},"caveats":["Bitext tickets are synthetic with clean labels; real support traffic will usually score lower.","Latency was measured with 4 requests in flight per arm; do not compare it directly with the sequential latency benchmark.","Accuracy is reported only for live arms. Mock and not-run arms are 'not measured', never simulated.","API errors are counted separately and excluded from accuracy; invalid model outputs count as wrong.","Prices are list prices recorded in scripts/pricing.py with their verification date."]}</script>
+<script>
+(() => {
+  "use strict";
+  const report = JSON.parse(document.getElementById("benchmark-data").textContent);
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const MODE_LABEL = { live: "Live", mock: "Mock", simulated: "Simulated baseline", not_run: "Not run" };
+  const MODE_SHORT = { live: "Live", mock: "Mock", simulated: "Simulated", not_run: "Not run" };
+
+  const el = (tag, attrs = {}, text) => {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+  const svgEl = (tag, attrs = {}, text) => {
+    const node = document.createElementNS(SVGNS, tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+  const badge = (mode) => el("span", { class: `badge ${mode}` }, MODE_LABEL[mode] ?? mode);
+
+  const fmtMs = (v) => v == null ? "–" : v >= 1000 ? `${Math.round(v).toLocaleString("en-US")} ms` : `${v.toFixed(1)} ms`;
+  const fmtUsd = (v) => {
+    if (v == null) return "–";
+    if (v >= 100) return `$${Math.round(v).toLocaleString("en-US")}`;
+    if (v >= 0.01) return `$${v.toFixed(2)}`;
+    return `$${v.toPrecision(2)}`;
+  };
+  const fmtUsd6 = (v) => v == null ? "–" : `$${v.toFixed(6)}`;
+  const fmtTick = (v, unit) => unit === "usd"
+    ? `$${v >= 1000 ? (v / 1000).toLocaleString("en-US") + "k" : v.toLocaleString("en-US")}`
+    : unit === "pct" ? `${v}%` : v.toLocaleString("en-US");
+
+  // ------------------------------------------------------------ header + run labels
+  const runAt = new Date(report.run_at);
+  const dateText = runAt.toLocaleString("en-US", {
+    year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC", timeZoneName: "short",
+  });
+  const isClass = report.kind === "classification" && report.classification;
+  if (report.title) {
+    document.getElementById("title").textContent = report.title;
+    document.title = isClass ? "Paved Gate Classification Eval" : document.title;
+  }
+  if (isClass) document.getElementById("eyebrow").textContent = "Paved Gate · Classification eval";
+  const meta = document.getElementById("meta");
+  if (isClass) {
+    const c = report.classification;
+    meta.append("Run ", el("strong", {}, dateText), ` · ${c.dataset.n.toLocaleString("en-US")} tickets across ${c.labels.length} intents · ${c.concurrency} requests in flight per arm · sample `);
+  } else {
+    meta.append("Run ", el("strong", {}, dateText), ` · ${report.corpus_size} prompts × ${report.iterations} iteration${report.iterations === 1 ? "" : "s"} · policy `);
+  }
+  meta.append(el("span", { class: "mono" }, report.policy_hash.slice(0, 19) + "…"));
+  if (isClass) document.getElementById("lat-sub").textContent =
+    `Milliseconds per request, p50 and p95, measured with ${report.classification.concurrency} requests in flight. Lower is faster.`;
+
+  const modes = report.arms.map((a) => a.mode);
+  const notice = document.getElementById("notice");
+  const parts = [];
+  if (modes.includes("mock")) parts.push("at least one arm ran in <b>mock mode</b> with simulated latency and estimated tokens");
+  if (modes.includes("simulated")) parts.push("at least one arm is a <b>simulated baseline</b>: assumed values, no API call, not a measurement");
+  if (modes.includes("not_run")) parts.push("at least one arm was <b>not run</b> (no API key) and is shown empty");
+  if (parts.length) {
+    notice.hidden = false;
+    notice.innerHTML = `<b>Read with care:</b> ${parts.join("; ")}. Only arms marked <b>Live</b> reflect real API calls. Hatched bars are not live measurements.`;
+  }
+
+  // ------------------------------------------------------------ savings summary (computed by benchmark.py)
+  const deltaBox = document.getElementById("delta");
+  const comp = report.comparison;
+  deltaBox.append(el("p", { class: "delta-title" }, "Paved Gate vs. frontier zero-shot"));
+  if (!comp || (!comp.latency_p50 && !comp.cost_per_million)) {
+    deltaBox.append(el("p", { class: "delta-vs", style: "margin-top:0" }, "No frontier arm with data. Run with API keys to compare."));
+  } else {
+    const kpis = el("div", { class: "kpis" });
+    const kpi = (d, what) => {
+      const box = el("div", { class: "kpi" });
+      if (!d) {
+        box.append(el("div", { class: "v muted" }, "–"), el("div", { class: "l" }, what));
+      } else {
+        const pct = d.reduction_pct;
+        box.append(el("div", { class: "v" }, `${Math.abs(pct).toFixed(1)}%`), el("div", { class: "l" }, `${pct >= 0 ? "lower" : "higher"} ${what}`));
+      }
+      return box;
+    };
+    kpis.append(kpi(comp.latency_p50, "p50 latency"), kpi(comp.cost_per_million, "cost per 1M requests"));
+    deltaBox.append(kpis);
+    const lat = comp.latency_p50, cst = comp.cost_per_million;
+    const vs = lat && cst && lat.baseline_arm === cst.baseline_arm
+      ? `vs. ${lat.baseline_arm}, the fastest and cheapest frontier arm`
+      : [lat && `latency vs. ${lat.baseline_arm} (fastest)`, cst && `cost vs. ${cst.baseline_arm} (cheapest)`].filter(Boolean).join(" · ");
+    deltaBox.append(el("p", { class: "delta-vs" }, vs));
+    const excluded = report.arms.filter((a) => a.id !== "jev" && a.mode !== "not_run" && a.n === 0).map((a) => a.label);
+    if (excluded.length) deltaBox.append(el("p", { class: "delta-vs", style: "margin-top:2px" }, `Excluded (no successful requests): ${excluded.join(", ")}`));
+    if (!comp.measured) deltaBox.append(el("p", { class: "delta-flag" }, "Not a measurement: includes mock or simulated data"));
+  }
+
+  const arms = document.getElementById("arms");
+  if (report.arms.length >= 4) arms.classList.add("four");
+  for (const a of report.arms) {
+    const card = el("div", { class: "arm-card" });
+    card.append(el("p", { class: "name" }, a.label), el("p", { class: "model" }, a.model), badge(a.mode));
+    if (a.mode !== "not_run") {
+      // Live arms use provider-reported tokens; mock and simulated arms use estimated tokens, so never "actual".
+      const c = a.cost_usd;
+      // Mock/simulated runs make no billed calls: show what the run would cost live, never "actual".
+      const label = a.mode === "live" ? "Actual run cost" : `Est. cost if run live (${MODE_SHORT[a.mode].toLowerCase()})`;
+      const line = el("p", { class: "run-cost" }, `${label}: `);
+      line.append(el("b", {}, fmtUsd6(c.run_total)));
+      const attempted = c.successful_requests + a.errors;
+      if (a.errors > 0) line.append(` (${c.successful_requests} of ${attempted} requests succeeded)`);
+      card.append(line);
+    }
+    card.append(el("p", { class: "detail" }, a.mode_detail));
+    if (a.errors > 0 && a.note) card.append(el("p", { class: "error" }, a.note));
+    arms.append(card);
+  }
+
+  // ------------------------------------------------------------ tooltip
+  const tip = document.getElementById("tooltip");
+  const showTip = (evt, text) => {
+    tip.textContent = text;
+    tip.style.opacity = "1";
+    const pad = 12, w = tip.offsetWidth;
+    const x = Math.min(evt.clientX + pad, window.innerWidth - w - 8);
+    tip.style.left = `${x}px`;
+    tip.style.top = `${evt.clientY + pad}px`;
+  };
+  const hideTip = () => { tip.style.opacity = "0"; };
+
+  // ------------------------------------------------------------ horizontal bar chart
+  // Round tick step (1, 2, 2.5, 5 x 10^k) and an axis max that is a whole number of steps.
+  function niceScale(v, target = 5) {
+    if (!(v > 0)) return { max: 1, step: 0.2 };
+    const raw = v / target;
+    const base = 10 ** Math.floor(Math.log10(raw));
+    const step = [1, 2, 2.5, 5, 10].map((m) => m * base).find((s) => s >= raw);
+    return { max: Math.ceil(v / step) * step, step };
+  }
+
+  // 4px rounded data-end, square at the baseline.
+  function barPath(x, y, w, h) {
+    const r = Math.min(4, w, h / 2);
+    if (w <= 0) return "";
+    return `M${x},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x} Z`;
+  }
+
+  function barChart(container, { series, unit, format, fixedMax, missing }) {
+    const draw = () => {
+      container.textContent = "";
+      const width = Math.max(320, container.clientWidth);
+      // Narrow screens stack each arm's label above its bars so the bars get the full width.
+      const narrow = width < 560;
+      const labelW = narrow ? 0 : 210;
+      const headH = narrow ? 22 : 0;
+      const valueRoom = narrow ? 72 : 84;
+      const barH = 16, barGap = 2, rowPad = 18;
+      const groupH = series.length * barH + (series.length - 1) * barGap;
+      const contentH = narrow ? headH + groupH : Math.max(groupH, 36);
+      const rowH = contentH + rowPad;
+      const top = 4, axisH = 26;
+      const height = top + report.arms.length * rowH + axisH;
+      const plotX = labelW, plotW = width - labelW - valueRoom;
+
+      const values = report.arms.flatMap((a) => a.mode === "not_run" ? [] : series.map((s) => s.value(a))).filter((v) => v != null);
+      const { max, step } = fixedMax ? { max: fixedMax, step: fixedMax / 5 } : niceScale(Math.max(0, ...values));
+      const x = (v) => plotX + (v / max) * plotW;
+
+      const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, height, role: "img" });
+      svg.setAttribute("aria-label", container.dataset.label || "bar chart");
+      // Non-live arms (mock, simulated) get a hatched fill so they never pass for measurements.
+      const defs = svgEl("defs");
+      series.forEach((s, j) => {
+        const pat = svgEl("pattern", { id: `${container.id}-hatch-${j}`, patternUnits: "userSpaceOnUse", width: 6, height: 6, patternTransform: "rotate(45)" });
+        pat.append(svgEl("rect", { width: 6, height: 6, fill: s.color, "fill-opacity": 0.3 }));
+        pat.append(svgEl("line", { x1: 1.5, y1: 0, x2: 1.5, y2: 6, stroke: s.color, "stroke-width": 3 }));
+        defs.append(pat);
+      });
+      svg.append(defs);
+
+      const ticks = Math.round(max / step);
+      for (let i = 0; i <= ticks; i++) {
+        const v = step * i, gx = x(v);
+        svg.append(svgEl("line", { class: i === 0 ? "baseline" : "gridline", x1: gx, x2: gx, y1: top, y2: height - axisH }));
+        svg.append(svgEl("text", { class: "tick", x: gx, y: height - 8, "text-anchor": i === 0 ? "start" : "middle" }, fmtTick(+v.toPrecision(6), unit)));
+      }
+
+      report.arms.forEach((a, i) => {
+        const rowY = top + i * rowH + rowPad / 2;
+        const sub = `${a.model} · ${MODE_SHORT[a.mode]}`;
+        let cy;
+        if (narrow) {
+          const label = svgEl("text", { class: "row-label", x: 0, y: rowY + 14 }, a.label);
+          label.append(svgEl("tspan", { class: "row-sub", dx: 8 }, sub));
+          svg.append(label);
+          cy = rowY + headH + groupH / 2;
+        } else {
+          cy = rowY + contentH / 2;
+          svg.append(svgEl("text", { class: "row-label", x: 0, y: cy - 3 }, a.label));
+          svg.append(svgEl("text", { class: "row-sub", x: 0, y: cy + 14 }, sub));
+        }
+
+        if (a.mode === "not_run") {
+          svg.append(svgEl("text", { class: "not-run", x: plotX + 8, y: cy + 4 }, `Not run · ${a.mode_detail}`));
+          return;
+        }
+        const gy = cy - groupH / 2;
+        series.forEach((s, j) => {
+          const v = s.value(a);
+          const by = gy + j * (barH + barGap);
+          if (v == null) {
+            svg.append(svgEl("text", { class: "not-run", x: plotX + 8, y: by + barH - 3 }, missing ? missing(a) : "no data"));
+            return;
+          }
+          const w = Math.max(2, x(v) - plotX);
+          const fill = a.mode === "live" ? s.color : `url(#${container.id}-hatch-${j})`;
+          const bar = svgEl("path", { class: "bar", d: barPath(plotX, by, w, barH), fill });
+          const tipText = `${a.label} · ${s.name ? s.name + ": " : ""}${format(v, a)}${a.mode === "live" ? "" : ` (${MODE_LABEL[a.mode].toLowerCase()})`}`;
+          bar.addEventListener("mousemove", (e) => showTip(e, tipText));
+          bar.addEventListener("mouseleave", hideTip);
+          const title = svgEl("title", {}, tipText);
+          bar.append(title);
+          svg.append(bar);
+          svg.append(svgEl("text", { class: `value${j > 0 ? " secondary" : ""}`, x: plotX + w + 6, y: by + barH - 3 }, format(v, a)));
+        });
+      });
+      container.append(svg);
+    };
+    draw();
+    let raf = 0;
+    new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); }).observe(container);
+  }
+
+  if (report.arms.some((a) => a.mode === "mock" || a.mode === "simulated")) {
+    for (const id of ["lat-legend", "cost-legend"]) {
+      const key = el("span");
+      key.append(el("i", { class: "hatch" }), "Hatched: not a live measurement");
+      document.getElementById(id).append(key);
+    }
+  }
+
+  const latency = document.getElementById("latency-chart");
+  latency.dataset.label = "Latency per request by arm, p50 and p95 in milliseconds";
+  barChart(latency, {
+    unit: "ms",
+    format: fmtMs,
+    series: [
+      { name: "p50", color: "var(--series-1)", value: (a) => a.latency_ms.p50 },
+      { name: "p95", color: "var(--series-2)", value: (a) => a.latency_ms.p95 },
+    ],
+  });
+
+  const cost = document.getElementById("cost-chart");
+  cost.dataset.label = "Cost per million requests by arm, USD";
+  barChart(cost, {
+    unit: "usd",
+    format: fmtUsd,
+    series: [{ name: "", color: "var(--series-1)", value: (a) => a.cost_usd.per_million_requests }],
+  });
+
+  // ------------------------------------------------------------ table + details
+  const body = document.getElementById("results-body");
+  const runCostCell = (a) => {
+    const td = el("td", { class: "num" }, a.mode === "not_run" ? "–" : fmtUsd6(a.cost_usd.run_total));
+    if (a.mode === "mock" || a.mode === "simulated") td.append(el("span", { class: "est" }, "est."));
+    return td;
+  };
+  for (const a of report.arms) {
+    const tr = el("tr");
+    const armCell = el("td", { class: "arm" });
+    armCell.append(el("div", { style: "font-weight:600" }, a.label), el("div", { class: "mono", style: "color:var(--ink-2)" }, a.model));
+    const modeCell = el("td");
+    modeCell.append(el("span", { class: `badge ${a.mode}` }, MODE_SHORT[a.mode]));
+    const run = a.mode !== "not_run";
+    tr.append(
+      armCell,
+      modeCell,
+      el("td", { class: "num" }, run ? String(a.n) : "–"),
+      el("td", { class: "num" }, run ? String(a.errors) : "–"),
+      el("td", { class: "num" }, run ? fmtMs(a.latency_ms.p50).replace(" ms", "") : "–"),
+      el("td", { class: "num" }, run ? fmtMs(a.latency_ms.p95).replace(" ms", "") : "–"),
+      el("td", { class: "num" }, run ? fmtMs(a.latency_ms.mean).replace(" ms", "") : "–"),
+      el("td", { class: "num" }, run ? fmtUsd(a.cost_usd.per_request) : "–"),
+      el("td", { class: "num" }, run ? fmtUsd(a.cost_usd.per_million_requests) : "–"),
+      runCostCell(a),
+    );
+    body.append(tr);
+  }
+
+  const caveats = document.getElementById("caveats");
+  for (const c of report.caveats) caveats.append(el("li", {}, c));
+  document.getElementById("prices").textContent = "Prices used (USD per 1M tokens, input / output):\n" +
+    Object.entries(report.prices_per_mtok).map(([m, p]) => `  ${m.padEnd(18)} ${p.input} / ${p.output}   ${p.source}`).join("\n");
+  document.getElementById("samples").textContent = "Raw timing samples (ms, first " + report.arms.reduce((m, a) => Math.max(m, a.sample_timings_ms.length), 0) + " requests per arm):\n" +
+    report.arms.map((a) => `  ${a.label}: ${a.sample_timings_ms.length ? a.sample_timings_ms.join(", ") : "not run"}`).join("\n");
+
+  document.getElementById("footer-left").textContent =
+    `Generated by paved-gate ${isClass ? "evals/support_tickets/run_eval.py" : "scripts/benchmark.py"} · schema v${report.schema_version} · ${report.run_at}`;
+
+  // ------------------------------------------------------------ classification eval (only when present)
+  if (isClass) {
+    const C = report.classification;
+    const byId = Object.fromEntries(C.arms.map((c) => [c.id, c]));
+    const measured = C.arms.filter((c) => c.metrics);
+    const pct = (v) => `${(v * 100).toFixed(1)}%`;
+    const f2 = (v) => v.toFixed(2);
+    for (const id of ["class-section", "intent-section", "cm-section"]) document.getElementById(id).hidden = false;
+
+    const sub = document.getElementById("class-sub");
+    sub.append(`Share of tickets whose predicted intent matches the known label. ${C.dataset.n.toLocaleString("en-US")} tickets, ${C.labels.length} intents × ${C.dataset.per_intent} each, from `);
+    sub.append(el("a", { href: C.dataset.source_url, rel: "noopener" }, "Bitext customer support"));
+    sub.append(` (${C.dataset.license}, ${C.dataset.attribution}).`);
+
+    const acc = document.getElementById("acc-chart");
+    acc.dataset.label = "Accuracy by arm, percent";
+    barChart(acc, {
+      unit: "pct",
+      fixedMax: 100,
+      format: (v, a) => `${v.toFixed(1)}% · n=${byId[a.id].metrics.n.toLocaleString("en-US")}`,
+      missing: (a) => (byId[a.id] ? byId[a.id].note : "not measured"),
+      series: [{ name: "", color: "var(--series-1)", value: (a) => (byId[a.id] && byId[a.id].metrics ? byId[a.id].metrics.accuracy * 100 : null) }],
+    });
+
+    const summary = document.getElementById("class-summary");
+    for (const c of C.arms) {
+      const tr = el("tr");
+      const armCell = el("td", { class: "arm" });
+      armCell.append(el("div", { style: "font-weight:600" }, c.label), el("div", { class: "mono", style: "color:var(--ink-2)" }, c.model));
+      const modeCell = el("td");
+      modeCell.append(el("span", { class: `badge ${c.mode}` }, MODE_SHORT[c.mode]));
+      const m = c.metrics;
+      tr.append(
+        armCell,
+        modeCell,
+        el("td", { class: "num" }, m ? pct(m.accuracy) : "not measured"),
+        el("td", { class: "num" }, m ? `${m.correct.toLocaleString("en-US")} / ${m.n.toLocaleString("en-US")}` : "–"),
+        el("td", { class: "num" }, m ? f2(m.macro.f1) : "–"),
+        el("td", { class: "num" }, m ? f2(m.weighted.f1) : "–"),
+        el("td", { class: "num" }, m ? String(m.invalid_predictions) : "–"),
+        el("td", { class: "num" }, c.mode === "not_run" ? "–" : String(c.api_errors)),
+      );
+      summary.append(tr);
+    }
+
+    // Per-intent table: one P/R/F1 group per measured arm.
+    const table = document.getElementById("intent-table");
+    if (!measured.length) {
+      table.append(el("caption", { class: "muted", style: "text-align:left;padding:8px 0" }, "No live arm in this run: per-intent metrics not measured."));
+    } else {
+      const head1 = el("tr"), head2 = el("tr");
+      head1.append(el("th", { rowspan: 2 }, "Intent"), el("th", { class: "num", rowspan: 2 }, "n"));
+      for (const c of measured) {
+        head1.append(el("th", { class: "grp", colspan: 3 }, c.label.replace(" zero-shot", "")));
+        head2.append(el("th", { class: "num" }, "P"), el("th", { class: "num" }, "R"), el("th", { class: "num" }, "F1"));
+      }
+      const thead = el("thead");
+      thead.append(head1, head2);
+      const tbody = el("tbody");
+      C.labels.forEach((label, i) => {
+        const tr = el("tr");
+        const supports = [...new Set(measured.map((c) => c.metrics.per_label[i].support))];
+        tr.append(el("td", { class: "mono" }, label), el("td", { class: "num" }, supports.join(" / ")));
+        for (const c of measured) {
+          const r = c.metrics.per_label[i];
+          tr.append(el("td", { class: "num" }, f2(r.precision)), el("td", { class: "num" }, f2(r.recall)), el("td", { class: "num" }, f2(r.f1)));
+        }
+        tbody.append(tr);
+      });
+      table.append(thead, tbody);
+    }
+
+    // Confusion matrix heatmap (row-normalised shade, counts printed), one arm at a time.
+    const RAMP = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95"];
+    const STOPS = [0.05, 0.15, 0.3, 0.5, 0.75, 1.01];
+    const shade = (share) => RAMP[STOPS.findIndex((t) => share < t)] ?? RAMP[RAMP.length - 1];
+    const darkInk = (share) => STOPS.findIndex((t) => share < t) < 3;
+    const cmArms = document.getElementById("cm-arms");
+    const cmChart = document.getElementById("cm-chart");
+    const cmTop = document.getElementById("cm-top");
+    let selected = measured.length ? measured[0].id : null;
+
+    function drawMatrix() {
+      cmChart.textContent = "";
+      cmTop.textContent = "";
+      const c = byId[selected];
+      if (!c || !c.metrics) {
+        cmChart.append(el("p", { class: "muted" }, "No live arm in this run: confusion matrix not measured."));
+        return;
+      }
+      const rowsL = C.labels, colsL = c.metrics.confusion_labels, M = c.metrics.confusion_matrix;
+      const width = Math.max(320, cmChart.clientWidth);
+      const labelW = 176, headH = 150, cell = Math.max(8, Math.min(26, Math.floor((width - labelW - 8) / colsL.length)));
+      const height = headH + rowsL.length * cell + 4;
+      const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, height, role: "img" });
+      svg.setAttribute("aria-label", `Confusion matrix for ${c.label}`);
+      // Axis titles sit in the empty top-left corner, clear of the rotated column labels.
+      svg.append(svgEl("text", { class: "cm-axis", x: labelW - 6, y: headH - 24, "text-anchor": "end" }, "Predicted →"));
+      svg.append(svgEl("text", { class: "cm-axis", x: labelW - 6, y: headH - 6, "text-anchor": "end" }, "True ↓"));
+      colsL.forEach((l, j) => {
+        const x = labelW + j * cell + cell / 2 + 3;
+        svg.append(svgEl("text", { class: "cm-label", x, y: headH - 6, transform: `rotate(-55 ${x} ${headH - 6})` }, l));
+      });
+      rowsL.forEach((rl, i) => {
+        const y = headH + i * cell;
+        const total = M[i].reduce((a, b) => a + b, 0) || 1;
+        svg.append(svgEl("text", { class: "cm-label", x: labelW - 6, y: y + cell / 2 + 4, "text-anchor": "end" }, rl));
+        M[i].forEach((count, j) => {
+          const x = labelW + j * cell;
+          const share = count / total;
+          const rect = svgEl("rect", count
+            ? { x: x + 0.5, y: y + 0.5, width: cell - 1, height: cell - 1, rx: 2, fill: shade(share) }
+            : { x: x + 0.5, y: y + 0.5, width: cell - 1, height: cell - 1, rx: 2, class: "cm-empty" });
+          const tip = `true ${rl} → predicted ${colsL[j]}: ${count} of ${total} (${(share * 100).toFixed(1)}%)`;
+          rect.addEventListener("mousemove", (e) => showTip(e, tip));
+          rect.addEventListener("mouseleave", hideTip);
+          rect.append(svgEl("title", {}, tip));
+          svg.append(rect);
+          if (count && cell >= 18) {
+            svg.append(svgEl("text", { class: "cm-count", x: x + cell / 2, y: y + cell / 2 + 3.5, "text-anchor": "middle",
+              fill: darkInk(share) ? "#0b0b0b" : "#ffffff" }, String(count)));
+          }
+        });
+      });
+      cmChart.append(svg);
+
+      const off = [];
+      M.forEach((row, i) => row.forEach((count, j) => {
+        if (count && rowsL[i] !== colsL[j]) off.push({ t: rowsL[i], p: colsL[j], count, share: count / (row.reduce((a, b) => a + b, 0) || 1) });
+      }));
+      off.sort((a, b) => b.count - a.count);
+      if (!off.length) {
+        const tr = el("tr");
+        tr.append(el("td", { colspan: 4, class: "muted" }, "No confusions: every scored ticket was classified correctly."));
+        cmTop.append(tr);
+      }
+      for (const o of off.slice(0, 10)) {
+        const tr = el("tr");
+        tr.append(el("td", { class: "mono" }, o.t), el("td", { class: "mono" }, o.p), el("td", { class: "num" }, String(o.count)), el("td", { class: "num" }, pct(o.share)));
+        cmTop.append(tr);
+      }
+    }
+
+    for (const c of C.arms) {
+      const b = el("button", { type: "button", role: "tab", "aria-selected": String(c.id === selected) }, c.label.replace(" zero-shot", ""));
+      if (!c.metrics) { b.disabled = true; b.title = c.note || "not measured"; b.style.opacity = "0.5"; b.style.cursor = "not-allowed"; }
+      b.addEventListener("click", () => {
+        selected = c.id;
+        for (const x of cmArms.children) x.setAttribute("aria-selected", String(x === b));
+        drawMatrix();
+      });
+      cmArms.append(b);
+    }
+    drawMatrix();
+    let raf2 = 0;
+    new ResizeObserver(() => { cancelAnimationFrame(raf2); raf2 = requestAnimationFrame(drawMatrix); }).observe(cmChart);
+  }
+})();
+</script>
+</body>
+</html>
