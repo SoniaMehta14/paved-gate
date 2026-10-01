@@ -159,6 +159,19 @@
   details pre { white-space: pre-wrap; word-break: break-word; background: var(--page); border-radius: 8px; padding: 10px 12px; margin: 8px 0 0; }
   ul.caveats { margin: 6px 0 0; padding-left: 18px; }
 
+  .intent-table th, .intent-table td { padding: 6px 6px; font-size: 13px; }
+  .intent-table th.grp { text-align: center; border-bottom: 1px solid var(--axis); }
+  .intent-table td.mono, .cm-top td.mono { font-size: 12.5px; }
+  .muted { color: var(--muted); }
+  .seg { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
+  .seg button { font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 999px; cursor: pointer;
+    background: transparent; color: var(--ink-2); border: 1px solid var(--border); }
+  .seg button[aria-selected="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .cm-label { fill: var(--ink-2); font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .cm-axis { fill: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; }
+  .cm-empty { fill: var(--page); stroke: var(--grid); stroke-width: 0.5; }
+  .cm-count { font-size: 10px; font-variant-numeric: tabular-nums; pointer-events: none; }
+  h3.minor { font-size: 14px; font-weight: 650; margin: 16px 0 4px; }
   footer { color: var(--muted); font-size: 12px; margin-top: 24px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 </style>
 </head>
@@ -166,8 +179,8 @@
 <div class="wrap">
   <div class="top">
     <header>
-      <p class="eyebrow">Paved Gate · Benchmark</p>
-      <h1>Fast evaluator gate vs. zero-shot frontier classification</h1>
+      <p class="eyebrow" id="eyebrow">Paved Gate · Benchmark</p>
+      <h1 id="title">Fast evaluator gate vs. zero-shot frontier classification</h1>
       <p class="meta" id="meta"></p>
     </header>
     <aside class="delta" id="delta" aria-label="Savings summary"></aside>
@@ -180,7 +193,7 @@
   <div class="charts">
     <section class="card" aria-labelledby="lat-title">
       <h2 id="lat-title">Latency per request</h2>
-      <p class="sub">Milliseconds, p50 and p95. Lower is faster.</p>
+      <p class="sub" id="lat-sub">Milliseconds, p50 and p95. Lower is faster.</p>
       <div class="legend" id="lat-legend">
         <span><i style="background: var(--series-1)"></i>p50</span>
         <span><i style="background: var(--series-2)"></i>p95</span>
@@ -218,6 +231,39 @@
       <pre id="prices"></pre>
       <pre id="samples"></pre>
     </details>
+  </section>
+
+  <section class="card" id="class-section" hidden aria-labelledby="class-title">
+    <h2 id="class-title">Classification accuracy</h2>
+    <p class="sub" id="class-sub"></p>
+    <div id="acc-chart"></div>
+    <div class="table-scroll" style="margin-top:12px">
+      <table>
+        <thead>
+          <tr>
+            <th>Arm</th><th>Mode</th><th class="num">Accuracy</th><th class="num">Correct / n</th>
+            <th class="num">Macro F1</th><th class="num">Weighted F1</th><th class="num">Invalid outputs</th><th class="num">API errors</th>
+          </tr>
+        </thead>
+        <tbody id="class-summary"></tbody>
+      </table>
+    </div>
+    <p class="table-note">Accuracy and F1 are computed only from real label comparisons on live arms. API errors are excluded from n; invalid model outputs (refusals, labels outside the list) count as wrong.</p>
+  </section>
+
+  <section class="card" id="intent-section" hidden aria-labelledby="intent-title">
+    <h2 id="intent-title">Per-intent precision, recall and F1</h2>
+    <p class="sub">P = precision, R = recall. n = tickets with that true intent that were scored.</p>
+    <div class="table-scroll"><table class="intent-table" id="intent-table"></table></div>
+  </section>
+
+  <section class="card" id="cm-section" hidden aria-labelledby="cm-title">
+    <h2 id="cm-title">Confusion matrix</h2>
+    <p class="sub">Rows: true intent. Columns: predicted intent. Shade = share of that row's tickets; numbers are counts.</p>
+    <div class="seg" id="cm-arms" role="tablist" aria-label="Arm"></div>
+    <div id="cm-chart"></div>
+    <h3 class="minor">Most frequent confusions</h3>
+    <div class="table-scroll"><table><thead><tr><th>True intent</th><th>Predicted as</th><th class="num">Count</th><th class="num">Share of true intent</th></tr></thead><tbody id="cm-top"></tbody></table></div>
   </section>
 
   <footer>
@@ -260,16 +306,29 @@
   const fmtUsd6 = (v) => v == null ? "–" : `$${v.toFixed(6)}`;
   const fmtTick = (v, unit) => unit === "usd"
     ? `$${v >= 1000 ? (v / 1000).toLocaleString("en-US") + "k" : v.toLocaleString("en-US")}`
-    : v.toLocaleString("en-US");
+    : unit === "pct" ? `${v}%` : v.toLocaleString("en-US");
 
   // ------------------------------------------------------------ header + run labels
   const runAt = new Date(report.run_at);
   const dateText = runAt.toLocaleString("en-US", {
     year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC", timeZoneName: "short",
   });
+  const isClass = report.kind === "classification" && report.classification;
+  if (report.title) {
+    document.getElementById("title").textContent = report.title;
+    document.title = isClass ? "Paved Gate Classification Eval" : document.title;
+  }
+  if (isClass) document.getElementById("eyebrow").textContent = "Paved Gate · Classification eval";
   const meta = document.getElementById("meta");
-  meta.append("Run ", el("strong", {}, dateText), ` · ${report.corpus_size} prompts × ${report.iterations} iteration${report.iterations === 1 ? "" : "s"} · policy `);
+  if (isClass) {
+    const c = report.classification;
+    meta.append("Run ", el("strong", {}, dateText), ` · ${c.dataset.n.toLocaleString("en-US")} tickets across ${c.labels.length} intents · ${c.concurrency} requests in flight per arm · sample `);
+  } else {
+    meta.append("Run ", el("strong", {}, dateText), ` · ${report.corpus_size} prompts × ${report.iterations} iteration${report.iterations === 1 ? "" : "s"} · policy `);
+  }
   meta.append(el("span", { class: "mono" }, report.policy_hash.slice(0, 19) + "…"));
+  if (isClass) document.getElementById("lat-sub").textContent =
+    `Milliseconds per request, p50 and p95, measured with ${report.classification.concurrency} requests in flight. Lower is faster.`;
 
   const modes = report.arms.map((a) => a.mode);
   const notice = document.getElementById("notice");
@@ -362,7 +421,7 @@
     return `M${x},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x} Z`;
   }
 
-  function barChart(container, { series, unit, format }) {
+  function barChart(container, { series, unit, format, fixedMax, missing }) {
     const draw = () => {
       container.textContent = "";
       const width = Math.max(320, container.clientWidth);
@@ -380,7 +439,7 @@
       const plotX = labelW, plotW = width - labelW - valueRoom;
 
       const values = report.arms.flatMap((a) => a.mode === "not_run" ? [] : series.map((s) => s.value(a))).filter((v) => v != null);
-      const { max, step } = niceScale(Math.max(0, ...values));
+      const { max, step } = fixedMax ? { max: fixedMax, step: fixedMax / 5 } : niceScale(Math.max(0, ...values));
       const x = (v) => plotX + (v / max) * plotW;
 
       const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, height, role: "img" });
@@ -426,19 +485,19 @@
           const v = s.value(a);
           const by = gy + j * (barH + barGap);
           if (v == null) {
-            svg.append(svgEl("text", { class: "not-run", x: plotX + 8, y: by + barH - 3 }, "no data"));
+            svg.append(svgEl("text", { class: "not-run", x: plotX + 8, y: by + barH - 3 }, missing ? missing(a) : "no data"));
             return;
           }
           const w = Math.max(2, x(v) - plotX);
           const fill = a.mode === "live" ? s.color : `url(#${container.id}-hatch-${j})`;
           const bar = svgEl("path", { class: "bar", d: barPath(plotX, by, w, barH), fill });
-          const tipText = `${a.label} · ${s.name ? s.name + ": " : ""}${format(v)}${a.mode === "live" ? "" : ` (${MODE_LABEL[a.mode].toLowerCase()})`}`;
+          const tipText = `${a.label} · ${s.name ? s.name + ": " : ""}${format(v, a)}${a.mode === "live" ? "" : ` (${MODE_LABEL[a.mode].toLowerCase()})`}`;
           bar.addEventListener("mousemove", (e) => showTip(e, tipText));
           bar.addEventListener("mouseleave", hideTip);
           const title = svgEl("title", {}, tipText);
           bar.append(title);
           svg.append(bar);
-          svg.append(svgEl("text", { class: `value${j > 0 ? " secondary" : ""}`, x: plotX + w + 6, y: by + barH - 3 }, format(v)));
+          svg.append(svgEl("text", { class: `value${j > 0 ? " secondary" : ""}`, x: plotX + w + 6, y: by + barH - 3 }, format(v, a)));
         });
       });
       container.append(svg);
@@ -511,7 +570,166 @@
   document.getElementById("samples").textContent = "Raw timing samples (ms, first " + report.arms.reduce((m, a) => Math.max(m, a.sample_timings_ms.length), 0) + " requests per arm):\n" +
     report.arms.map((a) => `  ${a.label}: ${a.sample_timings_ms.length ? a.sample_timings_ms.join(", ") : "not run"}`).join("\n");
 
-  document.getElementById("footer-left").textContent = `Generated by paved-gate scripts/benchmark.py · schema v${report.schema_version} · ${report.run_at}`;
+  document.getElementById("footer-left").textContent =
+    `Generated by paved-gate ${isClass ? "evals/support_tickets/run_eval.py" : "scripts/benchmark.py"} · schema v${report.schema_version} · ${report.run_at}`;
+
+  // ------------------------------------------------------------ classification eval (only when present)
+  if (isClass) {
+    const C = report.classification;
+    const byId = Object.fromEntries(C.arms.map((c) => [c.id, c]));
+    const measured = C.arms.filter((c) => c.metrics);
+    const pct = (v) => `${(v * 100).toFixed(1)}%`;
+    const f2 = (v) => v.toFixed(2);
+    for (const id of ["class-section", "intent-section", "cm-section"]) document.getElementById(id).hidden = false;
+
+    const sub = document.getElementById("class-sub");
+    sub.append(`Share of tickets whose predicted intent matches the known label. ${C.dataset.n.toLocaleString("en-US")} tickets, ${C.labels.length} intents × ${C.dataset.per_intent} each, from `);
+    sub.append(el("a", { href: C.dataset.source_url, rel: "noopener" }, "Bitext customer support"));
+    sub.append(` (${C.dataset.license}, ${C.dataset.attribution}).`);
+
+    const acc = document.getElementById("acc-chart");
+    acc.dataset.label = "Accuracy by arm, percent";
+    barChart(acc, {
+      unit: "pct",
+      fixedMax: 100,
+      format: (v, a) => `${v.toFixed(1)}% · n=${byId[a.id].metrics.n.toLocaleString("en-US")}`,
+      missing: (a) => (byId[a.id] ? byId[a.id].note : "not measured"),
+      series: [{ name: "", color: "var(--series-1)", value: (a) => (byId[a.id] && byId[a.id].metrics ? byId[a.id].metrics.accuracy * 100 : null) }],
+    });
+
+    const summary = document.getElementById("class-summary");
+    for (const c of C.arms) {
+      const tr = el("tr");
+      const armCell = el("td", { class: "arm" });
+      armCell.append(el("div", { style: "font-weight:600" }, c.label), el("div", { class: "mono", style: "color:var(--ink-2)" }, c.model));
+      const modeCell = el("td");
+      modeCell.append(el("span", { class: `badge ${c.mode}` }, MODE_SHORT[c.mode]));
+      const m = c.metrics;
+      tr.append(
+        armCell,
+        modeCell,
+        el("td", { class: "num" }, m ? pct(m.accuracy) : "not measured"),
+        el("td", { class: "num" }, m ? `${m.correct.toLocaleString("en-US")} / ${m.n.toLocaleString("en-US")}` : "–"),
+        el("td", { class: "num" }, m ? f2(m.macro.f1) : "–"),
+        el("td", { class: "num" }, m ? f2(m.weighted.f1) : "–"),
+        el("td", { class: "num" }, m ? String(m.invalid_predictions) : "–"),
+        el("td", { class: "num" }, c.mode === "not_run" ? "–" : String(c.api_errors)),
+      );
+      summary.append(tr);
+    }
+
+    // Per-intent table: one P/R/F1 group per measured arm.
+    const table = document.getElementById("intent-table");
+    if (!measured.length) {
+      table.append(el("caption", { class: "muted", style: "text-align:left;padding:8px 0" }, "No live arm in this run: per-intent metrics not measured."));
+    } else {
+      const head1 = el("tr"), head2 = el("tr");
+      head1.append(el("th", { rowspan: 2 }, "Intent"), el("th", { class: "num", rowspan: 2 }, "n"));
+      for (const c of measured) {
+        head1.append(el("th", { class: "grp", colspan: 3 }, c.label.replace(" zero-shot", "")));
+        head2.append(el("th", { class: "num" }, "P"), el("th", { class: "num" }, "R"), el("th", { class: "num" }, "F1"));
+      }
+      const thead = el("thead");
+      thead.append(head1, head2);
+      const tbody = el("tbody");
+      C.labels.forEach((label, i) => {
+        const tr = el("tr");
+        const supports = [...new Set(measured.map((c) => c.metrics.per_label[i].support))];
+        tr.append(el("td", { class: "mono" }, label), el("td", { class: "num" }, supports.join(" / ")));
+        for (const c of measured) {
+          const r = c.metrics.per_label[i];
+          tr.append(el("td", { class: "num" }, f2(r.precision)), el("td", { class: "num" }, f2(r.recall)), el("td", { class: "num" }, f2(r.f1)));
+        }
+        tbody.append(tr);
+      });
+      table.append(thead, tbody);
+    }
+
+    // Confusion matrix heatmap (row-normalised shade, counts printed), one arm at a time.
+    const RAMP = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95"];
+    const STOPS = [0.05, 0.15, 0.3, 0.5, 0.75, 1.01];
+    const shade = (share) => RAMP[STOPS.findIndex((t) => share < t)] ?? RAMP[RAMP.length - 1];
+    const darkInk = (share) => STOPS.findIndex((t) => share < t) < 3;
+    const cmArms = document.getElementById("cm-arms");
+    const cmChart = document.getElementById("cm-chart");
+    const cmTop = document.getElementById("cm-top");
+    let selected = measured.length ? measured[0].id : null;
+
+    function drawMatrix() {
+      cmChart.textContent = "";
+      cmTop.textContent = "";
+      const c = byId[selected];
+      if (!c || !c.metrics) {
+        cmChart.append(el("p", { class: "muted" }, "No live arm in this run: confusion matrix not measured."));
+        return;
+      }
+      const rowsL = C.labels, colsL = c.metrics.confusion_labels, M = c.metrics.confusion_matrix;
+      const width = Math.max(320, cmChart.clientWidth);
+      const labelW = 176, headH = 150, cell = Math.max(8, Math.min(26, Math.floor((width - labelW - 8) / colsL.length)));
+      const height = headH + rowsL.length * cell + 4;
+      const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, height, role: "img" });
+      svg.setAttribute("aria-label", `Confusion matrix for ${c.label}`);
+      // Axis titles sit in the empty top-left corner, clear of the rotated column labels.
+      svg.append(svgEl("text", { class: "cm-axis", x: labelW - 6, y: headH - 24, "text-anchor": "end" }, "Predicted →"));
+      svg.append(svgEl("text", { class: "cm-axis", x: labelW - 6, y: headH - 6, "text-anchor": "end" }, "True ↓"));
+      colsL.forEach((l, j) => {
+        const x = labelW + j * cell + cell / 2 + 3;
+        svg.append(svgEl("text", { class: "cm-label", x, y: headH - 6, transform: `rotate(-55 ${x} ${headH - 6})` }, l));
+      });
+      rowsL.forEach((rl, i) => {
+        const y = headH + i * cell;
+        const total = M[i].reduce((a, b) => a + b, 0) || 1;
+        svg.append(svgEl("text", { class: "cm-label", x: labelW - 6, y: y + cell / 2 + 4, "text-anchor": "end" }, rl));
+        M[i].forEach((count, j) => {
+          const x = labelW + j * cell;
+          const share = count / total;
+          const rect = svgEl("rect", count
+            ? { x: x + 0.5, y: y + 0.5, width: cell - 1, height: cell - 1, rx: 2, fill: shade(share) }
+            : { x: x + 0.5, y: y + 0.5, width: cell - 1, height: cell - 1, rx: 2, class: "cm-empty" });
+          const tip = `true ${rl} → predicted ${colsL[j]}: ${count} of ${total} (${(share * 100).toFixed(1)}%)`;
+          rect.addEventListener("mousemove", (e) => showTip(e, tip));
+          rect.addEventListener("mouseleave", hideTip);
+          rect.append(svgEl("title", {}, tip));
+          svg.append(rect);
+          if (count && cell >= 18) {
+            svg.append(svgEl("text", { class: "cm-count", x: x + cell / 2, y: y + cell / 2 + 3.5, "text-anchor": "middle",
+              fill: darkInk(share) ? "#0b0b0b" : "#ffffff" }, String(count)));
+          }
+        });
+      });
+      cmChart.append(svg);
+
+      const off = [];
+      M.forEach((row, i) => row.forEach((count, j) => {
+        if (count && rowsL[i] !== colsL[j]) off.push({ t: rowsL[i], p: colsL[j], count, share: count / (row.reduce((a, b) => a + b, 0) || 1) });
+      }));
+      off.sort((a, b) => b.count - a.count);
+      if (!off.length) {
+        const tr = el("tr");
+        tr.append(el("td", { colspan: 4, class: "muted" }, "No confusions: every scored ticket was classified correctly."));
+        cmTop.append(tr);
+      }
+      for (const o of off.slice(0, 10)) {
+        const tr = el("tr");
+        tr.append(el("td", { class: "mono" }, o.t), el("td", { class: "mono" }, o.p), el("td", { class: "num" }, String(o.count)), el("td", { class: "num" }, pct(o.share)));
+        cmTop.append(tr);
+      }
+    }
+
+    for (const c of C.arms) {
+      const b = el("button", { type: "button", role: "tab", "aria-selected": String(c.id === selected) }, c.label.replace(" zero-shot", ""));
+      if (!c.metrics) { b.disabled = true; b.title = c.note || "not measured"; b.style.opacity = "0.5"; b.style.cursor = "not-allowed"; }
+      b.addEventListener("click", () => {
+        selected = c.id;
+        for (const x of cmArms.children) x.setAttribute("aria-selected", String(x === b));
+        drawMatrix();
+      });
+      cmArms.append(b);
+    }
+    drawMatrix();
+    let raf2 = 0;
+    new ResizeObserver(() => { cancelAnimationFrame(raf2); raf2 = requestAnimationFrame(drawMatrix); }).observe(cmChart);
+  }
 })();
 </script>
 </body>

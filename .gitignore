@@ -12,3 +12,6 @@ logs/
 
 # benchmark output (changes every run; see docs/benchmark/ for a committed sample)
 results/
+
+# full downloaded datasets (the versioned eval sample in data/eval/ is committed)
+data/cache/

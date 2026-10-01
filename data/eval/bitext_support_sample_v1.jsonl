@@ -1,0 +1,1080 @@
+{"id": "bitext-22", "intent": "cancel_order", "row_index": 22, "text": "assistance with cancelling pucrhase {{Order Number}}"}
+{"id": "bitext-27", "intent": "cancel_order", "row_index": 27, "text": "problem with cancelling order {{Order Number}}"}
+{"id": "bitext-40", "intent": "cancel_order", "row_index": 40, "text": "i need help to cancel purchase {{Order Number}}"}
+{"id": "bitext-51", "intent": "cancel_order", "row_index": 51, "text": "how to cancel order {{Order Number}}"}
+{"id": "bitext-78", "intent": "cancel_order", "row_index": 78, "text": "I have got to cancel purchase {{Order Number}}, help me"}
+{"id": "bitext-86", "intent": "cancel_order", "row_index": 86, "text": "can you help me to cancel purchase {{Order Number}}?"}
+{"id": "bitext-181", "intent": "cancel_order", "row_index": 181, "text": "cancel purchase  {{Order Number}}"}
+{"id": "bitext-227", "intent": "cancel_order", "row_index": 227, "text": "I have a problem with cancelling purchase {{Order Number}}"}
+{"id": "bitext-283", "intent": "cancel_order", "row_index": 283, "text": "I need help canceling order {{Order Number}}"}
+{"id": "bitext-315", "intent": "cancel_order", "row_index": 315, "text": "I want help cancelling purchase {{Order Number}}"}
+{"id": "bitext-357", "intent": "cancel_order", "row_index": 357, "text": "assistance with cancelling purchase {{Order Number}}"}
+{"id": "bitext-384", "intent": "cancel_order", "row_index": 384, "text": "i dont want ordr {{Order Number}} could uhelp me cancel it"}
+{"id": "bitext-415", "intent": "cancel_order", "row_index": 415, "text": "want asistance canceling order {{Order Number}}"}
+{"id": "bitext-428", "intent": "cancel_order", "row_index": 428, "text": "I have problems with cancelling purchase {{Order Number}}"}
+{"id": "bitext-440", "intent": "cancel_order", "row_index": 440, "text": "i need assistance cancelling purchase {{Order Number}}"}
+{"id": "bitext-473", "intent": "cancel_order", "row_index": 473, "text": "I try to cancel purchase {{Order Number}}"}
+{"id": "bitext-478", "intent": "cancel_order", "row_index": 478, "text": "i bought somegoddamn item how do i cancel order {{Order Number}}"}
+{"id": "bitext-509", "intent": "cancel_order", "row_index": 509, "text": "can you help me to cancel purchase {{Order Number}}?"}
+{"id": "bitext-513", "intent": "cancel_order", "row_index": 513, "text": "canmcel order {{Order Number}}"}
+{"id": "bitext-545", "intent": "cancel_order", "row_index": 545, "text": "i cannot pay for my last item cancel order {{Order Number}}"}
+{"id": "bitext-580", "intent": "cancel_order", "row_index": 580, "text": "iwant assistance canceling order {{Order Number}}"}
+{"id": "bitext-598", "intent": "cancel_order", "row_index": 598, "text": "need assistance witgh cancelling order {{Order Number}}"}
+{"id": "bitext-628", "intent": "cancel_order", "row_index": 628, "text": "help me to cancel purchase {{Order Number}}"}
+{"id": "bitext-645", "intent": "cancel_order", "row_index": 645, "text": "I can't afford this item, I try to cancel order {{Order Number}}"}
+{"id": "bitext-655", "intent": "cancel_order", "row_index": 655, "text": "have a problem with canceling order {{Order Number}}"}
+{"id": "bitext-659", "intent": "cancel_order", "row_index": 659, "text": "i dont want purchase {{Order Number}}"}
+{"id": "bitext-691", "intent": "cancel_order", "row_index": 691, "text": "i want help to cancel order {{Order Number}}"}
+{"id": "bitext-724", "intent": "cancel_order", "row_index": 724, "text": "cancel purchase {{Order Number}}"}
+{"id": "bitext-729", "intent": "cancel_order", "row_index": 729, "text": "cancel purchase370795561790"}
+{"id": "bitext-736", "intent": "cancel_order", "row_index": 736, "text": "can ya help me cancel order {{Order Number}}"}
+{"id": "bitext-747", "intent": "cancel_order", "row_index": 747, "text": "I need help with canxeling purchase {{Order Number}}"}
+{"id": "bitext-768", "intent": "cancel_order", "row_index": 768, "text": "can you help me canceling purchase {{Order Number}}?"}
+{"id": "bitext-775", "intent": "cancel_order", "row_index": 775, "text": "I can't pay for purchase {{Order Number}}"}
+{"id": "bitext-832", "intent": "cancel_order", "row_index": 832, "text": "canceling purchase {{Order Number}}"}
+{"id": "bitext-841", "intent": "cancel_order", "row_index": 841, "text": "question about canceling purchase {{Order Number}}"}
+{"id": "bitext-887", "intent": "cancel_order", "row_index": 887, "text": "help canceling purchase {{Order Number}}"}
+{"id": "bitext-888", "intent": "cancel_order", "row_index": 888, "text": "I need assistance canceling ordr {{Order Number}}"}
+{"id": "bitext-942", "intent": "cancel_order", "row_index": 942, "text": "want help to cancel purchase {{Order Number}}"}
+{"id": "bitext-946", "intent": "cancel_order", "row_index": 946, "text": "need help with cfanceling order {{Order Number}}"}
+{"id": "bitext-963", "intent": "cancel_order", "row_index": 963, "text": "problem with canceling order {{Order Number}}"}
+{"id": "bitext-1005", "intent": "change_order", "row_index": 1005, "text": "i need assistance to add some products to order {{Order Number}}"}
+{"id": "bitext-1045", "intent": "change_order", "row_index": 1045, "text": "can I delete some articles from order {{Order Number}}?"}
+{"id": "bitext-1064", "intent": "change_order", "row_index": 1064, "text": "want help to update purchase {{Order Number}}"}
+{"id": "bitext-1100", "intent": "change_order", "row_index": 1100, "text": "problem with deleting something from purchase {{Order Number}}"}
+{"id": "bitext-1147", "intent": "change_order", "row_index": 1147, "text": "remove something from order {{Order Number}}"}
+{"id": "bitext-1166", "intent": "change_order", "row_index": 1166, "text": "i made a mistake i wanna change purchase {{Order Number}}"}
+{"id": "bitext-1182", "intent": "change_order", "row_index": 1182, "text": "need to change something of purchase {{Order Number}}"}
+{"id": "bitext-1205", "intent": "change_order", "row_index": 1205, "text": "remove an itemfrom purchase {{Order Number}}"}
+{"id": "bitext-1246", "intent": "change_order", "row_index": 1246, "text": "upddate order {{Order Number}}"}
+{"id": "bitext-1273", "intent": "change_order", "row_index": 1273, "text": "I have to update order {{Order Number}}, how to do it?"}
+{"id": "bitext-1281", "intent": "change_order", "row_index": 1281, "text": "I missed a product in order {{Order Number}}, how can I add it?"}
+{"id": "bitext-1283", "intent": "change_order", "row_index": 1283, "text": "need to switch some products of purchase {{Order Number}}"}
+{"id": "bitext-1327", "intent": "change_order", "row_index": 1327, "text": "deeting something from order {{Order Number}}"}
+{"id": "bitext-1355", "intent": "change_order", "row_index": 1355, "text": "i have to delete an product from order {{Order Number}}"}
+{"id": "bitext-1410", "intent": "change_order", "row_index": 1410, "text": "help me editingorder {{Order Number}}"}
+{"id": "bitext-1424", "intent": "change_order", "row_index": 1424, "text": "remove article from purchase {{Order Number}}"}
+{"id": "bitext-1453", "intent": "change_order", "row_index": 1453, "text": "help deleting some products from purchase {{Order Number}}"}
+{"id": "bitext-1515", "intent": "change_order", "row_index": 1515, "text": "assistance to switch something of order {{Order Number}}"}
+{"id": "bitext-1522", "intent": "change_order", "row_index": 1522, "text": "could I swap a bloody item of purchase {{Order Number}}?"}
+{"id": "bitext-1538", "intent": "change_order", "row_index": 1538, "text": "remove something from order {{Order Number}}"}
+{"id": "bitext-1542", "intent": "change_order", "row_index": 1542, "text": "modify order732201349959"}
+{"id": "bitext-1555", "intent": "change_order", "row_index": 1555, "text": "I'm trying tochange order {{Order Number}}"}
+{"id": "bitext-1566", "intent": "change_order", "row_index": 1566, "text": "edtiing order {{Order Number}}"}
+{"id": "bitext-1631", "intent": "change_order", "row_index": 1631, "text": "I have to correct order {{Order Number}}, can I get some help?"}
+{"id": "bitext-1688", "intent": "change_order", "row_index": 1688, "text": "help me deleting an item from purchase {{Order Number}}"}
+{"id": "bitext-1759", "intent": "change_order", "row_index": 1759, "text": "assistance to edit order {{Order Number}}"}
+{"id": "bitext-1760", "intent": "change_order", "row_index": 1760, "text": "I have got to correct purchase {{Order Number}}, how to do it?"}
+{"id": "bitext-1767", "intent": "change_order", "row_index": 1767, "text": "updating purchase {{Order Number}}"}
+{"id": "bitext-1786", "intent": "change_order", "row_index": 1786, "text": "i cannot add some items to purchase {{Order Number}}"}
+{"id": "bitext-1789", "intent": "change_order", "row_index": 1789, "text": "I need help swapping an item of order {{Order Number}}"}
+{"id": "bitext-1799", "intent": "change_order", "row_index": 1799, "text": "help me switching an article of purchase {{Order Number}}"}
+{"id": "bitext-1806", "intent": "change_order", "row_index": 1806, "text": "i canot correct the order i made"}
+{"id": "bitext-1812", "intent": "change_order", "row_index": 1812, "text": "how do i edit purchase {{Order Number}}"}
+{"id": "bitext-1860", "intent": "change_order", "row_index": 1860, "text": "help me swapping an item of order {{Order Number}}"}
+{"id": "bitext-1887", "intent": "change_order", "row_index": 1887, "text": "problem with swappingt some articles of purchase {{Order Number}}"}
+{"id": "bitext-1900", "intent": "change_order", "row_index": 1900, "text": "swap an item of purchase {{Order Number}}"}
+{"id": "bitext-1911", "intent": "change_order", "row_index": 1911, "text": "remove something from order"}
+{"id": "bitext-1917", "intent": "change_order", "row_index": 1917, "text": "can I modify order {{Order Number}}?"}
+{"id": "bitext-1944", "intent": "change_order", "row_index": 1944, "text": "how can I switch some articles of purchase {{Order Number}}?"}
+{"id": "bitext-1955", "intent": "change_order", "row_index": 1955, "text": "upddate order {{Order Number}}"}
+{"id": "bitext-2007", "intent": "change_shipping_address", "row_index": 2007, "text": "I would like to modify my address"}
+{"id": "bitext-2030", "intent": "change_shipping_address", "row_index": 2030, "text": "help me updating my shipping address"}
+{"id": "bitext-2036", "intent": "change_shipping_address", "row_index": 2036, "text": "where do i edit my delivery address"}
+{"id": "bitext-2042", "intent": "change_shipping_address", "row_index": 2042, "text": "I try to edit my address"}
+{"id": "bitext-2063", "intent": "change_shipping_address", "row_index": 2063, "text": "I have an issue correcting my damn delivery address"}
+{"id": "bitext-2134", "intent": "change_shipping_address", "row_index": 2134, "text": "I can't correct my bloody shipping address"}
+{"id": "bitext-2185", "intent": "change_shipping_address", "row_index": 2185, "text": "I have a question about an address correction"}
+{"id": "bitext-2190", "intent": "change_shipping_address", "row_index": 2190, "text": "there are problems trying to correct ym shipping address"}
+{"id": "bitext-2253", "intent": "change_shipping_address", "row_index": 2253, "text": "i have a trouble trying to correct my address"}
+{"id": "bitext-2265", "intent": "change_shipping_address", "row_index": 2265, "text": "i have errors modifying my shipping address"}
+{"id": "bitext-2266", "intent": "change_shipping_address", "row_index": 2266, "text": "tell me about modifying  my address"}
+{"id": "bitext-2275", "intent": "change_shipping_address", "row_index": 2275, "text": "I  don't know what to do to correct my address"}
+{"id": "bitext-2322", "intent": "change_shipping_address", "row_index": 2322, "text": "i need supports tryingh to modify my delivery address"}
+{"id": "bitext-2330", "intent": "change_shipping_address", "row_index": 2330, "text": "how do I edit my address?"}
+{"id": "bitext-2343", "intent": "change_shipping_address", "row_index": 2343, "text": "I do not know how to correect the address"}
+{"id": "bitext-2346", "intent": "change_shipping_address", "row_index": 2346, "text": "what do I need to do to change the address?"}
+{"id": "bitext-2366", "intent": "change_shipping_address", "row_index": 2366, "text": "can ya tell me about modiyfing my address"}
+{"id": "bitext-2398", "intent": "change_shipping_address", "row_index": 2398, "text": "I wantassistance trying to update my address"}
+{"id": "bitext-2441", "intent": "change_shipping_address", "row_index": 2441, "text": "tell me about a delivery address update"}
+{"id": "bitext-2467", "intent": "change_shipping_address", "row_index": 2467, "text": "I cannot edit my shipping address"}
+{"id": "bitext-2484", "intent": "change_shipping_address", "row_index": 2484, "text": "I don't know what I have to do to modify my delivery address"}
+{"id": "bitext-2500", "intent": "change_shipping_address", "row_index": 2500, "text": "I don't know what I need to do to correct my address"}
+{"id": "bitext-2537", "intent": "change_shipping_address", "row_index": 2537, "text": "I need supports trying to modify my delivery address"}
+{"id": "bitext-2540", "intent": "change_shipping_address", "row_index": 2540, "text": "I am looking for information about a delivery address change"}
+{"id": "bitext-2581", "intent": "change_shipping_address", "row_index": 2581, "text": "I need assistance correcting my shipping address"}
+{"id": "bitext-2627", "intent": "change_shipping_address", "row_index": 2627, "text": "I have a problem trying to change the delivery address"}
+{"id": "bitext-2644", "intent": "change_shipping_address", "row_index": 2644, "text": "can I edit my delivery address?"}
+{"id": "bitext-2655", "intent": "change_shipping_address", "row_index": 2655, "text": "how can I modify my address?"}
+{"id": "bitext-2662", "intent": "change_shipping_address", "row_index": 2662, "text": "how do I update the shipping address?"}
+{"id": "bitext-2669", "intent": "change_shipping_address", "row_index": 2669, "text": "there is a problem correcting the delivery address"}
+{"id": "bitext-2713", "intent": "change_shipping_address", "row_index": 2713, "text": "I have an error updating my address"}
+{"id": "bitext-2746", "intent": "change_shipping_address", "row_index": 2746, "text": "I want assistance trying to change the shipping addrses"}
+{"id": "bitext-2832", "intent": "change_shipping_address", "row_index": 2832, "text": "i want support trying to change the address"}
+{"id": "bitext-2853", "intent": "change_shipping_address", "row_index": 2853, "text": "I need assistance modifying my shipping address"}
+{"id": "bitext-2868", "intent": "change_shipping_address", "row_index": 2868, "text": "I have chosen a wrong shipping address, how do I correct it?"}
+{"id": "bitext-2875", "intent": "change_shipping_address", "row_index": 2875, "text": "i want assistace trying to correct the shipping address"}
+{"id": "bitext-2892", "intent": "change_shipping_address", "row_index": 2892, "text": "I want assistance to modify the shipping addresxs"}
+{"id": "bitext-2946", "intent": "change_shipping_address", "row_index": 2946, "text": "i have got to update my shipping address"}
+{"id": "bitext-2961", "intent": "change_shipping_address", "row_index": 2961, "text": "i try to correct the address"}
+{"id": "bitext-2967", "intent": "change_shipping_address", "row_index": 2967, "text": "how do I change my address?"}
+{"id": "bitext-2981", "intent": "check_cancellation_fee", "row_index": 2981, "text": "I can't find the cancellation penalties, can you help me?"}
+{"id": "bitext-3003", "intent": "check_cancellation_fee", "row_index": 3003, "text": "show me the cancellation penalty"}
+{"id": "bitext-3008", "intent": "check_cancellation_fee", "row_index": 3008, "text": "is it possible to check the withdrawal charges"}
+{"id": "bitext-3009", "intent": "check_cancellation_fee", "row_index": 3009, "text": "wanna see the fucking withdrawal charges how can i do it"}
+{"id": "bitext-3013", "intent": "check_cancellation_fee", "row_index": 3013, "text": "can you help me to check the early termination charge ?"}
+{"id": "bitext-3043", "intent": "check_cancellation_fee", "row_index": 3043, "text": "I want help to check the termination penalties"}
+{"id": "bitext-3053", "intent": "check_cancellation_fee", "row_index": 3053, "text": "i dont know how i can check the early termination charges"}
+{"id": "bitext-3060", "intent": "check_cancellation_fee", "row_index": 3060, "text": "I do not know how to see the termination charges"}
+{"id": "bitext-3138", "intent": "check_cancellation_fee", "row_index": 3138, "text": "I want help to see the cancellation charges"}
+{"id": "bitext-3188", "intent": "check_cancellation_fee", "row_index": 3188, "text": "what is the early termination fee?"}
+{"id": "bitext-3235", "intent": "check_cancellation_fee", "row_index": 3235, "text": "I'm trying to see the early termination charge"}
+{"id": "bitext-3247", "intent": "check_cancellation_fee", "row_index": 3247, "text": "how could I see the early termination penalty?"}
+{"id": "bitext-3248", "intent": "check_cancellation_fee", "row_index": 3248, "text": "help seeing the termination charges"}
+{"id": "bitext-3262", "intent": "check_cancellation_fee", "row_index": 3262, "text": "I need help to check the early termination fee"}
+{"id": "bitext-3272", "intent": "check_cancellation_fee", "row_index": 3272, "text": "can you help me seeing the cancellation charges?"}
+{"id": "bitext-3305", "intent": "check_cancellation_fee", "row_index": 3305, "text": "I need help to see the early exit charge"}
+{"id": "bitext-3340", "intent": "check_cancellation_fee", "row_index": 3340, "text": "I don't know how to check the cancellation penalty"}
+{"id": "bitext-3354", "intent": "check_cancellation_fee", "row_index": 3354, "text": "can you help me to see the cancellation penalty?"}
+{"id": "bitext-3361", "intent": "check_cancellation_fee", "row_index": 3361, "text": "I cannot find the early termination fee, I need help"}
+{"id": "bitext-3364", "intent": "check_cancellation_fee", "row_index": 3364, "text": "I want assistance seeing the withdrawal penalty"}
+{"id": "bitext-3369", "intent": "check_cancellation_fee", "row_index": 3369, "text": "seeing termination charge"}
+{"id": "bitext-3390", "intent": "check_cancellation_fee", "row_index": 3390, "text": "I have to see the withdrawal efe"}
+{"id": "bitext-3493", "intent": "check_cancellation_fee", "row_index": 3493, "text": "I want assistance checking the early termination fees"}
+{"id": "bitext-3532", "intent": "check_cancellation_fee", "row_index": 3532, "text": "can i check the termination fee"}
+{"id": "bitext-3558", "intent": "check_cancellation_fee", "row_index": 3558, "text": "help me seeing the withdrawal penalty"}
+{"id": "bitext-3588", "intent": "check_cancellation_fee", "row_index": 3588, "text": "I need assistance checking the early exit charges"}
+{"id": "bitext-3650", "intent": "check_cancellation_fee", "row_index": 3650, "text": "seeing cancellation fees"}
+{"id": "bitext-3674", "intent": "check_cancellation_fee", "row_index": 3674, "text": "can ya help me check the early termination penalty"}
+{"id": "bitext-3681", "intent": "check_cancellation_fee", "row_index": 3681, "text": "I am trying to check the damn withdrawal penalty"}
+{"id": "bitext-3718", "intent": "check_cancellation_fee", "row_index": 3718, "text": "were can I check the early termination penalty?"}
+{"id": "bitext-3734", "intent": "check_cancellation_fee", "row_index": 3734, "text": "I want help seeing the withdrawal penalties"}
+{"id": "bitext-3750", "intent": "check_cancellation_fee", "row_index": 3750, "text": "want assistance to check the withdrawal fees"}
+{"id": "bitext-3766", "intent": "check_cancellation_fee", "row_index": 3766, "text": "I want help to see the early exit fees"}
+{"id": "bitext-3795", "intent": "check_cancellation_fee", "row_index": 3795, "text": "I need help to check the cancellation charge"}
+{"id": "bitext-3829", "intent": "check_cancellation_fee", "row_index": 3829, "text": "i do not know what i need to do to check the termination fee"}
+{"id": "bitext-3860", "intent": "check_cancellation_fee", "row_index": 3860, "text": "could you help me check hte cancellation penalties?"}
+{"id": "bitext-3865", "intent": "check_cancellation_fee", "row_index": 3865, "text": "want assistance to check the cancellation charge"}
+{"id": "bitext-3868", "intent": "check_cancellation_fee", "row_index": 3868, "text": "can you help me to see the early termination fees?"}
+{"id": "bitext-3891", "intent": "check_cancellation_fee", "row_index": 3891, "text": "will ushow me the early terminarion charges"}
+{"id": "bitext-3912", "intent": "check_cancellation_fee", "row_index": 3912, "text": "I don't know what to do to see the cancellation fee"}
+{"id": "bitext-3941", "intent": "check_invoice", "row_index": 3941, "text": "I have got to check my bills from {{Person Name}}"}
+{"id": "bitext-3971", "intent": "check_invoice", "row_index": 3971, "text": "could you help me find my invoice from {{Person Name}}?"}
+{"id": "bitext-3983", "intent": "check_invoice", "row_index": 3983, "text": "i need help to look for the bill #12588"}
+{"id": "bitext-4034", "intent": "check_invoice", "row_index": 4034, "text": "what do i have to do to locate my bill from {{Person Name}}"}
+{"id": "bitext-4054", "intent": "check_invoice", "row_index": 4054, "text": "wanna find the invoices from {{Person Name}} how can i do it"}
+{"id": "bitext-4092", "intent": "check_invoice", "row_index": 4092, "text": "I want to check the bill from {{Person Name}}, could you help me?"}
+{"id": "bitext-4114", "intent": "check_invoice", "row_index": 4114, "text": "check invoices from two purchases ago"}
+{"id": "bitext-4182", "intent": "check_invoice", "row_index": 4182, "text": "I need to locate my bill from {{Person Name}}, will you help me?"}
+{"id": "bitext-4221", "intent": "check_invoice", "row_index": 4221, "text": "I need assistance to see the invoice #00108"}
+{"id": "bitext-4260", "intent": "check_invoice", "row_index": 4260, "text": "what do i have to do to check my invoice from {{Person Name}}"}
+{"id": "bitext-4273", "intent": "check_invoice", "row_index": 4273, "text": "I lost my invoice from {{Person Name}}, find it for me"}
+{"id": "bitext-4292", "intent": "check_invoice", "row_index": 4292, "text": "I want assistance giving a quick look at my invoice #12588"}
+{"id": "bitext-4294", "intent": "check_invoice", "row_index": 4294, "text": "check invoice"}
+{"id": "bitext-4296", "intent": "check_invoice", "row_index": 4296, "text": "i want assistance seing the invoice from {{Person Name}}"}
+{"id": "bitext-4323", "intent": "check_invoice", "row_index": 4323, "text": "I do not know what I have to do to look for bill #12588"}
+{"id": "bitext-4338", "intent": "check_invoice", "row_index": 4338, "text": "help looking for the bill #00108"}
+{"id": "bitext-4399", "intent": "check_invoice", "row_index": 4399, "text": "wanna take an quick look at my bill #12588"}
+{"id": "bitext-4457", "intent": "check_invoice", "row_index": 4457, "text": "wanna see bill #37777"}
+{"id": "bitext-4466", "intent": "check_invoice", "row_index": 4466, "text": "i do not know how i can look for the invoice from {{Person Name}}"}
+{"id": "bitext-4477", "intent": "check_invoice", "row_index": 4477, "text": "can you help me looking for my invoice #12588?"}
+{"id": "bitext-4512", "intent": "check_invoice", "row_index": 4512, "text": "checking invoice from {{Person Name}}"}
+{"id": "bitext-4525", "intent": "check_invoice", "row_index": 4525, "text": "can i take a quick look at my invoicr #00108"}
+{"id": "bitext-4528", "intent": "check_invoice", "row_index": 4528, "text": "find my invoices from {{Person Name}}"}
+{"id": "bitext-4552", "intent": "check_invoice", "row_index": 4552, "text": "i dont know what i need to do to look  for my bill #12588"}
+{"id": "bitext-4558", "intent": "check_invoice", "row_index": 4558, "text": "where to see bill #85632?"}
+{"id": "bitext-4589", "intent": "check_invoice", "row_index": 4589, "text": "where can I find the invoice #85632?"}
+{"id": "bitext-4600", "intent": "check_invoice", "row_index": 4600, "text": "find my bill from {{Person Name}}"}
+{"id": "bitext-4639", "intent": "check_invoice", "row_index": 4639, "text": "help me to take a quick look at my invoice #12588"}
+{"id": "bitext-4641", "intent": "check_invoice", "row_index": 4641, "text": "checking invoices from 9 months ago"}
+{"id": "bitext-4642", "intent": "check_invoice", "row_index": 4642, "text": "how can I locate my invoices from {{Person Name}}?"}
+{"id": "bitext-4681", "intent": "check_invoice", "row_index": 4681, "text": "checking invoice #37777"}
+{"id": "bitext-4688", "intent": "check_invoice", "row_index": 4688, "text": "i dont know how i can take a quick look at the bill #37777"}
+{"id": "bitext-4694", "intent": "check_invoice", "row_index": 4694, "text": "I have got to look for my invoice #12588, I need assistance"}
+{"id": "bitext-4744", "intent": "check_invoice", "row_index": 4744, "text": "I want assistance to take a quick look at bill #85632"}
+{"id": "bitext-4745", "intent": "check_invoice", "row_index": 4745, "text": "how to take a quick look at the invoices from {{Person Name}}"}
+{"id": "bitext-4763", "intent": "check_invoice", "row_index": 4763, "text": "how can i give a quick look at the invoice #85632"}
+{"id": "bitext-4778", "intent": "check_invoice", "row_index": 4778, "text": "I want to give a quick look at the invoice #12588"}
+{"id": "bitext-4785", "intent": "check_invoice", "row_index": 4785, "text": "i want assistance checking invoice #12588"}
+{"id": "bitext-4823", "intent": "check_invoice", "row_index": 4823, "text": "can you help me to locate the invoice from {{Person Name}}?"}
+{"id": "bitext-4867", "intent": "check_invoice", "row_index": 4867, "text": "checking invoice from 4 purchases ago"}
+{"id": "bitext-4952", "intent": "check_payment_methods", "row_index": 4952, "text": "need helpto check your payment modalities"}
+{"id": "bitext-4972", "intent": "check_payment_methods", "row_index": 4972, "text": "how to check the accepted payment methods"}
+{"id": "bitext-4979", "intent": "check_payment_methods", "row_index": 4979, "text": "can you help me checking the allowed payment modalities ?"}
+{"id": "bitext-4994", "intent": "check_payment_methods", "row_index": 4994, "text": "I need assistance to see the available payment modalities"}
+{"id": "bitext-5002", "intent": "check_payment_methods", "row_index": 5002, "text": "I want assistance listing the accepted paymment options"}
+{"id": "bitext-5014", "intent": "check_payment_methods", "row_index": 5014, "text": "what do I have to do to see the allowed payment methods?"}
+{"id": "bitext-5030", "intent": "check_payment_methods", "row_index": 5030, "text": "assistance checking your allowed payment modalities"}
+{"id": "bitext-5041", "intent": "check_payment_methods", "row_index": 5041, "text": "where can i check what payment methoda ya accept"}
+{"id": "bitext-5084", "intent": "check_payment_methods", "row_index": 5084, "text": "need to see the accepted payment options how do i do it"}
+{"id": "bitext-5095", "intent": "check_payment_methods", "row_index": 5095, "text": "help me to see what payment payment modalities you accept"}
+{"id": "bitext-5186", "intent": "check_payment_methods", "row_index": 5186, "text": "is it possible to list the allowed payment mthods?"}
+{"id": "bitext-5260", "intent": "check_payment_methods", "row_index": 5260, "text": "need assistance to see your accepted payment options"}
+{"id": "bitext-5290", "intent": "check_payment_methods", "row_index": 5290, "text": "i want help listing ur payment options"}
+{"id": "bitext-5320", "intent": "check_payment_methods", "row_index": 5320, "text": "assistance seeing what payment payment modalitiesare allowed"}
+{"id": "bitext-5341", "intent": "check_payment_methods", "row_index": 5341, "text": "want assistance seeing ur payment methods"}
+{"id": "bitext-5416", "intent": "check_payment_methods", "row_index": 5416, "text": "check accepted payment methoxs"}
+{"id": "bitext-5419", "intent": "check_payment_methods", "row_index": 5419, "text": "I have got to see the allowed payment modalities, help me"}
+{"id": "bitext-5449", "intent": "check_payment_methods", "row_index": 5449, "text": "can i see what payment payment modalities are available"}
+{"id": "bitext-5500", "intent": "check_payment_methods", "row_index": 5500, "text": "wanna see  the payment methods help me"}
+{"id": "bitext-5519", "intent": "check_payment_methods", "row_index": 5519, "text": "where can I list your available payment modalities?"}
+{"id": "bitext-5585", "intent": "check_payment_methods", "row_index": 5585, "text": "i need assistance listing the payment omdalities"}
+{"id": "bitext-5587", "intent": "check_payment_methods", "row_index": 5587, "text": "how to see the allowed payment options"}
+{"id": "bitext-5639", "intent": "check_payment_methods", "row_index": 5639, "text": "where can I check what payment options are allowed?"}
+{"id": "bitext-5702", "intent": "check_payment_methods", "row_index": 5702, "text": "is it possible to list your available payment methods?"}
+{"id": "bitext-5711", "intent": "check_payment_methods", "row_index": 5711, "text": "I want assistance to check the goddamn payment methods"}
+{"id": "bitext-5734", "intent": "check_payment_methods", "row_index": 5734, "text": "I have to see the payment options, can you help me?"}
+{"id": "bitext-5761", "intent": "check_payment_methods", "row_index": 5761, "text": "I try to see the available payment options"}
+{"id": "bitext-5771", "intent": "check_payment_methods", "row_index": 5771, "text": "will you show me the payment options?"}
+{"id": "bitext-5797", "intent": "check_payment_methods", "row_index": 5797, "text": "i dont know how to hceck the payment options"}
+{"id": "bitext-5799", "intent": "check_payment_methods", "row_index": 5799, "text": "I want assistance to list the accepted payment methods"}
+{"id": "bitext-5805", "intent": "check_payment_methods", "row_index": 5805, "text": "I need assistance listing the available payment methods"}
+{"id": "bitext-5811", "intent": "check_payment_methods", "row_index": 5811, "text": "need help to check ur available payment modalities"}
+{"id": "bitext-5833", "intent": "check_payment_methods", "row_index": 5833, "text": "can you help me to list the payment modalities?"}
+{"id": "bitext-5845", "intent": "check_payment_methods", "row_index": 5845, "text": "i need assistance to check ur available payment modalities"}
+{"id": "bitext-5846", "intent": "check_payment_methods", "row_index": 5846, "text": "wanna see the allowed payment methods"}
+{"id": "bitext-5857", "intent": "check_payment_methods", "row_index": 5857, "text": "i have got to see ur accepted payment modalities"}
+{"id": "bitext-5874", "intent": "check_payment_methods", "row_index": 5874, "text": "where do I check the payment modalities?"}
+{"id": "bitext-5901", "intent": "check_payment_methods", "row_index": 5901, "text": "I want help seeing your available payment options"}
+{"id": "bitext-5902", "intent": "check_payment_methods", "row_index": 5902, "text": "I want to check what payment options you accept"}
+{"id": "bitext-5905", "intent": "check_payment_methods", "row_index": 5905, "text": "I want to see what payment methods are allowed"}
+{"id": "bitext-5932", "intent": "check_refund_policy", "row_index": 5932, "text": "i need help seeing in what cases can i ask for my money back"}
+{"id": "bitext-5954", "intent": "check_refund_policy", "row_index": 5954, "text": "i want help checking in which cases can i ask for a refund"}
+{"id": "bitext-5984", "intent": "check_refund_policy", "row_index": 5984, "text": "help me  to see in what situations can I ask for a refund"}
+{"id": "bitext-6007", "intent": "check_refund_policy", "row_index": 6007, "text": "I am trying to check your money back guarantee"}
+{"id": "bitext-6036", "intent": "check_refund_policy", "row_index": 6036, "text": "I want to see in what cases can I request refunds, help me"}
+{"id": "bitext-6092", "intent": "check_refund_policy", "row_index": 6092, "text": "i want assistance to check how long refunds usually take"}
+{"id": "bitext-6105", "intent": "check_refund_policy", "row_index": 6105, "text": "I want to check your regund policy, help me"}
+{"id": "bitext-6134", "intent": "check_refund_policy", "row_index": 6134, "text": "help me checking how long reimbursements take"}
+{"id": "bitext-6155", "intent": "check_refund_policy", "row_index": 6155, "text": "help me checking in what cases can I ask for  reimbursements"}
+{"id": "bitext-6157", "intent": "check_refund_policy", "row_index": 6157, "text": "I need to see your goddamn refund policy, how do I do it?"}
+{"id": "bitext-6160", "intent": "check_refund_policy", "row_index": 6160, "text": "I need to check how long reimbursements usually take"}
+{"id": "bitext-6255", "intent": "check_refund_policy", "row_index": 6255, "text": "how could I check your money back guarantee?"}
+{"id": "bitext-6256", "intent": "check_refund_policy", "row_index": 6256, "text": "help checking in which cases can i request a reimbursement"}
+{"id": "bitext-6275", "intent": "check_refund_policy", "row_index": 6275, "text": "I would like to see in which cases can I request a refund"}
+{"id": "bitext-6337", "intent": "check_refund_policy", "row_index": 6337, "text": "help to see in what situationscan I ask to be reimbursed"}
+{"id": "bitext-6344", "intent": "check_refund_policy", "row_index": 6344, "text": "in which cases can I request refunds?"}
+{"id": "bitext-6357", "intent": "check_refund_policy", "row_index": 6357, "text": "I need to see in which cases can I request refunds, help me"}
+{"id": "bitext-6364", "intent": "check_refund_policy", "row_index": 6364, "text": "need assistancee to check your damn reimbursement policy"}
+{"id": "bitext-6439", "intent": "check_refund_policy", "row_index": 6439, "text": "I need assistance to see your money bac guarantee"}
+{"id": "bitext-6459", "intent": "check_refund_policy", "row_index": 6459, "text": "can I see in which cases can I request a refund?"}
+{"id": "bitext-6483", "intent": "check_refund_policy", "row_index": 6483, "text": "how can I see your reimbursement policy?"}
+{"id": "bitext-6489", "intent": "check_refund_policy", "row_index": 6489, "text": "help to check in which cases can I ask to be refunded"}
+{"id": "bitext-6499", "intent": "check_refund_policy", "row_index": 6499, "text": "how to checkur goddamn money back guarantee"}
+{"id": "bitext-6502", "intent": "check_refund_policy", "row_index": 6502, "text": "assistance seeing in which cases can I request refunds"}
+{"id": "bitext-6511", "intent": "check_refund_policy", "row_index": 6511, "text": "can you show me in which cases can I request a refund?"}
+{"id": "bitext-6512", "intent": "check_refund_policy", "row_index": 6512, "text": "help checking in what cases can I request a refund"}
+{"id": "bitext-6551", "intent": "check_refund_policy", "row_index": 6551, "text": "I have got to check your refund policy"}
+{"id": "bitext-6553", "intent": "check_refund_policy", "row_index": 6553, "text": "I need to check in what cases can I request reimbursements"}
+{"id": "bitext-6569", "intent": "check_refund_policy", "row_index": 6569, "text": "help me to see in what cases can i ask for my money back"}
+{"id": "bitext-6658", "intent": "check_refund_policy", "row_index": 6658, "text": "check in which situations can i ask for a reimbursement"}
+{"id": "bitext-6669", "intent": "check_refund_policy", "row_index": 6669, "text": "can I check in what cases can I request a reimbursement?"}
+{"id": "bitext-6701", "intent": "check_refund_policy", "row_index": 6701, "text": "I need to check in which situations can I requst a refund"}
+{"id": "bitext-6727", "intent": "check_refund_policy", "row_index": 6727, "text": "I need help to check in which cases can I ask for refunds"}
+{"id": "bitext-6731", "intent": "check_refund_policy", "row_index": 6731, "text": "I don't know what I need to  do to check your refund policy"}
+{"id": "bitext-6748", "intent": "check_refund_policy", "row_index": 6748, "text": "help me see in what situations can I ask for a refund"}
+{"id": "bitext-6749", "intent": "check_refund_policy", "row_index": 6749, "text": "I want to see how long refunds usually take, how to do it?"}
+{"id": "bitext-6754", "intent": "check_refund_policy", "row_index": 6754, "text": "show me in which cases can I ask for my money back"}
+{"id": "bitext-6769", "intent": "check_refund_policy", "row_index": 6769, "text": "can ya help me check how long reimbursemenst take"}
+{"id": "bitext-6835", "intent": "check_refund_policy", "row_index": 6835, "text": "in which cases can i ask for reimbursements"}
+{"id": "bitext-6884", "intent": "check_refund_policy", "row_index": 6884, "text": "I need help to see in what cases can I ask to be refunded"}
+{"id": "bitext-6917", "intent": "complaint", "row_index": 6917, "text": "I'm not happy with ur service need help to file a complaint"}
+{"id": "bitext-6938", "intent": "complaint", "row_index": 6938, "text": "what do I have to do to file a claim?"}
+{"id": "bitext-6982", "intent": "complaint", "row_index": 6982, "text": "can I lodge a customer claim against your company?"}
+{"id": "bitext-6991", "intent": "complaint", "row_index": 6991, "text": "I don't know what I have to do to file a customer complaint"}
+{"id": "bitext-7037", "intent": "complaint", "row_index": 7037, "text": "I have got to file a customer complaint"}
+{"id": "bitext-7063", "intent": "complaint", "row_index": 7063, "text": "I am calling to make an customer claim against your company"}
+{"id": "bitext-7079", "intent": "complaint", "row_index": 7079, "text": "can ya help me lodge a claim against ur organization"}
+{"id": "bitext-7092", "intent": "complaint", "row_index": 7092, "text": "i do not know how to lodge a consumer cmplaint"}
+{"id": "bitext-7120", "intent": "complaint", "row_index": 7120, "text": "can you help me to make a consumner complaint?"}
+{"id": "bitext-7272", "intent": "complaint", "row_index": 7272, "text": "where could I lodge a reclamation against your organization?"}
+{"id": "bitext-7297", "intent": "complaint", "row_index": 7297, "text": "I try to make a consumer reclamation"}
+{"id": "bitext-7320", "intent": "complaint", "row_index": 7320, "text": "help me lodge a consumer complaint against ur business"}
+{"id": "bitext-7348", "intent": "complaint", "row_index": 7348, "text": "i try to make a customer reclamation"}
+{"id": "bitext-7375", "intent": "complaint", "row_index": 7375, "text": "I try to make a customer claim against your company"}
+{"id": "bitext-7377", "intent": "complaint", "row_index": 7377, "text": "can ya help me to lodge a consumer claim"}
+{"id": "bitext-7384", "intent": "complaint", "row_index": 7384, "text": "help to make a consumer complaint against your business"}
+{"id": "bitext-7407", "intent": "complaint", "row_index": 7407, "text": "help me filing a reclamation against your business"}
+{"id": "bitext-7409", "intent": "complaint", "row_index": 7409, "text": "help me file a customer complaint"}
+{"id": "bitext-7444", "intent": "complaint", "row_index": 7444, "text": "help me making a reclamation against ur organizatuon"}
+{"id": "bitext-7453", "intent": "complaint", "row_index": 7453, "text": "lodging consuer complaint"}
+{"id": "bitext-7455", "intent": "complaint", "row_index": 7455, "text": "where to file a consumer complaint"}
+{"id": "bitext-7456", "intent": "complaint", "row_index": 7456, "text": "help me lodge a customer reclamation against ur company"}
+{"id": "bitext-7460", "intent": "complaint", "row_index": 7460, "text": "lodge customer complaint against your organization"}
+{"id": "bitext-7499", "intent": "complaint", "row_index": 7499, "text": "making customer claim against your company"}
+{"id": "bitext-7510", "intent": "complaint", "row_index": 7510, "text": "I need to file a customer claim, how do I do it?"}
+{"id": "bitext-7511", "intent": "complaint", "row_index": 7511, "text": "help to make a reclamation  against your company"}
+{"id": "bitext-7540", "intent": "complaint", "row_index": 7540, "text": "I do not know what I have to do to make a reclamation"}
+{"id": "bitext-7543", "intent": "complaint", "row_index": 7543, "text": "help me to lodge a customer claim"}
+{"id": "bitext-7586", "intent": "complaint", "row_index": 7586, "text": "help to file a consumer complaint against your organization"}
+{"id": "bitext-7589", "intent": "complaint", "row_index": 7589, "text": "lodging consumer complaint against your business"}
+{"id": "bitext-7597", "intent": "complaint", "row_index": 7597, "text": "how can i make a consumer complaint against ur company"}
+{"id": "bitext-7655", "intent": "complaint", "row_index": 7655, "text": "can you help me make a claim against your organization?"}
+{"id": "bitext-7706", "intent": "complaint", "row_index": 7706, "text": "how could I lodge a reclamation?"}
+{"id": "bitext-7755", "intent": "complaint", "row_index": 7755, "text": "I am trying to lodge a complaint against your organization"}
+{"id": "bitext-7791", "intent": "complaint", "row_index": 7791, "text": "can you help me to make a complaint?"}
+{"id": "bitext-7802", "intent": "complaint", "row_index": 7802, "text": "I don't know how to make a claim against your organization"}
+{"id": "bitext-7813", "intent": "complaint", "row_index": 7813, "text": "can uhelp me lodgin a reclamation against ur business"}
+{"id": "bitext-7823", "intent": "complaint", "row_index": 7823, "text": "how to file a customer reclamation?"}
+{"id": "bitext-7864", "intent": "complaint", "row_index": 7864, "text": "I need to file a complaint"}
+{"id": "bitext-7889", "intent": "complaint", "row_index": 7889, "text": "can uhelp me to make a complaint againsy ur business"}
+{"id": "bitext-7970", "intent": "contact_customer_service", "row_index": 7970, "text": "want help talking to customer service"}
+{"id": "bitext-7976", "intent": "contact_customer_service", "row_index": 7976, "text": "I have to speak to customer service , can I get some help?"}
+{"id": "bitext-7977", "intent": "contact_customer_service", "row_index": 7977, "text": "do you have an e-mail address to contact customer support?"}
+{"id": "bitext-8031", "intent": "contact_customer_service", "row_index": 8031, "text": "is it possible to speak to goddamn customer service?"}
+{"id": "bitext-8050", "intent": "contact_customer_service", "row_index": 8050, "text": "where to see what hours I can contact customer support?"}
+{"id": "bitext-8054", "intent": "contact_customer_service", "row_index": 8054, "text": "where to see at what time I can contact customer service?"}
+{"id": "bitext-8073", "intent": "contact_customer_service", "row_index": 8073, "text": "how to see at what time I can contact customer service?"}
+{"id": "bitext-8076", "intent": "contact_customer_service", "row_index": 8076, "text": "can uhelp me check what hours customer support available is"}
+{"id": "bitext-8080", "intent": "contact_customer_service", "row_index": 8080, "text": "I don't know how to contact customer assistance"}
+{"id": "bitext-8145", "intent": "contact_customer_service", "row_index": 8145, "text": "I want help to talk with customer support"}
+{"id": "bitext-8280", "intent": "contact_customer_service", "row_index": 8280, "text": "do you have a toll-free number to reach customer support?"}
+{"id": "bitext-8284", "intent": "contact_customer_service", "row_index": 8284, "text": "help me see at what time customer support available is"}
+{"id": "bitext-8309", "intent": "contact_customer_service", "row_index": 8309, "text": "I don't know what to do to speak with customer assistance"}
+{"id": "bitext-8331", "intent": "contact_customer_service", "row_index": 8331, "text": "will you tell me what hours I can contact customer support?"}
+{"id": "bitext-8338", "intent": "contact_customer_service", "row_index": 8338, "text": "I need help to see what hours customer support available is"}
+{"id": "bitext-8339", "intent": "contact_customer_service", "row_index": 8339, "text": "help me seeing what hours I can contact customer assistance"}
+{"id": "bitext-8354", "intent": "contact_customer_service", "row_index": 8354, "text": "I don't know how to speak to customer assistance"}
+{"id": "bitext-8391", "intent": "contact_customer_service", "row_index": 8391, "text": "what is ur customer assistance mail"}
+{"id": "bitext-8402", "intent": "contact_customer_service", "row_index": 8402, "text": "how do I speak with customer support?"}
+{"id": "bitext-8426", "intent": "contact_customer_service", "row_index": 8426, "text": "how do i check what hours i can call customer assistance"}
+{"id": "bitext-8432", "intent": "contact_customer_service", "row_index": 8432, "text": "i dont know whatto do to talk to customer assistance"}
+{"id": "bitext-8445", "intent": "contact_customer_service", "row_index": 8445, "text": "help to contact damn customer support"}
+{"id": "bitext-8496", "intent": "contact_customer_service", "row_index": 8496, "text": "assistance to talk to customer service"}
+{"id": "bitext-8502", "intent": "contact_customer_service", "row_index": 8502, "text": "how to see at what time i can reach customer support"}
+{"id": "bitext-8507", "intent": "contact_customer_service", "row_index": 8507, "text": "is it possible to talk to customer assistance ?"}
+{"id": "bitext-8536", "intent": "contact_customer_service", "row_index": 8536, "text": "can I see at what time I can reach customer service?"}
+{"id": "bitext-8553", "intent": "contact_customer_service", "row_index": 8553, "text": "can you help me talk with customer support?"}
+{"id": "bitext-8612", "intent": "contact_customer_service", "row_index": 8612, "text": "I want to get in touch with customer service"}
+{"id": "bitext-8650", "intent": "contact_customer_service", "row_index": 8650, "text": "want help to talk to customer srvice"}
+{"id": "bitext-8701", "intent": "contact_customer_service", "row_index": 8701, "text": "how do I talk to damn customner support?"}
+{"id": "bitext-8734", "intent": "contact_customer_service", "row_index": 8734, "text": "what time can I get in touch with customer assistance?"}
+{"id": "bitext-8737", "intent": "contact_customer_service", "row_index": 8737, "text": "I try to contact customer support"}
+{"id": "bitext-8768", "intent": "contact_customer_service", "row_index": 8768, "text": "want help to check what hours i can reach customer service"}
+{"id": "bitext-8807", "intent": "contact_customer_service", "row_index": 8807, "text": "help me to get in touch with bloody customer support"}
+{"id": "bitext-8823", "intent": "contact_customer_service", "row_index": 8823, "text": "I try to talk to customer assistance"}
+{"id": "bitext-8849", "intent": "contact_customer_service", "row_index": 8849, "text": "help me checking at what time i can reach customer support"}
+{"id": "bitext-8850", "intent": "contact_customer_service", "row_index": 8850, "text": "I want help to check what hours I can call customer service"}
+{"id": "bitext-8856", "intent": "contact_customer_service", "row_index": 8856, "text": "I need to speak with fucking customer assistance, help me"}
+{"id": "bitext-8859", "intent": "contact_customer_service", "row_index": 8859, "text": "i have to contact customer support"}
+{"id": "bitext-8879", "intent": "contact_customer_service", "row_index": 8879, "text": "do you have a free phone number to contact customer service?"}
+{"id": "bitext-8914", "intent": "contact_human_agent", "row_index": 8914, "text": "I do not understand you, help me chatting with someone"}
+{"id": "bitext-9014", "intent": "contact_human_agent", "row_index": 9014, "text": "help me to contact an operator"}
+{"id": "bitext-9031", "intent": "contact_human_agent", "row_index": 9031, "text": "I need to speak with a human agent"}
+{"id": "bitext-9063", "intent": "contact_human_agent", "row_index": 9063, "text": "i dont know what i need to do to speak to an operator"}
+{"id": "bitext-9098", "intent": "contact_human_agent", "row_index": 9098, "text": "can uhelp me to talk to an assistat"}
+{"id": "bitext-9114", "intent": "contact_human_agent", "row_index": 9114, "text": "how do I contact an operator?"}
+{"id": "bitext-9145", "intent": "contact_human_agent", "row_index": 9145, "text": "I want help to talk to an operator"}
+{"id": "bitext-9149", "intent": "contact_human_agent", "row_index": 9149, "text": "can yaa help me talking with a live agent"}
+{"id": "bitext-9162", "intent": "contact_human_agent", "row_index": 9162, "text": "you are not helpful, I need help chatting with an assistant"}
+{"id": "bitext-9175", "intent": "contact_human_agent", "row_index": 9175, "text": "I don't know how I can talk to an assistant"}
+{"id": "bitext-9192", "intent": "contact_human_agent", "row_index": 9192, "text": "I would like to speak to a live agent"}
+{"id": "bitext-9233", "intent": "contact_human_agent", "row_index": 9233, "text": "need help to chat with a prson"}
+{"id": "bitext-9239", "intent": "contact_human_agent", "row_index": 9239, "text": "you are not helpful at all, could I contact a human agent?"}
+{"id": "bitext-9256", "intent": "contact_human_agent", "row_index": 9256, "text": "I do not know how I could speak with an agent"}
+{"id": "bitext-9264", "intent": "contact_human_agent", "row_index": 9264, "text": "I need assistance to speak to a live agent"}
+{"id": "bitext-9289", "intent": "contact_human_agent", "row_index": 9289, "text": "help me speaking with a person"}
+{"id": "bitext-9299", "intent": "contact_human_agent", "row_index": 9299, "text": "need help speaking with an agent"}
+{"id": "bitext-9320", "intent": "contact_human_agent", "row_index": 9320, "text": "i do not know how i can chat with an operator"}
+{"id": "bitext-9333", "intent": "contact_human_agent", "row_index": 9333, "text": "how to speak to a live agent"}
+{"id": "bitext-9342", "intent": "contact_human_agent", "row_index": 9342, "text": "can you help me talking with an  operator?"}
+{"id": "bitext-9347", "intent": "contact_human_agent", "row_index": 9347, "text": "chatting with humnan agent"}
+{"id": "bitext-9429", "intent": "contact_human_agent", "row_index": 9429, "text": "I do not know how to chat with a fucking human agent"}
+{"id": "bitext-9430", "intent": "contact_human_agent", "row_index": 9430, "text": "I can't talk with an assistant"}
+{"id": "bitext-9432", "intent": "contact_human_agent", "row_index": 9432, "text": "you aren't helpful, how can I talk with a bloody live agent?"}
+{"id": "bitext-9546", "intent": "contact_human_agent", "row_index": 9546, "text": "I want assistance chatting with an operator"}
+{"id": "bitext-9555", "intent": "contact_human_agent", "row_index": 9555, "text": "I can't understand you, assistance speaking to an assistant"}
+{"id": "bitext-9567", "intent": "contact_human_agent", "row_index": 9567, "text": "can I speak with a person?"}
+{"id": "bitext-9593", "intent": "contact_human_agent", "row_index": 9593, "text": "help to talk with a person"}
+{"id": "bitext-9630", "intent": "contact_human_agent", "row_index": 9630, "text": "i dont  understand ya assistance speaking to a live agent"}
+{"id": "bitext-9679", "intent": "contact_human_agent", "row_index": 9679, "text": "what do I have to do to contact a person?"}
+{"id": "bitext-9680", "intent": "contact_human_agent", "row_index": 9680, "text": "can you help me to speak to a person?"}
+{"id": "bitext-9692", "intent": "contact_human_agent", "row_index": 9692, "text": "I try to speak to an operator"}
+{"id": "bitext-9697", "intent": "contact_human_agent", "row_index": 9697, "text": "how can i speak with an assistznt"}
+{"id": "bitext-9740", "intent": "contact_human_agent", "row_index": 9740, "text": "can I talk to somebody?"}
+{"id": "bitext-9804", "intent": "contact_human_agent", "row_index": 9804, "text": "I cannot understand a word you say, can I contact someone?"}
+{"id": "bitext-9805", "intent": "contact_human_agent", "row_index": 9805, "text": "speak to an assistnat"}
+{"id": "bitext-9828", "intent": "contact_human_agent", "row_index": 9828, "text": "how do I speak to someone?"}
+{"id": "bitext-9860", "intent": "contact_human_agent", "row_index": 9860, "text": "I have to spak to someone"}
+{"id": "bitext-9866", "intent": "contact_human_agent", "row_index": 9866, "text": "i dont know how i can speak to someone"}
+{"id": "bitext-9910", "intent": "contact_human_agent", "row_index": 9910, "text": "contact someone"}
+{"id": "bitext-9934", "intent": "create_account", "row_index": 9934, "text": "i want help to open a standard account for my dad"}
+{"id": "bitext-10010", "intent": "create_account", "row_index": 10010, "text": "tell me more about opening premium accounts"}
+{"id": "bitext-10018", "intent": "create_account", "row_index": 10018, "text": "open {{Account Category}} account"}
+{"id": "bitext-10027", "intent": "create_account", "row_index": 10027, "text": "open {{Account Type}} account for wife"}
+{"id": "bitext-10029", "intent": "create_account", "row_index": 10029, "text": "i dont know how to open a {{Account Category}} account for my daughter"}
+{"id": "bitext-10044", "intent": "create_account", "row_index": 10044, "text": "another {{Account Category}} account for father"}
+{"id": "bitext-10131", "intent": "create_account", "row_index": 10131, "text": "i cannot create a platinum account"}
+{"id": "bitext-10240", "intent": "create_account", "row_index": 10240, "text": "opening new {{Account Category}} account for daughter"}
+{"id": "bitext-10270", "intent": "create_account", "row_index": 10270, "text": "I need to create a {{Account Type}} account"}
+{"id": "bitext-10275", "intent": "create_account", "row_index": 10275, "text": "where can i create a {{Account Type}} account"}
+{"id": "bitext-10332", "intent": "create_account", "row_index": 10332, "text": "creating user"}
+{"id": "bitext-10350", "intent": "create_account", "row_index": 10350, "text": "creating freemium account"}
+{"id": "bitext-10387", "intent": "create_account", "row_index": 10387, "text": "can uhelp me creating a {{Account Type}} account for my dad"}
+{"id": "bitext-10397", "intent": "create_account", "row_index": 10397, "text": "I ain't registered yet, I need to create a damn pro account"}
+{"id": "bitext-10418", "intent": "create_account", "row_index": 10418, "text": "i do not have a {{Account Type}} cacount yet I'd like to create one"}
+{"id": "bitext-10432", "intent": "create_account", "row_index": 10432, "text": "new pro account for wife"}
+{"id": "bitext-10442", "intent": "create_account", "row_index": 10442, "text": "can I open a {{Account Category}} account for my daughter?"}
+{"id": "bitext-10449", "intent": "create_account", "row_index": 10449, "text": "where to create a {{Account Category}} account for my daughter?"}
+{"id": "bitext-10466", "intent": "create_account", "row_index": 10466, "text": "open {{Account Category}} account for wife"}
+{"id": "bitext-10505", "intent": "create_account", "row_index": 10505, "text": "I have problems with opening my {{Account Type}} account"}
+{"id": "bitext-10533", "intent": "create_account", "row_index": 10533, "text": "new standard acount"}
+{"id": "bitext-10534", "intent": "create_account", "row_index": 10534, "text": "need assistance to open  a {{Account Category}} account for my dad"}
+{"id": "bitext-10538", "intent": "create_account", "row_index": 10538, "text": "help me to open a {{Account Category}} account for my daughter"}
+{"id": "bitext-10568", "intent": "create_account", "row_index": 10568, "text": "how to open a standard account?"}
+{"id": "bitext-10616", "intent": "create_account", "row_index": 10616, "text": "I want assistance to create a freemium account"}
+{"id": "bitext-10642", "intent": "create_account", "row_index": 10642, "text": "give me information about opening {{Account Category}} accounts"}
+{"id": "bitext-10647", "intent": "create_account", "row_index": 10647, "text": "I haven't signed up yet, I have got to open a pro account"}
+{"id": "bitext-10672", "intent": "create_account", "row_index": 10672, "text": "open a freemium account for my dad"}
+{"id": "bitext-10692", "intent": "create_account", "row_index": 10692, "text": "what do i need to do to open a gold account for my daughter"}
+{"id": "bitext-10700", "intent": "create_account", "row_index": 10700, "text": "i want help to create a fucking {{Account Category}} account for my mom"}
+{"id": "bitext-10725", "intent": "create_account", "row_index": 10725, "text": "i do not know what to do to create a gold account"}
+{"id": "bitext-10729", "intent": "create_account", "row_index": 10729, "text": "i have problems with opening a pro account"}
+{"id": "bitext-10756", "intent": "create_account", "row_index": 10756, "text": "I cannot create a freemium accounmt for my daughter"}
+{"id": "bitext-10793", "intent": "create_account", "row_index": 10793, "text": "I want assistance creating a gold account"}
+{"id": "bitext-10825", "intent": "create_account", "row_index": 10825, "text": "creating new {{Account Category}} account"}
+{"id": "bitext-10831", "intent": "create_account", "row_index": 10831, "text": "can I create a new bloody platinum account for my wife?"}
+{"id": "bitext-10855", "intent": "create_account", "row_index": 10855, "text": "how can I create a gold account for my fiance?"}
+{"id": "bitext-10866", "intent": "create_account", "row_index": 10866, "text": "I do not know how I can open a premium account"}
+{"id": "bitext-10894", "intent": "create_account", "row_index": 10894, "text": "create new {{Account Category}} account for daughter"}
+{"id": "bitext-10901", "intent": "create_account", "row_index": 10901, "text": "could you help me create a standard account for my daughter?"}
+{"id": "bitext-10967", "intent": "delete_account", "row_index": 10967, "text": "cancel pro account"}
+{"id": "bitext-10988", "intent": "delete_account", "row_index": 10988, "text": "closing {{Account Type}} account"}
+{"id": "bitext-11011", "intent": "delete_account", "row_index": 11011, "text": "I do not know what I need to do to close a pro account"}
+{"id": "bitext-11015", "intent": "delete_account", "row_index": 11015, "text": "I do not know how I could remove the {{Account Type}} account"}
+{"id": "bitext-11023", "intent": "delete_account", "row_index": 11023, "text": "give me informatipn about the termination of a pro account"}
+{"id": "bitext-11033", "intent": "delete_account", "row_index": 11033, "text": "I do not know what I have to do to delete a standard account"}
+{"id": "bitext-11057", "intent": "delete_account", "row_index": 11057, "text": "I don't know what I have to do to cancel my {{Account Type}} account"}
+{"id": "bitext-11082", "intent": "delete_account", "row_index": 11082, "text": "I do not know what to do to remove my standard account"}
+{"id": "bitext-11093", "intent": "delete_account", "row_index": 11093, "text": "how can i get information about  my pro account deletion"}
+{"id": "bitext-11105", "intent": "delete_account", "row_index": 11105, "text": "have a question about the termination of a Freemiumaccount"}
+{"id": "bitext-11118", "intent": "delete_account", "row_index": 11118, "text": "I don't know how to cancel the standard account"}
+{"id": "bitext-11121", "intent": "delete_account", "row_index": 11121, "text": "I have problems with the removal of my premium account"}
+{"id": "bitext-11144", "intent": "delete_account", "row_index": 11144, "text": "I do not need the {{Account Type}} account, can you help me to close it?"}
+{"id": "bitext-11219", "intent": "delete_account", "row_index": 11219, "text": "I want assistance to close my {{Account Type}} account"}
+{"id": "bitext-11227", "intent": "delete_account", "row_index": 11227, "text": "I want assistance deleting a {{Account Category}} account"}
+{"id": "bitext-11275", "intent": "delete_account", "row_index": 11275, "text": "I don't know what I have to do to close a standard account"}
+{"id": "bitext-11321", "intent": "delete_account", "row_index": 11321, "text": "I needassistance to close the gold account"}
+{"id": "bitext-11325", "intent": "delete_account", "row_index": 11325, "text": "close premium account"}
+{"id": "bitext-11327", "intent": "delete_account", "row_index": 11327, "text": "cancelling {{Account Category}} account"}
+{"id": "bitext-11337", "intent": "delete_account", "row_index": 11337, "text": "i dont know what i need to do to delete a standard account"}
+{"id": "bitext-11468", "intent": "delete_account", "row_index": 11468, "text": "find information about the cancellation of my pro account"}
+{"id": "bitext-11478", "intent": "delete_account", "row_index": 11478, "text": "i want information about the termination of my pro account"}
+{"id": "bitext-11488", "intent": "delete_account", "row_index": 11488, "text": "i have a question about the cancellation  of my {{Account Type}} account"}
+{"id": "bitext-11532", "intent": "delete_account", "row_index": 11532, "text": "i dont know what i have to do to delete my {{Account Category}} account"}
+{"id": "bitext-11535", "intent": "delete_account", "row_index": 11535, "text": "i have problems with the cancellation of a {{Account Category}} account"}
+{"id": "bitext-11555", "intent": "delete_account", "row_index": 11555, "text": "I do not know what to do to remove a premium account"}
+{"id": "bitext-11573", "intent": "delete_account", "row_index": 11573, "text": "i do not know how ican delete my freemium account"}
+{"id": "bitext-11585", "intent": "delete_account", "row_index": 11585, "text": "I havea question about the termination of my {{Account Type}} account"}
+{"id": "bitext-11652", "intent": "delete_account", "row_index": 11652, "text": "canceling {{Account Type}} account"}
+{"id": "bitext-11672", "intent": "delete_account", "row_index": 11672, "text": "i have problems with the deletion of my premium account"}
+{"id": "bitext-11673", "intent": "delete_account", "row_index": 11673, "text": "deleting platinum accoumt"}
+{"id": "bitext-11678", "intent": "delete_account", "row_index": 11678, "text": "I no longer use my standard account, could I close it?"}
+{"id": "bitext-11683", "intent": "delete_account", "row_index": 11683, "text": "removing {{Account Category}} account"}
+{"id": "bitext-11716", "intent": "delete_account", "row_index": 11716, "text": "I need assistance to cancel my freemium account"}
+{"id": "bitext-11728", "intent": "delete_account", "row_index": 11728, "text": "question about the termination of my premium account"}
+{"id": "bitext-11788", "intent": "delete_account", "row_index": 11788, "text": "i dont know how i can delete a premium account"}
+{"id": "bitext-11827", "intent": "delete_account", "row_index": 11827, "text": "i dont know what to do to canfel my {{Account Type}} account"}
+{"id": "bitext-11872", "intent": "delete_account", "row_index": 11872, "text": "I  need assistance closing my platinum account"}
+{"id": "bitext-11884", "intent": "delete_account", "row_index": 11884, "text": "removing premium account"}
+{"id": "bitext-11889", "intent": "delete_account", "row_index": 11889, "text": "i want information about the deletion of my gold accounnt"}
+{"id": "bitext-11915", "intent": "delivery_options", "row_index": 11915, "text": "help me see the methods for shipment"}
+{"id": "bitext-11921", "intent": "delivery_options", "row_index": 11921, "text": "could you give me information about the shipment methods?"}
+{"id": "bitext-12015", "intent": "delivery_options", "row_index": 12015, "text": "I want to see what options for delivery I can choose"}
+{"id": "bitext-12079", "intent": "delivery_options", "row_index": 12079, "text": "I want information about the delivery methods"}
+{"id": "bitext-12097", "intent": "delivery_options", "row_index": 12097, "text": "I want assistance to see what delivery methods I have"}
+{"id": "bitext-12114", "intent": "delivery_options", "row_index": 12114, "text": "need help checking what shipping options are available"}
+{"id": "bitext-12122", "intent": "delivery_options", "row_index": 12122, "text": "deliveries to {{Delivery Country}}"}
+{"id": "bitext-12130", "intent": "delivery_options", "row_index": 12130, "text": "could you help me check what shipment options I have?"}
+{"id": "bitext-12143", "intent": "delivery_options", "row_index": 12143, "text": "could you help me see what damn shipment methods you offer?"}
+{"id": "bitext-12149", "intent": "delivery_options", "row_index": 12149, "text": "how do I check what methods for delivery are there?"}
+{"id": "bitext-12167", "intent": "delivery_options", "row_index": 12167, "text": "is it possibleto place an order from {{Delivery City}}"}
+{"id": "bitext-12236", "intent": "delivery_options", "row_index": 12236, "text": "I try to check the delivery methods"}
+{"id": "bitext-12268", "intent": "delivery_options", "row_index": 12268, "text": "wanna see the delivery options help me"}
+{"id": "bitext-12314", "intent": "delivery_options", "row_index": 12314, "text": "how can I see what options for delivery I can choose?"}
+{"id": "bitext-12324", "intent": "delivery_options", "row_index": 12324, "text": "I want help checking the methods for shipping"}
+{"id": "bitext-12359", "intent": "delivery_options", "row_index": 12359, "text": "show me what fucking shipping options I can choose"}
+{"id": "bitext-12390", "intent": "delivery_options", "row_index": 12390, "text": "cn I place an order from {{Delivery City}}?"}
+{"id": "bitext-12400", "intent": "delivery_options", "row_index": 12400, "text": "assistance seeing the shipping methods"}
+{"id": "bitext-12404", "intent": "delivery_options", "row_index": 12404, "text": "I am trying to find the methods for shipment, I need help"}
+{"id": "bitext-12414", "intent": "delivery_options", "row_index": 12414, "text": "need to check what shipping options are available"}
+{"id": "bitext-12429", "intent": "delivery_options", "row_index": 12429, "text": "delieries to {{Delivery City}}"}
+{"id": "bitext-12464", "intent": "delivery_options", "row_index": 12464, "text": "check options for delivery"}
+{"id": "bitext-12510", "intent": "delivery_options", "row_index": 12510, "text": "I do not know how to check what shipping methods are there"}
+{"id": "bitext-12511", "intent": "delivery_options", "row_index": 12511, "text": "do ya deliver to {{Delivery Country}}"}
+{"id": "bitext-12526", "intent": "delivery_options", "row_index": 12526, "text": "i try to check the shipment options"}
+{"id": "bitext-12537", "intent": "delivery_options", "row_index": 12537, "text": "shipmetns to {{Delivery City}}"}
+{"id": "bitext-12541", "intent": "delivery_options", "row_index": 12541, "text": "is it possible to order from {{Delivery City}} ?"}
+{"id": "bitext-12601", "intent": "delivery_options", "row_index": 12601, "text": "I want assistance checking what delivery methods I have"}
+{"id": "bitext-12675", "intent": "delivery_options", "row_index": 12675, "text": "can I order from {{Delivery Country}}?"}
+{"id": "bitext-12713", "intent": "delivery_options", "row_index": 12713, "text": "shipments to {{Delivery City}}"}
+{"id": "bitext-12717", "intent": "delivery_options", "row_index": 12717, "text": "I want to check what methods for delivery you offer"}
+{"id": "bitext-12726", "intent": "delivery_options", "row_index": 12726, "text": "help me check what delivery methods I can choose"}
+{"id": "bitext-12741", "intent": "delivery_options", "row_index": 12741, "text": "shipping to {{Delivery Country}}"}
+{"id": "bitext-12761", "intent": "delivery_options", "row_index": 12761, "text": "where can I see what shipment options I have?"}
+{"id": "bitext-12790", "intent": "delivery_options", "row_index": 12790, "text": "I need to check the methods for shipping, how do I do it?"}
+{"id": "bitext-12809", "intent": "delivery_options", "row_index": 12809, "text": "do ya deliver to {{Delivery City}}"}
+{"id": "bitext-12810", "intent": "delivery_options", "row_index": 12810, "text": "is it possible to order from {{Delivery Country}}"}
+{"id": "bitext-12848", "intent": "delivery_options", "row_index": 12848, "text": "is it possible to place an order from {{Delivery Country}}"}
+{"id": "bitext-12862", "intent": "delivery_options", "row_index": 12862, "text": "what do I have to do to see what delivery methods I have?"}
+{"id": "bitext-12881", "intent": "delivery_options", "row_index": 12881, "text": "help me seeing what delivery methods I can choose"}
+{"id": "bitext-12907", "intent": "delivery_period", "row_index": 12907, "text": "where can I check how soon can I expect the goddamn article?"}
+{"id": "bitext-12961", "intent": "delivery_period", "row_index": 12961, "text": "help to see how soon can I expect the article"}
+{"id": "bitext-12988", "intent": "delivery_period", "row_index": 12988, "text": "I have got to see when will my parcel arrive, help me"}
+{"id": "bitext-13001", "intent": "delivery_period", "row_index": 13001, "text": "how do I see when my item is going to arrive?"}
+{"id": "bitext-13028", "intent": "delivery_period", "row_index": 13028, "text": "where can I find information about shipping periods?"}
+{"id": "bitext-13033", "intent": "delivery_period", "row_index": 13033, "text": "need help to see when my purchase is gonna arrive"}
+{"id": "bitext-13074", "intent": "delivery_period", "row_index": 13074, "text": "help checking how soon can I expect the product"}
+{"id": "bitext-13076", "intent": "delivery_period", "row_index": 13076, "text": "help me to check when will my parcel arrive"}
+{"id": "bitext-13100", "intent": "delivery_period", "row_index": 13100, "text": "I want to see when will my product arrive, I need help"}
+{"id": "bitext-13169", "intent": "delivery_period", "row_index": 13169, "text": "need help to see how soon can I expect the delivery"}
+{"id": "bitext-13192", "intent": "delivery_period", "row_index": 13192, "text": "I have got to see how long the shipment takes, I need help"}
+{"id": "bitext-13197", "intent": "delivery_period", "row_index": 13197, "text": "help me to see how long it takes for my damn order to arrive"}
+{"id": "bitext-13212", "intent": "delivery_period", "row_index": 13212, "text": "show me how long it takes for my package to arrive"}
+{"id": "bitext-13232", "intent": "delivery_period", "row_index": 13232, "text": "where do I check how long it takes for my product to arrive?"}
+{"id": "bitext-13275", "intent": "delivery_period", "row_index": 13275, "text": "wanna see how soon can i expect the package how to do it"}
+{"id": "bitext-13425", "intent": "delivery_period", "row_index": 13425, "text": "want assistance checking ohw soon can i expect my parcel"}
+{"id": "bitext-13442", "intent": "delivery_period", "row_index": 13442, "text": "where do I see when my package is going to arrive?"}
+{"id": "bitext-13446", "intent": "delivery_period", "row_index": 13446, "text": "where can i check how soon can i expect the package"}
+{"id": "bitext-13494", "intent": "delivery_period", "row_index": 13494, "text": "assistance seeing when my purchase is going to arrive"}
+{"id": "bitext-13503", "intent": "delivery_period", "row_index": 13503, "text": "I need help to see how soon can I expect the damn item"}
+{"id": "bitext-13512", "intent": "delivery_period", "row_index": 13512, "text": "can i check how long it takes for my delivery to arrive"}
+{"id": "bitext-13515", "intent": "delivery_period", "row_index": 13515, "text": "I want assistance seeing how soon can I expect my parcel"}
+{"id": "bitext-13525", "intent": "delivery_period", "row_index": 13525, "text": "is it possible to see how soon can I expect my purchase?"}
+{"id": "bitext-13544", "intent": "delivery_period", "row_index": 13544, "text": "where do I check when will my purchase arrive?"}
+{"id": "bitext-13561", "intent": "delivery_period", "row_index": 13561, "text": "i need help checking when my package is gonna arrive"}
+{"id": "bitext-13603", "intent": "delivery_period", "row_index": 13603, "text": "i have to see how soon can i expect my item ohw can i do it"}
+{"id": "bitext-13610", "intent": "delivery_period", "row_index": 13610, "text": "I call to check how long it takes for the delivery to arrive"}
+{"id": "bitext-13636", "intent": "delivery_period", "row_index": 13636, "text": "I don't know how to see when my item is going to arrive"}
+{"id": "bitext-13664", "intent": "delivery_period", "row_index": 13664, "text": "need help  seeing how long the shipment takes"}
+{"id": "bitext-13680", "intent": "delivery_period", "row_index": 13680, "text": "I want help checking when my purchase is going to arrive"}
+{"id": "bitext-13688", "intent": "delivery_period", "row_index": 13688, "text": "where do i check how soon can i expect the delivery"}
+{"id": "bitext-13715", "intent": "delivery_period", "row_index": 13715, "text": "I am trying to see when my article is gonig to arrive"}
+{"id": "bitext-13748", "intent": "delivery_period", "row_index": 13748, "text": "where do I check how long it takes for my package to arrive?"}
+{"id": "bitext-13754", "intent": "delivery_period", "row_index": 13754, "text": "I want help checking how soon can I expect the parcel"}
+{"id": "bitext-13771", "intent": "delivery_period", "row_index": 13771, "text": "can you show me how long it takes for the article to arrive?"}
+{"id": "bitext-13780", "intent": "delivery_period", "row_index": 13780, "text": "I would like to check how soon can I expect the shipment"}
+{"id": "bitext-13789", "intent": "delivery_period", "row_index": 13789, "text": "is it possible to see when will my article arrive?"}
+{"id": "bitext-13793", "intent": "delivery_period", "row_index": 13793, "text": "need to see when will my parcel arrive"}
+{"id": "bitext-13829", "intent": "delivery_period", "row_index": 13829, "text": "help me to see how long it takes for the article to arrive"}
+{"id": "bitext-13838", "intent": "delivery_period", "row_index": 13838, "text": "is it possible to check how soon can I expect the package?"}
+{"id": "bitext-13963", "intent": "edit_account", "row_index": 13963, "text": "updating {{Account Type}} accojnt"}
+{"id": "bitext-13966", "intent": "edit_account", "row_index": 13966, "text": "correct information on freeaccount"}
+{"id": "bitext-13968", "intent": "edit_account", "row_index": 13968, "text": "edit info on gold accunt"}
+{"id": "bitext-13974", "intent": "edit_account", "row_index": 13974, "text": "update {{Account Type}} account"}
+{"id": "bitext-13986", "intent": "edit_account", "row_index": 13986, "text": "wanna change the info on my account can i get some help"}
+{"id": "bitext-13995", "intent": "edit_account", "row_index": 13995, "text": "update inforemation on {{Account Type}} account"}
+{"id": "bitext-14007", "intent": "edit_account", "row_index": 14007, "text": "modifying data on gold account"}
+{"id": "bitext-14013", "intent": "edit_account", "row_index": 14013, "text": "how to modify the damn information on my user?"}
+{"id": "bitext-14070", "intent": "edit_account", "row_index": 14070, "text": "correcting details on {{Account Type}} account"}
+{"id": "bitext-14077", "intent": "edit_account", "row_index": 14077, "text": "editing user data"}
+{"id": "bitext-14100", "intent": "edit_account", "row_index": 14100, "text": "need assistance modifying my user info"}
+{"id": "bitext-14160", "intent": "edit_account", "row_index": 14160, "text": "modify {{Account Category}} account"}
+{"id": "bitext-14203", "intent": "edit_account", "row_index": 14203, "text": "modifying data on {{Account Category}} account"}
+{"id": "bitext-14214", "intent": "edit_account", "row_index": 14214, "text": "can i update the information included on my user profile"}
+{"id": "bitext-14324", "intent": "edit_account", "row_index": 14324, "text": "correcting information on standard account"}
+{"id": "bitext-14329", "intent": "edit_account", "row_index": 14329, "text": "correct information on {{Account Category}} account"}
+{"id": "bitext-14351", "intent": "edit_account", "row_index": 14351, "text": "updating {{Account Category}} account"}
+{"id": "bitext-14355", "intent": "edit_account", "row_index": 14355, "text": "modiby data on {{Account Category}} account"}
+{"id": "bitext-14393", "intent": "edit_account", "row_index": 14393, "text": "modifying data on {{Account Category}} account"}
+{"id": "bitext-14409", "intent": "edit_account", "row_index": 14409, "text": "editing details on premium account"}
+{"id": "bitext-14454", "intent": "edit_account", "row_index": 14454, "text": "update information on gold account"}
+{"id": "bitext-14469", "intent": "edit_account", "row_index": 14469, "text": "modify details on {{Account Type}} account"}
+{"id": "bitext-14474", "intent": "edit_account", "row_index": 14474, "text": "edit info on {{Account Category}} account"}
+{"id": "bitext-14476", "intent": "edit_account", "row_index": 14476, "text": "updating info on standard account"}
+{"id": "bitext-14477", "intent": "edit_account", "row_index": 14477, "text": "modify data on standard account"}
+{"id": "bitext-14484", "intent": "edit_account", "row_index": 14484, "text": "modify info on {{Account Category}} account"}
+{"id": "bitext-14488", "intent": "edit_account", "row_index": 14488, "text": "updating information on {{Account Category}} account"}
+{"id": "bitext-14514", "intent": "edit_account", "row_index": 14514, "text": "i have got to update my account can i get some help"}
+{"id": "bitext-14597", "intent": "edit_account", "row_index": 14597, "text": "changing data on {{Account Category}}  account"}
+{"id": "bitext-14606", "intent": "edit_account", "row_index": 14606, "text": "I want to update my goddamn personal info, how to do it?"}
+{"id": "bitext-14613", "intent": "edit_account", "row_index": 14613, "text": "correcting data on pro account"}
+{"id": "bitext-14625", "intent": "edit_account", "row_index": 14625, "text": "can ya help me updating the details included on my account"}
+{"id": "bitext-14646", "intent": "edit_account", "row_index": 14646, "text": "I need assistance modifying my bloody user account"}
+{"id": "bitext-14724", "intent": "edit_account", "row_index": 14724, "text": "i try to change the info included on my profile"}
+{"id": "bitext-14777", "intent": "edit_account", "row_index": 14777, "text": "wanna edit the data included on my user profile can uhelp me"}
+{"id": "bitext-14804", "intent": "edit_account", "row_index": 14804, "text": "modifu details on standard account"}
+{"id": "bitext-14811", "intent": "edit_account", "row_index": 14811, "text": "editing info on premium account"}
+{"id": "bitext-14844", "intent": "edit_account", "row_index": 14844, "text": "change info on pro account"}
+{"id": "bitext-14869", "intent": "edit_account", "row_index": 14869, "text": "need to modify the details on my user profile how to do it"}
+{"id": "bitext-14888", "intent": "edit_account", "row_index": 14888, "text": "want assistance to edit the damn details on my user"}
+{"id": "bitext-14913", "intent": "get_invoice", "row_index": 14913, "text": "i  do not know what i need to do to download invoice #85632"}
+{"id": "bitext-14934", "intent": "get_invoice", "row_index": 14934, "text": "I lost bill #85632, could you mail it to me?"}
+{"id": "bitext-14945", "intent": "get_invoice", "row_index": 14945, "text": "can ya help me getting hte bloody invoice from {{Person Name}}"}
+{"id": "bitext-14949", "intent": "get_invoice", "row_index": 14949, "text": "help me get the goddamn bill from {{Person Name}}"}
+{"id": "bitext-14950", "intent": "get_invoice", "row_index": 14950, "text": "send me bill from {{Person Name}}"}
+{"id": "bitext-14954", "intent": "get_invoice", "row_index": 14954, "text": "can I get the bill from {{Person Name}}?"}
+{"id": "bitext-14976", "intent": "get_invoice", "row_index": 14976, "text": "I need assistance to download my bill from {{Person Name}}"}
+{"id": "bitext-14999", "intent": "get_invoice", "row_index": 14999, "text": "I do not know what I need to do to download the bill #37777"}
+{"id": "bitext-15038", "intent": "get_invoice", "row_index": 15038, "text": "i cant find my invoice #12588 can ya mail it to me"}
+{"id": "bitext-15039", "intent": "get_invoice", "row_index": 15039, "text": "send me bill from {{Person Name}}"}
+{"id": "bitext-15150", "intent": "get_invoice", "row_index": 15150, "text": "I call to get the bills from {{Person Name}}"}
+{"id": "bitext-15236", "intent": "get_invoice", "row_index": 15236, "text": "need assistance to get the bill from {{Person Name}}"}
+{"id": "bitext-15363", "intent": "get_invoice", "row_index": 15363, "text": "i dont know what i need  to do to download my bill #37777"}
+{"id": "bitext-15382", "intent": "get_invoice", "row_index": 15382, "text": "I need assistance to dfownload my invoice #37777"}
+{"id": "bitext-15405", "intent": "get_invoice", "row_index": 15405, "text": "will ya mail me my invoice from {{Person Name}}"}
+{"id": "bitext-15410", "intent": "get_invoice", "row_index": 15410, "text": "getting invoice from {{Person Name}}"}
+{"id": "bitext-15411", "intent": "get_invoice", "row_index": 15411, "text": "send me bill from {{Person Name}}"}
+{"id": "bitext-15458", "intent": "get_invoice", "row_index": 15458, "text": "how to download my bills from {{Person Name}}?"}
+{"id": "bitext-15461", "intent": "get_invoice", "row_index": 15461, "text": "i dont know what i have to do to get invoice #85632"}
+{"id": "bitext-15475", "intent": "get_invoice", "row_index": 15475, "text": "want assistance to get the invoice #00108"}
+{"id": "bitext-15498", "intent": "get_invoice", "row_index": 15498, "text": "I want assistance getting bill #12588"}
+{"id": "bitext-15500", "intent": "get_invoice", "row_index": 15500, "text": "getting bills from {{Person Name}}"}
+{"id": "bitext-15504", "intent": "get_invoice", "row_index": 15504, "text": "can you send me my damn invoice from {{Person Name}}?"}
+{"id": "bitext-15524", "intent": "get_invoice", "row_index": 15524, "text": "I'm calling to gt the bloody bills from {{Person Name}}"}
+{"id": "bitext-15531", "intent": "get_invoice", "row_index": 15531, "text": "i have got to get my invoice #12588 can i get some help"}
+{"id": "bitext-15534", "intent": "get_invoice", "row_index": 15534, "text": "get invoice #12588"}
+{"id": "bitext-15542", "intent": "get_invoice", "row_index": 15542, "text": "can i get invoice #12588"}
+{"id": "bitext-15560", "intent": "get_invoice", "row_index": 15560, "text": "would it be possible to get my invoices from {{Person Name}}?"}
+{"id": "bitext-15585", "intent": "get_invoice", "row_index": 15585, "text": "get ibll #37777"}
+{"id": "bitext-15595", "intent": "get_invoice", "row_index": 15595, "text": "can uhelp me downloading the invoice from {{Person Name}}"}
+{"id": "bitext-15614", "intent": "get_invoice", "row_index": 15614, "text": "need assistance to download my invoice from {{Person Name}}"}
+{"id": "bitext-15623", "intent": "get_invoice", "row_index": 15623, "text": "what do i need to do to download my bill #12588"}
+{"id": "bitext-15657", "intent": "get_invoice", "row_index": 15657, "text": "i do not know what to do to download the invoice #37777"}
+{"id": "bitext-15660", "intent": "get_invoice", "row_index": 15660, "text": "could you mail me my goddamn invoices from {{Person Name}}?"}
+{"id": "bitext-15678", "intent": "get_invoice", "row_index": 15678, "text": "I need to download bill #00108, how do I do it?"}
+{"id": "bitext-15720", "intent": "get_invoice", "row_index": 15720, "text": "i dont know what i need to do to download the bill #85632"}
+{"id": "bitext-15721", "intent": "get_invoice", "row_index": 15721, "text": "get invoice from last purchase"}
+{"id": "bitext-15783", "intent": "get_invoice", "row_index": 15783, "text": "I lost bill #37777, mail it to me"}
+{"id": "bitext-15807", "intent": "get_invoice", "row_index": 15807, "text": "how to get my goddamn invoices from {{Person Name}}?"}
+{"id": "bitext-15831", "intent": "get_invoice", "row_index": 15831, "text": "I don't know how to dfownload my invoice #85632"}
+{"id": "bitext-15927", "intent": "get_refund", "row_index": 15927, "text": "I paid {{Currency Symbol}}{{Refund Amount}} for this order, help me getting a compensation"}
+{"id": "bitext-15962", "intent": "get_refund", "row_index": 15962, "text": "wanna ask for a compensatin of money"}
+{"id": "bitext-15970", "intent": "get_refund", "row_index": 15970, "text": "I do not know how to demand a reimbursement"}
+{"id": "bitext-16008", "intent": "get_refund", "row_index": 16008, "text": "i have to demand a compensation"}
+{"id": "bitext-16020", "intent": "get_refund", "row_index": 16020, "text": "I'm trying to demand a rebate of my money"}
+{"id": "bitext-16039", "intent": "get_refund", "row_index": 16039, "text": "I have got to request my damn money back"}
+{"id": "bitext-16147", "intent": "get_refund", "row_index": 16147, "text": "I have paid {{Currency Symbol}}{{Refund Amount}} for an order, how oculd I receive a refund?"}
+{"id": "bitext-16153", "intent": "get_refund", "row_index": 16153, "text": "can ya help me requesting a rebate of my money"}
+{"id": "bitext-16157", "intent": "get_refund", "row_index": 16157, "text": "how do I ddmand refunds of my money?"}
+{"id": "bitext-16182", "intent": "get_refund", "row_index": 16182, "text": "i have got to demand restitutions of my money"}
+{"id": "bitext-16224", "intent": "get_refund", "row_index": 16224, "text": "I paid {{Currency Symbol}}{{Refund Amount}} for an article, I want my compensation"}
+{"id": "bitext-16228", "intent": "get_refund", "row_index": 16228, "text": "how long till I obtain a refund of money?"}
+{"id": "bitext-16290", "intent": "get_refund", "row_index": 16290, "text": "need to receive a reimbursement of my money"}
+{"id": "bitext-16301", "intent": "get_refund", "row_index": 16301, "text": "I need help to demand a compensation of money"}
+{"id": "bitext-16369", "intent": "get_refund", "row_index": 16369, "text": "I need assistance receiving compensations of my money"}
+{"id": "bitext-16379", "intent": "get_refund", "row_index": 16379, "text": "I am trying to ask for rebates"}
+{"id": "bitext-16421", "intent": "get_refund", "row_index": 16421, "text": "can you help me request compensations of money?"}
+{"id": "bitext-16422", "intent": "get_refund", "row_index": 16422, "text": "how can I demand a compensation?"}
+{"id": "bitext-16443", "intent": "get_refund", "row_index": 16443, "text": "i have paid {{Currency Symbol}}{{Refund Amount}} for a product where to get my money back"}
+{"id": "bitext-16535", "intent": "get_refund", "row_index": 16535, "text": "where can i get compensations of my money"}
+{"id": "bitext-16546", "intent": "get_refund", "row_index": 16546, "text": "getting money back"}
+{"id": "bitext-16558", "intent": "get_refund", "row_index": 16558, "text": "i do not know how i can obtain a restitution of my money"}
+{"id": "bitext-16572", "intent": "get_refund", "row_index": 16572, "text": "I need help to receive a refund of my money"}
+{"id": "bitext-16589", "intent": "get_refund", "row_index": 16589, "text": "where can I request rebates of my money?"}
+{"id": "bitext-16611", "intent": "get_refund", "row_index": 16611, "text": "I do not know how to ask for rebates of my money"}
+{"id": "bitext-16618", "intent": "get_refund", "row_index": 16618, "text": "i have got to obtain a reimbursement of my money"}
+{"id": "bitext-16622", "intent": "get_refund", "row_index": 16622, "text": "I paid {{Currency Symbol}}{{Refund Amount}} for an item, help me getting a goddamn rebate"}
+{"id": "bitext-16644", "intent": "get_refund", "row_index": 16644, "text": "can you help me to obtain a refund of money?"}
+{"id": "bitext-16668", "intent": "get_refund", "row_index": 16668, "text": "what do i need to do to ask for a rebate of money"}
+{"id": "bitext-16683", "intent": "get_refund", "row_index": 16683, "text": "I have paid {{Currency Symbol}}{{Refund Amount}} for this order, where to get a rebate?"}
+{"id": "bitext-16730", "intent": "get_refund", "row_index": 16730, "text": "I want assistance demanding rebates of my money"}
+{"id": "bitext-16747", "intent": "get_refund", "row_index": 16747, "text": "how can i ask for rebates of my money"}
+{"id": "bitext-16754", "intent": "get_refund", "row_index": 16754, "text": "want assistance to request a rebate"}
+{"id": "bitext-16789", "intent": "get_refund", "row_index": 16789, "text": "wanna get reimbursements"}
+{"id": "bitext-16794", "intent": "get_refund", "row_index": 16794, "text": "how to demand a compensation of my money?"}
+{"id": "bitext-16856", "intent": "get_refund", "row_index": 16856, "text": "reimbursing {{Refund Amount}} dollars"}
+{"id": "bitext-16858", "intent": "get_refund", "row_index": 16858, "text": "need to receive reimbursements of my money"}
+{"id": "bitext-16878", "intent": "get_refund", "row_index": 16878, "text": "i have paid {{Currency Symbol}}{{Refund Amount}} for this order i ened to get a refund"}
+{"id": "bitext-16879", "intent": "get_refund", "row_index": 16879, "text": "i dont know what i need to do to obtain a rebate of my money"}
+{"id": "bitext-16886", "intent": "get_refund", "row_index": 16886, "text": "can you help me obtain a compensation of my money?"}
+{"id": "bitext-16922", "intent": "newsletter_subscription", "row_index": 16922, "text": "I cannot subscribe to youir newsletter"}
+{"id": "bitext-16965", "intent": "newsletter_subscription", "row_index": 16965, "text": "need help signing up to the newsletter"}
+{"id": "bitext-16972", "intent": "newsletter_subscription", "row_index": 16972, "text": "I have got to unsubscribe to the newsletter"}
+{"id": "bitext-16985", "intent": "newsletter_subscription", "row_index": 16985, "text": "can you help me receive your corporate newsletter?"}
+{"id": "bitext-16990", "intent": "newsletter_subscription", "row_index": 16990, "text": "i cannot unsubscribe to ur company newsletter"}
+{"id": "bitext-16998", "intent": "newsletter_subscription", "row_index": 16998, "text": "could you help me sign up to the corporate newsletter?"}
+{"id": "bitext-17033", "intent": "newsletter_subscription", "row_index": 17033, "text": "help me seeing the status of my newsletter subsxcription"}
+{"id": "bitext-17056", "intent": "newsletter_subscription", "row_index": 17056, "text": "help me receive your corporate newsletter"}
+{"id": "bitext-17075", "intent": "newsletter_subscription", "row_index": 17075, "text": "i have got to cancel my newsletter subscription"}
+{"id": "bitext-17123", "intent": "newsletter_subscription", "row_index": 17123, "text": "sign up to the newsletter"}
+{"id": "bitext-17136", "intent": "newsletter_subscription", "row_index": 17136, "text": "wanna cancel the subscription to the newsletter help me"}
+{"id": "bitext-17152", "intent": "newsletter_subscription", "row_index": 17152, "text": "is it possible to subscribe to your newsletter?"}
+{"id": "bitext-17154", "intent": "newsletter_subscription", "row_index": 17154, "text": "where to subscribe to the newsletter ?"}
+{"id": "bitext-17219", "intent": "newsletter_subscription", "row_index": 17219, "text": "want help canceling the corporate newsletter subscription"}
+{"id": "bitext-17281", "intent": "newsletter_subscription", "row_index": 17281, "text": "could I unsubscribe to your corporate newsletter?"}
+{"id": "bitext-17318", "intent": "newsletter_subscription", "row_index": 17318, "text": "i have got to cancel the company newsletter subscription"}
+{"id": "bitext-17331", "intent": "newsletter_subscription", "row_index": 17331, "text": "I need to receive thecorporate newsletter"}
+{"id": "bitext-17345", "intent": "newsletter_subscription", "row_index": 17345, "text": "I have got to subscribe to your newsletter, help me"}
+{"id": "bitext-17405", "intent": "newsletter_subscription", "row_index": 17405, "text": "I want help to cancel the subscription to the nwsletter"}
+{"id": "bitext-17418", "intent": "newsletter_subscription", "row_index": 17418, "text": "help to cancel the subscription to your newsletter"}
+{"id": "bitext-17440", "intent": "newsletter_subscription", "row_index": 17440, "text": "can I unsubscribe to your corporate newsletter?"}
+{"id": "bitext-17453", "intent": "newsletter_subscription", "row_index": 17453, "text": "find information about subscribing to your newsletter"}
+{"id": "bitext-17479", "intent": "newsletter_subscription", "row_index": 17479, "text": "where to unsubscribe to the corporate newsletter?"}
+{"id": "bitext-17489", "intent": "newsletter_subscription", "row_index": 17489, "text": "help me to unsubscribe to your newsletter"}
+{"id": "bitext-17495", "intent": "newsletter_subscription", "row_index": 17495, "text": "I have got to receive your newsletter, can you help me?"}
+{"id": "bitext-17506", "intent": "newsletter_subscription", "row_index": 17506, "text": "can ya help me cancel my corporate newsletter subscription"}
+{"id": "bitext-17530", "intent": "newsletter_subscription", "row_index": 17530, "text": "help me checking the status of my newsletter subscription"}
+{"id": "bitext-17532", "intent": "newsletter_subscription", "row_index": 17532, "text": "I need assistance to unsubscribeto the company newsletter"}
+{"id": "bitext-17537", "intent": "newsletter_subscription", "row_index": 17537, "text": "can i see the status of my company newsletter subscription"}
+{"id": "bitext-17585", "intent": "newsletter_subscription", "row_index": 17585, "text": "help me signing up to the corporate newsletter"}
+{"id": "bitext-17594", "intent": "newsletter_subscription", "row_index": 17594, "text": "I am trying to unsubscribe from the company newsletter"}
+{"id": "bitext-17626", "intent": "newsletter_subscription", "row_index": 17626, "text": "information about cancel the company newsletter subscription"}
+{"id": "bitext-17673", "intent": "newsletter_subscription", "row_index": 17673, "text": "I have to cancel my subscription to your newsletter, help me"}
+{"id": "bitext-17687", "intent": "newsletter_subscription", "row_index": 17687, "text": "canceling subscription to ur company newletter"}
+{"id": "bitext-17702", "intent": "newsletter_subscription", "row_index": 17702, "text": "i have got to cancel the subscription to ur newsletter"}
+{"id": "bitext-17736", "intent": "newsletter_subscription", "row_index": 17736, "text": "i dont know wgat i need to do to sign up to the newsletter"}
+{"id": "bitext-17765", "intent": "newsletter_subscription", "row_index": 17765, "text": "I can't subscribe to the newsletter"}
+{"id": "bitext-17784", "intent": "newsletter_subscription", "row_index": 17784, "text": "I don't know how to unsubscribe from your newsletter"}
+{"id": "bitext-17825", "intent": "newsletter_subscription", "row_index": 17825, "text": "need to sign up to the corporate newsletter how can i do it"}
+{"id": "bitext-17891", "intent": "newsletter_subscription", "row_index": 17891, "text": "I have got to cancel my newsletter subscription, help me"}
+{"id": "bitext-17929", "intent": "payment_issue", "row_index": 17929, "text": "i need help to inform of troubles with payment"}
+{"id": "bitext-17963", "intent": "payment_issue", "row_index": 17963, "text": "I need assistance solving payment errors"}
+{"id": "bitext-17965", "intent": "payment_issue", "row_index": 17965, "text": "I don't know what to do to inform of errors with payment"}
+{"id": "bitext-17992", "intent": "payment_issue", "row_index": 17992, "text": "the payment failed, could I notify of an error with payment?"}
+{"id": "bitext-18003", "intent": "payment_issue", "row_index": 18003, "text": "i need assistancenotifying of a goddamn issue with payment"}
+{"id": "bitext-18038", "intent": "payment_issue", "row_index": 18038, "text": "wqnna notify of an error with payments"}
+{"id": "bitext-18047", "intent": "payment_issue", "row_index": 18047, "text": "I have to reporta trouble with payment"}
+{"id": "bitext-18130", "intent": "payment_issue", "row_index": 18130, "text": "help to notify of an issue with payments"}
+{"id": "bitext-18159", "intent": "payment_issue", "row_index": 18159, "text": "need help informing of problems with online payment"}
+{"id": "bitext-18178", "intent": "payment_issue", "row_index": 18178, "text": "reporting payment issues"}
+{"id": "bitext-18195", "intent": "payment_issue", "row_index": 18195, "text": "I want assistance informing of an error with payments"}
+{"id": "bitext-18219", "intent": "payment_issue", "row_index": 18219, "text": "where could I inform of an issue with online payment?"}
+{"id": "bitext-18243", "intent": "payment_issue", "row_index": 18243, "text": "I want assistance to solve a problem with payments"}
+{"id": "bitext-18270", "intent": "payment_issue", "row_index": 18270, "text": "I want assistance notifying of a goddamn payment issue"}
+{"id": "bitext-18281", "intent": "payment_issue", "row_index": 18281, "text": "I'm trying to inform of an issue with payments"}
+{"id": "bitext-18325", "intent": "payment_issue", "row_index": 18325, "text": "can ya help mw to solve errors with payment"}
+{"id": "bitext-18330", "intent": "payment_issue", "row_index": 18330, "text": "i dont know what i have to do to report issues with payments"}
+{"id": "bitext-18353", "intent": "payment_issue", "row_index": 18353, "text": "where can I iinform of errors with online payment?"}
+{"id": "bitext-18404", "intent": "payment_issue", "row_index": 18404, "text": "I cannot pay, I have to inform of a problem with payments"}
+{"id": "bitext-18424", "intent": "payment_issue", "row_index": 18424, "text": "i need assistance informing of payment issues"}
+{"id": "bitext-18465", "intent": "payment_issue", "row_index": 18465, "text": "I want help informingof troubles with online payments"}
+{"id": "bitext-18473", "intent": "payment_issue", "row_index": 18473, "text": "wanna report a trouble with online payments"}
+{"id": "bitext-18475", "intent": "payment_issue", "row_index": 18475, "text": "I don't know how I can inform of issues with online payment"}
+{"id": "bitext-18476", "intent": "payment_issue", "row_index": 18476, "text": "my card was declined report payment issues"}
+{"id": "bitext-18478", "intent": "payment_issue", "row_index": 18478, "text": "want assistance to inform of a payment problem"}
+{"id": "bitext-18534", "intent": "payment_issue", "row_index": 18534, "text": "want help to report an issue with online payments"}
+{"id": "bitext-18556", "intent": "payment_issue", "row_index": 18556, "text": "want assistance to report a payment problem"}
+{"id": "bitext-18587", "intent": "payment_issue", "row_index": 18587, "text": "I need help informing of an issue with payment"}
+{"id": "bitext-18594", "intent": "payment_issue", "row_index": 18594, "text": "I do not know what I need to do to inform of payment errors"}
+{"id": "bitext-18607", "intent": "payment_issue", "row_index": 18607, "text": "help me solving troubles with payments"}
+{"id": "bitext-18621", "intent": "payment_issue", "row_index": 18621, "text": "how can i inform of an error with payment"}
+{"id": "bitext-18623", "intent": "payment_issue", "row_index": 18623, "text": "I'm trying to notify of problems with payments"}
+{"id": "bitext-18641", "intent": "payment_issue", "row_index": 18641, "text": "i wan help to report payment problems"}
+{"id": "bitext-18646", "intent": "payment_issue", "row_index": 18646, "text": "assistance to solve issues with online payment"}
+{"id": "bitext-18650", "intent": "payment_issue", "row_index": 18650, "text": "I cannot make a transfer, notify of payment issues"}
+{"id": "bitext-18663", "intent": "payment_issue", "row_index": 18663, "text": "I'm trying to notify of a trouble with online payments"}
+{"id": "bitext-18696", "intent": "payment_issue", "row_index": 18696, "text": "I want assistance to notify of goddamn issues with payments"}
+{"id": "bitext-18718", "intent": "payment_issue", "row_index": 18718, "text": "need to reoprt problems with online payment"}
+{"id": "bitext-18737", "intent": "payment_issue", "row_index": 18737, "text": "I need help reporting a problem with payment"}
+{"id": "bitext-18887", "intent": "payment_issue", "row_index": 18887, "text": "where could I notify of a problem with payment?"}
+{"id": "bitext-18900", "intent": "place_order", "row_index": 18900, "text": "i do not know what i need to do to buy several items"}
+{"id": "bitext-19005", "intent": "place_order", "row_index": 19005, "text": "i have to acquire a product"}
+{"id": "bitext-19038", "intent": "place_order", "row_index": 19038, "text": "i try to acquire some items"}
+{"id": "bitext-19066", "intent": "place_order", "row_index": 19066, "text": "how to shop some articles?"}
+{"id": "bitext-19090", "intent": "place_order", "row_index": 19090, "text": "I'd like to order some of ur article how coupd i do it"}
+{"id": "bitext-19091", "intent": "place_order", "row_index": 19091, "text": "would ig be possible to order some bloody articles?"}
+{"id": "bitext-19169", "intent": "place_order", "row_index": 19169, "text": "I need assistance to buy several products"}
+{"id": "bitext-19185", "intent": "place_order", "row_index": 19185, "text": "I want help buying an article"}
+{"id": "bitext-19215", "intent": "place_order", "row_index": 19215, "text": "what do I need to do to purchase a product?"}
+{"id": "bitext-19290", "intent": "place_order", "row_index": 19290, "text": "i try to purchase some of ur product"}
+{"id": "bitext-19296", "intent": "place_order", "row_index": 19296, "text": "I'm trying to buy a  product"}
+{"id": "bitext-19318", "intent": "place_order", "row_index": 19318, "text": "can uhelp me purcahsing an article"}
+{"id": "bitext-19321", "intent": "place_order", "row_index": 19321, "text": "i do not know how i can acquire a product"}
+{"id": "bitext-19339", "intent": "place_order", "row_index": 19339, "text": "how can I earn some of your article?"}
+{"id": "bitext-19346", "intent": "place_order", "row_index": 19346, "text": "I want assistance doing a purchase"}
+{"id": "bitext-19347", "intent": "place_order", "row_index": 19347, "text": "I need to earn several bloody items, how could I do it?"}
+{"id": "bitext-19395", "intent": "place_order", "row_index": 19395, "text": "I try to purchase some of  your item"}
+{"id": "bitext-19414", "intent": "place_order", "row_index": 19414, "text": "what do I have to do to shop several of your item?"}
+{"id": "bitext-19415", "intent": "place_order", "row_index": 19415, "text": "can you help me earning some items?"}
+{"id": "bitext-19441", "intent": "place_order", "row_index": 19441, "text": "what do i need to do  to buy several products"}
+{"id": "bitext-19460", "intent": "place_order", "row_index": 19460, "text": "I want help to purchase some items"}
+{"id": "bitext-19496", "intent": "place_order", "row_index": 19496, "text": "I need help to purchase several of your item"}
+{"id": "bitext-19546", "intent": "place_order", "row_index": 19546, "text": "what do i have to do to buy some items"}
+{"id": "bitext-19554", "intent": "place_order", "row_index": 19554, "text": "I need assistance acquiring a product"}
+{"id": "bitext-19571", "intent": "place_order", "row_index": 19571, "text": "wanna shop a few of ur item how do i do it"}
+{"id": "bitext-19622", "intent": "place_order", "row_index": 19622, "text": "i dont know how i can shop several of ur product"}
+{"id": "bitext-19646", "intent": "place_order", "row_index": 19646, "text": "i want assistance acquiring a few of ur item"}
+{"id": "bitext-19649", "intent": "place_order", "row_index": 19649, "text": "I do not know what to do to earn several of yoru item"}
+{"id": "bitext-19652", "intent": "place_order", "row_index": 19652, "text": "I don't know how to shop some of your item"}
+{"id": "bitext-19671", "intent": "place_order", "row_index": 19671, "text": "I don't know how I could shop several articles"}
+{"id": "bitext-19679", "intent": "place_order", "row_index": 19679, "text": "help ordering several products"}
+{"id": "bitext-19683", "intent": "place_order", "row_index": 19683, "text": "what do Ihave to do to acquire some of your item?"}
+{"id": "bitext-19710", "intent": "place_order", "row_index": 19710, "text": "I don't know what to do to buy somethinb"}
+{"id": "bitext-19715", "intent": "place_order", "row_index": 19715, "text": "could you help me shop a few of your article?"}
+{"id": "bitext-19718", "intent": "place_order", "row_index": 19718, "text": "I have to earn several products, how can I do it?"}
+{"id": "bitext-19728", "intent": "place_order", "row_index": 19728, "text": "where can I earn some articles?"}
+{"id": "bitext-19772", "intent": "place_order", "row_index": 19772, "text": "I don't know what I have to do to do a pucrhase"}
+{"id": "bitext-19858", "intent": "place_order", "row_index": 19858, "text": "i need help ordering some of ur article"}
+{"id": "bitext-19866", "intent": "place_order", "row_index": 19866, "text": "I need to buy some of your product, how could I do it?"}
+{"id": "bitext-19868", "intent": "place_order", "row_index": 19868, "text": "i need assistance acquiring several items"}
+{"id": "bitext-19970", "intent": "recover_password", "row_index": 19970, "text": "have a queston about a pin code recovery"}
+{"id": "bitext-19991", "intent": "recover_password", "row_index": 19991, "text": "help me to reset the pass of my user account"}
+{"id": "bitext-20021", "intent": "recover_password", "row_index": 20021, "text": "I want assistance resetting my key"}
+{"id": "bitext-20057", "intent": "recover_password", "row_index": 20057, "text": "how do i recover the pin code of my user account"}
+{"id": "bitext-20060", "intent": "recover_password", "row_index": 20060, "text": "someone stole my profile PIN code, could I restore it?"}
+{"id": "bitext-20072", "intent": "recover_password", "row_index": 20072, "text": "I want to retrieve my user account key"}
+{"id": "bitext-20096", "intent": "recover_password", "row_index": 20096, "text": "I have lost the key of my account, I want to reset it"}
+{"id": "bitext-20112", "intent": "recover_password", "row_index": 20112, "text": "I need help retrieving the PIN of my user profile"}
+{"id": "bitext-20122", "intent": "recover_password", "row_index": 20122, "text": "i dont know how to restore the pin of myuser account"}
+{"id": "bitext-20175", "intent": "recover_password", "row_index": 20175, "text": "where do I recover the PIN of my account?"}
+{"id": "bitext-20197", "intent": "recover_password", "row_index": 20197, "text": "where to recover the PIN of my user?"}
+{"id": "bitext-20218", "intent": "recover_password", "row_index": 20218, "text": "what do I have to do to restore my account key?"}
+{"id": "bitext-20259", "intent": "recover_password", "row_index": 20259, "text": "I cannot remember my user key, I want to reset it"}
+{"id": "bitext-20307", "intent": "recover_password", "row_index": 20307, "text": "problem with an access key reset"}
+{"id": "bitext-20313", "intent": "recover_password", "row_index": 20313, "text": "i have got to retrieve the pass of my user prodile"}
+{"id": "bitext-20320", "intent": "recover_password", "row_index": 20320, "text": "want assistance to retrieve the pin code of my user profile"}
+{"id": "bitext-20325", "intent": "recover_password", "row_index": 20325, "text": "i have to reset the pin code of my profile"}
+{"id": "bitext-20356", "intent": "recover_password", "row_index": 20356, "text": "problems with a PIN reset"}
+{"id": "bitext-20423", "intent": "recover_password", "row_index": 20423, "text": "assistance to recover my acconut key"}
+{"id": "bitext-20431", "intent": "recover_password", "row_index": 20431, "text": "i do not know what to do to reset the password of my profile"}
+{"id": "bitext-20487", "intent": "recover_password", "row_index": 20487, "text": "retrieve the key of my user"}
+{"id": "bitext-20508", "intent": "recover_password", "row_index": 20508, "text": "I need assistance to recover the PIN code of my account"}
+{"id": "bitext-20522", "intent": "recover_password", "row_index": 20522, "text": "I don't know how to retrieve the pass of ym account"}
+{"id": "bitext-20528", "intent": "recover_password", "row_index": 20528, "text": "help to reset my profile password"}
+{"id": "bitext-20533", "intent": "recover_password", "row_index": 20533, "text": "help restoring the password of my user account"}
+{"id": "bitext-20545", "intent": "recover_password", "row_index": 20545, "text": "is it possible to recover my profile access key?"}
+{"id": "bitext-20566", "intent": "recover_password", "row_index": 20566, "text": "I am looking for information about a password retrieval"}
+{"id": "bitext-20590", "intent": "recover_password", "row_index": 20590, "text": "I forgot my damn user PIN, help resetting it"}
+{"id": "bitext-20600", "intent": "recover_password", "row_index": 20600, "text": "find information about a lost password"}
+{"id": "bitext-20644", "intent": "recover_password", "row_index": 20644, "text": "where do i retrieve my profile key"}
+{"id": "bitext-20654", "intent": "recover_password", "row_index": 20654, "text": "want help to restore the password of ym user profile"}
+{"id": "bitext-20657", "intent": "recover_password", "row_index": 20657, "text": "restore the password of my user"}
+{"id": "bitext-20663", "intent": "recover_password", "row_index": 20663, "text": "i have to rewet my fucking user pin i need assistance"}
+{"id": "bitext-20693", "intent": "recover_password", "row_index": 20693, "text": "I need assistance retsoring the fucking key of my user"}
+{"id": "bitext-20842", "intent": "recover_password", "row_index": 20842, "text": "i do not know how to recover the pin of my user profile"}
+{"id": "bitext-20843", "intent": "recover_password", "row_index": 20843, "text": "I don't know how to restore the PIN of my profile"}
+{"id": "bitext-20848", "intent": "recover_password", "row_index": 20848, "text": "how do i reset the pin code of my account"}
+{"id": "bitext-20862", "intent": "recover_password", "row_index": 20862, "text": "would it be possible to retrieve my user account access key?"}
+{"id": "bitext-20869", "intent": "recover_password", "row_index": 20869, "text": "where could I retrieve my profile access key?"}
+{"id": "bitext-20881", "intent": "recover_password", "row_index": 20881, "text": "I can't remember my account password, where to reset it?"}
+{"id": "bitext-20937", "intent": "registration_problems", "row_index": 20937, "text": "I need support weith my sign-up"}
+{"id": "bitext-20948", "intent": "registration_problems", "row_index": 20948, "text": "I have to inform of an issue with bloody registrations"}
+{"id": "bitext-20959", "intent": "registration_problems", "row_index": 20959, "text": "i want help to inform of a registration issue"}
+{"id": "bitext-20989", "intent": "registration_problems", "row_index": 20989, "text": "I cannot notify of an issue with registrations"}
+{"id": "bitext-21019", "intent": "registration_problems", "row_index": 21019, "text": "want help to report fucking sign-up errors"}
+{"id": "bitext-21027", "intent": "registration_problems", "row_index": 21027, "text": "I do not know how to notify of a sign-up error"}
+{"id": "bitext-21125", "intent": "registration_problems", "row_index": 21125, "text": "i cant sign up I'd ilke to inform of a bloody signup problem"}
+{"id": "bitext-21141", "intent": "registration_problems", "row_index": 21141, "text": "I don't know how I can inform of errors with sign-up"}
+{"id": "bitext-21153", "intent": "registration_problems", "row_index": 21153, "text": "where do I report an issue wiht signup?"}
+{"id": "bitext-21160", "intent": "registration_problems", "row_index": 21160, "text": "I need assistance reporting a problem with a sign-up"}
+{"id": "bitext-21198", "intent": "registration_problems", "row_index": 21198, "text": "I have issues trying to register"}
+{"id": "bitext-21248", "intent": "registration_problems", "row_index": 21248, "text": "where can I report a problem with sign-up?"}
+{"id": "bitext-21256", "intent": "registration_problems", "row_index": 21256, "text": "I do not know how I can report issues with a sign-up"}
+{"id": "bitext-21275", "intent": "registration_problems", "row_index": 21275, "text": "i cant open a rpofile want help notifying of a signup error"}
+{"id": "bitext-21302", "intent": "registration_problems", "row_index": 21302, "text": "I need to notify of errors with signup, will you help me?"}
+{"id": "bitext-21319", "intent": "registration_problems", "row_index": 21319, "text": "want assistance reporting a sign-up issue"}
+{"id": "bitext-21483", "intent": "registration_problems", "row_index": 21483, "text": "need help notifying of issues wiht a sign-up"}
+{"id": "bitext-21486", "intent": "registration_problems", "row_index": 21486, "text": "would it be possible to notify of a fucking signup error?"}
+{"id": "bitext-21501", "intent": "registration_problems", "row_index": 21501, "text": "I have got to notify of an issue with signup"}
+{"id": "bitext-21503", "intent": "registration_problems", "row_index": 21503, "text": "I cannot sign up, I would like to report a sign-up issue"}
+{"id": "bitext-21515", "intent": "registration_problems", "row_index": 21515, "text": "I do not know how to inofrm of registration problems"}
+{"id": "bitext-21523", "intent": "registration_problems", "row_index": 21523, "text": "I have to inform of issues with a registration"}
+{"id": "bitext-21524", "intent": "registration_problems", "row_index": 21524, "text": "how do i inform of a problem with registrations"}
+{"id": "bitext-21542", "intent": "registration_problems", "row_index": 21542, "text": "how can I notify of an error with goddamn sign-up?"}
+{"id": "bitext-21558", "intent": "registration_problems", "row_index": 21558, "text": "question about opening user profiles"}
+{"id": "bitext-21559", "intent": "registration_problems", "row_index": 21559, "text": "informing of online registration problem"}
+{"id": "bitext-21580", "intent": "registration_problems", "row_index": 21580, "text": "i do not know what i need to do to report errors with signup"}
+{"id": "bitext-21617", "intent": "registration_problems", "row_index": 21617, "text": "i want assistance notifying of sign-up errors"}
+{"id": "bitext-21631", "intent": "registration_problems", "row_index": 21631, "text": "need assistance to notify of issues with a sign-up"}
+{"id": "bitext-21646", "intent": "registration_problems", "row_index": 21646, "text": "I don't know how I can notify of an issue with sign-up"}
+{"id": "bitext-21656", "intent": "registration_problems", "row_index": 21656, "text": "I can't report an error with a sign-up"}
+{"id": "bitext-21658", "intent": "registration_problems", "row_index": 21658, "text": "i try to report a problem with a registration"}
+{"id": "bitext-21664", "intent": "registration_problems", "row_index": 21664, "text": "assistance to notify of issues with a sign-up"}
+{"id": "bitext-21741", "intent": "registration_problems", "row_index": 21741, "text": "i need help to report a registration error"}
+{"id": "bitext-21769", "intent": "registration_problems", "row_index": 21769, "text": "is it possible to inform of an error with signup"}
+{"id": "bitext-21780", "intent": "registration_problems", "row_index": 21780, "text": "can uhelp me notifying of a registration issue"}
+{"id": "bitext-21813", "intent": "registration_problems", "row_index": 21813, "text": "I cannot open a user, help informing of sign-up problems"}
+{"id": "bitext-21817", "intent": "registration_problems", "row_index": 21817, "text": "can ya help me to report problems with signup"}
+{"id": "bitext-21819", "intent": "registration_problems", "row_index": 21819, "text": "I don't know how to report problems with a registration"}
+{"id": "bitext-21852", "intent": "registration_problems", "row_index": 21852, "text": "is it possible to notify of an issue with signup"}
+{"id": "bitext-21893", "intent": "review", "row_index": 21893, "text": "i need help sending some feedback about a service"}
+{"id": "bitext-21937", "intent": "review", "row_index": 21937, "text": "can i write a review for ur company"}
+{"id": "bitext-21961", "intent": "review", "row_index": 21961, "text": "is it possible to send some feedback about your company?"}
+{"id": "bitext-21967", "intent": "review", "row_index": 21967, "text": "do you have a section to leave an review for a service?"}
+{"id": "bitext-21982", "intent": "review", "row_index": 21982, "text": "wanna submit some feedback for a service how can i do it"}
+{"id": "bitext-22039", "intent": "review", "row_index": 22039, "text": "help me sending my feedback for ur products"}
+{"id": "bitext-22067", "intent": "review", "row_index": 22067, "text": "assistance to leave feedback about ur products"}
+{"id": "bitext-22083", "intent": "review", "row_index": 22083, "text": "can I send some feedback for a service?"}
+{"id": "bitext-22089", "intent": "review", "row_index": 22089, "text": "leaving review for your services"}
+{"id": "bitext-22100", "intent": "review", "row_index": 22100, "text": "i have to write a comment for a service how can i do it"}
+{"id": "bitext-22104", "intent": "review", "row_index": 22104, "text": "want help senxing feedback for ur services"}
+{"id": "bitext-22117", "intent": "review", "row_index": 22117, "text": "I want assistance writing a comment for your company"}
+{"id": "bitext-22177", "intent": "review", "row_index": 22177, "text": "assistance leaving my feedback for your services"}
+{"id": "bitext-22188", "intent": "review", "row_index": 22188, "text": "i try to send feedback about ur services"}
+{"id": "bitext-22199", "intent": "review", "row_index": 22199, "text": "help sending feedback for your company"}
+{"id": "bitext-22216", "intent": "review", "row_index": 22216, "text": "need assistance to submit my feedback for your services"}
+{"id": "bitext-22253", "intent": "review", "row_index": 22253, "text": "i have to leave an opinion about an service i need help"}
+{"id": "bitext-22276", "intent": "review", "row_index": 22276, "text": "I have got to leave my feedback, I need assistance"}
+{"id": "bitext-22298", "intent": "review", "row_index": 22298, "text": "want help to leave some feedback about your company"}
+{"id": "bitext-22309", "intent": "review", "row_index": 22309, "text": "is it possible to submit feedback for ur services"}
+{"id": "bitext-22313", "intent": "review", "row_index": 22313, "text": "I want assistance writing a comment about your products"}
+{"id": "bitext-22314", "intent": "review", "row_index": 22314, "text": "do you have a method to send an opinion for a product?"}
+{"id": "bitext-22345", "intent": "review", "row_index": 22345, "text": "want assistance to leave feedback for ur products"}
+{"id": "bitext-22351", "intent": "review", "row_index": 22351, "text": "is there a section to submit fedback for your company?"}
+{"id": "bitext-22362", "intent": "review", "row_index": 22362, "text": "wanna leave goddamn feedback about ur services"}
+{"id": "bitext-22398", "intent": "review", "row_index": 22398, "text": "is there a section to leave a bloody opinion about a service"}
+{"id": "bitext-22461", "intent": "review", "row_index": 22461, "text": "I want to leave an opniion for your company"}
+{"id": "bitext-22535", "intent": "review", "row_index": 22535, "text": "I want assistance to write a review for your company"}
+{"id": "bitext-22561", "intent": "review", "row_index": 22561, "text": "I want help to leave some feedback for a product"}
+{"id": "bitext-22615", "intent": "review", "row_index": 22615, "text": "I have to leave feedback about a product"}
+{"id": "bitext-22658", "intent": "review", "row_index": 22658, "text": "is there an address to leave my feedback for a service"}
+{"id": "bitext-22727", "intent": "review", "row_index": 22727, "text": "is there an section to send my feedback for a product"}
+{"id": "bitext-22764", "intent": "review", "row_index": 22764, "text": "where can i submit my feedback for ur company"}
+{"id": "bitext-22784", "intent": "review", "row_index": 22784, "text": "help me to submit my feedback for your products"}
+{"id": "bitext-22786", "intent": "review", "row_index": 22786, "text": "send service review"}
+{"id": "bitext-22834", "intent": "review", "row_index": 22834, "text": "is there an address to submit an opinion for ur company"}
+{"id": "bitext-22842", "intent": "review", "row_index": 22842, "text": "can I submit feedback about your products?"}
+{"id": "bitext-22844", "intent": "review", "row_index": 22844, "text": "can uhelp me to submit some feedback about ur products"}
+{"id": "bitext-22845", "intent": "review", "row_index": 22845, "text": "want assistance to send feedback for a product"}
+{"id": "bitext-22856", "intent": "review", "row_index": 22856, "text": "I want assistance to leave some feedback for your products"}
+{"id": "bitext-22945", "intent": "set_up_shipping_address", "row_index": 22945, "text": "where to set up my delivery address"}
+{"id": "bitext-23000", "intent": "set_up_shipping_address", "row_index": 23000, "text": "there are problems submitting my new shipping address"}
+{"id": "bitext-23032", "intent": "set_up_shipping_address", "row_index": 23032, "text": "I want assistance to set the new shipping address up"}
+{"id": "bitext-23046", "intent": "set_up_shipping_address", "row_index": 23046, "text": "I have to submit a different delivery address"}
+{"id": "bitext-23091", "intent": "set_up_shipping_address", "row_index": 23091, "text": "there is a trouble setting another delivery address up"}
+{"id": "bitext-23094", "intent": "set_up_shipping_address", "row_index": 23094, "text": "can i set a shipping address up"}
+{"id": "bitext-23129", "intent": "set_up_shipping_address", "row_index": 23129, "text": "how do I enter a secondary delivery address?"}
+{"id": "bitext-23132", "intent": "set_up_shipping_address", "row_index": 23132, "text": "I need assistance entering my secondary shipping address"}
+{"id": "bitext-23157", "intent": "set_up_shipping_address", "row_index": 23157, "text": "where do I set a different shipping address up?"}
+{"id": "bitext-23172", "intent": "set_up_shipping_address", "row_index": 23172, "text": "issue setting up another delivery address"}
+{"id": "bitext-23177", "intent": "set_up_shipping_address", "row_index": 23177, "text": "what do i have to do to set a secondary delivery address up"}
+{"id": "bitext-23185", "intent": "set_up_shipping_address", "row_index": 23185, "text": "where do I set up another shipping address?"}
+{"id": "bitext-23187", "intent": "set_up_shipping_address", "row_index": 23187, "text": "where can I set up the secondary delivery address?"}
+{"id": "bitext-23188", "intent": "set_up_shipping_address", "row_index": 23188, "text": "help me to set up a secondary shipping address"}
+{"id": "bitext-23248", "intent": "set_up_shipping_address", "row_index": 23248, "text": "I have to submit my new shipping address, how to do it?"}
+{"id": "bitext-23261", "intent": "set_up_shipping_address", "row_index": 23261, "text": "I need assistance entering a secondary shipping address"}
+{"id": "bitext-23277", "intent": "set_up_shipping_address", "row_index": 23277, "text": "trouble setting up my secondary shipping address"}
+{"id": "bitext-23314", "intent": "set_up_shipping_address", "row_index": 23314, "text": "i need help setting up my secondary delivery address"}
+{"id": "bitext-23362", "intent": "set_up_shipping_address", "row_index": 23362, "text": "help to set my secondarydelivery address up"}
+{"id": "bitext-23377", "intent": "set_up_shipping_address", "row_index": 23377, "text": "I have a problem submitting a different delivery address"}
+{"id": "bitext-23395", "intent": "set_up_shipping_address", "row_index": 23395, "text": "why I cannot enter an different shipping address valid"}
+{"id": "bitext-23398", "intent": "set_up_shipping_address", "row_index": 23398, "text": "there is an issue entering another delivery address"}
+{"id": "bitext-23415", "intent": "set_up_shipping_address", "row_index": 23415, "text": "why I cannot set up the delivery address valid"}
+{"id": "bitext-23434", "intent": "set_up_shipping_address", "row_index": 23434, "text": "errors submitting my fucking secondary delivery address"}
+{"id": "bitext-23456", "intent": "set_up_shipping_address", "row_index": 23456, "text": "there is an issue setting up a shipping address"}
+{"id": "bitext-23483", "intent": "set_up_shipping_address", "row_index": 23483, "text": "i want assistance to enter a new delivery address"}
+{"id": "bitext-23494", "intent": "set_up_shipping_address", "row_index": 23494, "text": "I have got to set my secondary shipping address up"}
+{"id": "bitext-23553", "intent": "set_up_shipping_address", "row_index": 23553, "text": "my secondary delivery address isnt valid help me"}
+{"id": "bitext-23557", "intent": "set_up_shipping_address", "row_index": 23557, "text": "my new shipping address is invalid, can you help me?"}
+{"id": "bitext-23559", "intent": "set_up_shipping_address", "row_index": 23559, "text": "can you help me setting another delivery addrss up?"}
+{"id": "bitext-23588", "intent": "set_up_shipping_address", "row_index": 23588, "text": "i have to enter my secondary shipping address"}
+{"id": "bitext-23636", "intent": "set_up_shipping_address", "row_index": 23636, "text": "what do I have to do to submit the new delivery address?"}
+{"id": "bitext-23659", "intent": "set_up_shipping_address", "row_index": 23659, "text": "could i submit my secondary shipping address"}
+{"id": "bitext-23727", "intent": "set_up_shipping_address", "row_index": 23727, "text": "I try to enter a different delivery address"}
+{"id": "bitext-23730", "intent": "set_up_shipping_address", "row_index": 23730, "text": "I have a problem submitting the new delivery address"}
+{"id": "bitext-23751", "intent": "set_up_shipping_address", "row_index": 23751, "text": "how do i set up my newshipping address"}
+{"id": "bitext-23794", "intent": "set_up_shipping_address", "row_index": 23794, "text": "help me to enter my bloody delivery address"}
+{"id": "bitext-23826", "intent": "set_up_shipping_address", "row_index": 23826, "text": "help me set my secondary delivery address up"}
+{"id": "bitext-23827", "intent": "set_up_shipping_address", "row_index": 23827, "text": "i have to submita secondary shipping address help me"}
+{"id": "bitext-23856", "intent": "set_up_shipping_address", "row_index": 23856, "text": "I need to enter an different shipping address"}
+{"id": "bitext-23918", "intent": "switch_account", "row_index": 23918, "text": "change to platinum account"}
+{"id": "bitext-23924", "intent": "switch_account", "row_index": 23924, "text": "using freemium account"}
+{"id": "bitext-23949", "intent": "switch_account", "row_index": 23949, "text": "how do i use the {{Account Type}} profile"}
+{"id": "bitext-23958", "intent": "switch_account", "row_index": 23958, "text": "help to change to the standard account"}
+{"id": "bitext-23977", "intent": "switch_account", "row_index": 23977, "text": "I need assistance changing to the premium account"}
+{"id": "bitext-23998", "intent": "switch_account", "row_index": 23998, "text": "use {{Account Category}} acdcount"}
+{"id": "bitext-23999", "intent": "switch_account", "row_index": 23999, "text": "is it possible to switch to the freemium account"}
+{"id": "bitext-24061", "intent": "switch_account", "row_index": 24061, "text": "want help to use the standard profile"}
+{"id": "bitext-24078", "intent": "switch_account", "row_index": 24078, "text": "switch to the {{Account Category}} account"}
+{"id": "bitext-24095", "intent": "switch_account", "row_index": 24095, "text": "I try to switch to the {{Account Category}} account"}
+{"id": "bitext-24096", "intent": "switch_account", "row_index": 24096, "text": "I don't know how to switch to the platinum account"}
+{"id": "bitext-24102", "intent": "switch_account", "row_index": 24102, "text": "assistance using the {{Account Type}} account"}
+{"id": "bitext-24108", "intent": "switch_account", "row_index": 24108, "text": "change to platinum acount"}
+{"id": "bitext-24118", "intent": "switch_account", "row_index": 24118, "text": "i dont know how i can switch to the freemium account"}
+{"id": "bitext-24125", "intent": "switch_account", "row_index": 24125, "text": "how do i use the {{Account Type}} profile"}
+{"id": "bitext-24183", "intent": "switch_account", "row_index": 24183, "text": "I don't know what to do to change to the pro account"}
+{"id": "bitext-24222", "intent": "switch_account", "row_index": 24222, "text": "need to use the premium account"}
+{"id": "bitext-24273", "intent": "switch_account", "row_index": 24273, "text": "can I change to the platinum account?"}
+{"id": "bitext-24275", "intent": "switch_account", "row_index": 24275, "text": "change to premium acount"}
+{"id": "bitext-24293", "intent": "switch_account", "row_index": 24293, "text": "switch to {{Account Type}} account"}
+{"id": "bitext-24304", "intent": "switch_account", "row_index": 24304, "text": "I don't know what I have to do to change to the {{Account Type}} account"}
+{"id": "bitext-24335", "intent": "switch_account", "row_index": 24335, "text": "i want help to use the {{Account Type}} profile"}
+{"id": "bitext-24350", "intent": "switch_account", "row_index": 24350, "text": "i nee assistance to use the standard profile"}
+{"id": "bitext-24384", "intent": "switch_account", "row_index": 24384, "text": "I want help changing to the standard account"}
+{"id": "bitext-24393", "intent": "switch_account", "row_index": 24393, "text": "wznt help to switch to the bloody freemium account"}
+{"id": "bitext-24400", "intent": "switch_account", "row_index": 24400, "text": "how to use tye {{Account Type}} account?"}
+{"id": "bitext-24450", "intent": "switch_account", "row_index": 24450, "text": "I don't know how to change to the {{Account Category}} account"}
+{"id": "bitext-24456", "intent": "switch_account", "row_index": 24456, "text": "want assistance using the {{Account Category}}  profile"}
+{"id": "bitext-24543", "intent": "switch_account", "row_index": 24543, "text": "help using the freemium account"}
+{"id": "bitext-24553", "intent": "switch_account", "row_index": 24553, "text": "want help to switch to the {{Account Type}} account"}
+{"id": "bitext-24563", "intent": "switch_account", "row_index": 24563, "text": "can you help me to switch to the freemium account?"}
+{"id": "bitext-24578", "intent": "switch_account", "row_index": 24578, "text": "I do not know what I need to do to change to the {{Account Type}} acount"}
+{"id": "bitext-24646", "intent": "switch_account", "row_index": 24646, "text": "change to {{Account Category}} acount"}
+{"id": "bitext-24649", "intent": "switch_account", "row_index": 24649, "text": "I want help changing to the goddamn platinum account"}
+{"id": "bitext-24670", "intent": "switch_account", "row_index": 24670, "text": "help using the {{Account Category}} profile"}
+{"id": "bitext-24721", "intent": "switch_account", "row_index": 24721, "text": "i try to switch to the standard account"}
+{"id": "bitext-24734", "intent": "switch_account", "row_index": 24734, "text": "i dont know what to do to change to the freemium account"}
+{"id": "bitext-24761", "intent": "switch_account", "row_index": 24761, "text": "what do i need to do to change to the {{Account Category}} account"}
+{"id": "bitext-24803", "intent": "switch_account", "row_index": 24803, "text": "i dont khow what i need to do to change to the gold account"}
+{"id": "bitext-24815", "intent": "switch_account", "row_index": 24815, "text": "need to switch to the {{Account Type}} account"}
+{"id": "bitext-24882", "intent": "track_order", "row_index": 24882, "text": "I cannot see purchase {{Order Number}} current status"}
+{"id": "bitext-24936", "intent": "track_order", "row_index": 24936, "text": "i acnt see purchase {{Order Number}} status"}
+{"id": "bitext-24948", "intent": "track_order", "row_index": 24948, "text": "what do I need to do to see order {{Order Number}} status?"}
+{"id": "bitext-24949", "intent": "track_order", "row_index": 24949, "text": "I try to track order {{Order Number}}"}
+{"id": "bitext-24997", "intent": "track_order", "row_index": 24997, "text": "where is order {{Order Number}}"}
+{"id": "bitext-25003", "intent": "track_order", "row_index": 25003, "text": "assistance seeing the current status of purchase {{Order Number}}"}
+{"id": "bitext-25125", "intent": "track_order", "row_index": 25125, "text": "purchase {{Order Number}} ststus"}
+{"id": "bitext-25144", "intent": "track_order", "row_index": 25144, "text": "I try to see purchase 00004587345current status"}
+{"id": "bitext-25158", "intent": "track_order", "row_index": 25158, "text": "track purchase {{Order Number}}"}
+{"id": "bitext-25268", "intent": "track_order", "row_index": 25268, "text": "tracking order {{Order Number}}"}
+{"id": "bitext-25297", "intent": "track_order", "row_index": 25297, "text": "I do not know how I can see purchase {{Order Number}} status"}
+{"id": "bitext-25316", "intent": "track_order", "row_index": 25316, "text": "I have to check the status of purchase {{Order Number}}"}
+{"id": "bitext-25363", "intent": "track_order", "row_index": 25363, "text": "checking purchase {{Order Number}} status"}
+{"id": "bitext-25380", "intent": "track_order", "row_index": 25380, "text": "is it possible to check the ETA oif order {{Order Number}}"}
+{"id": "bitext-25394", "intent": "track_order", "row_index": 25394, "text": "I'd like to locate purchase {{Order Number}} i need assistance"}
+{"id": "bitext-25395", "intent": "track_order", "row_index": 25395, "text": "i want assistance to track purchase {{Order Number}}"}
+{"id": "bitext-25408", "intent": "track_order", "row_index": 25408, "text": "can you help me see purchase {{Order Number}} status?"}
+{"id": "bitext-25411", "intent": "track_order", "row_index": 25411, "text": "I have got to see the ETA of order {{Order Number}}, I need help"}
+{"id": "bitext-25440", "intent": "track_order", "row_index": 25440, "text": "see order {{Order Number}} stats"}
+{"id": "bitext-25455", "intent": "track_order", "row_index": 25455, "text": "need help seeing purchase {{Order Number}} status"}
+{"id": "bitext-25456", "intent": "track_order", "row_index": 25456, "text": "where can i see the current status of order {{Order Number}}"}
+{"id": "bitext-25467", "intent": "track_order", "row_index": 25467, "text": "i want help seeing purchase {{Order Number}} curtent status"}
+{"id": "bitext-25472", "intent": "track_order", "row_index": 25472, "text": "help to seee the eta of purchase {{Order Number}}"}
+{"id": "bitext-25477", "intent": "track_order", "row_index": 25477, "text": "need help seeing the eta of the purchase {{Order Number}}"}
+{"id": "bitext-25505", "intent": "track_order", "row_index": 25505, "text": "I want to see the status of order {{Order Number}}, I need help"}
+{"id": "bitext-25590", "intent": "track_order", "row_index": 25590, "text": "help me to check order {{Order Number}} goddamn current status"}
+{"id": "bitext-25603", "intent": "track_order", "row_index": 25603, "text": "I don't know how to see oder {{Order Number}} status"}
+{"id": "bitext-25609", "intent": "track_order", "row_index": 25609, "text": "I don't know what I have to do to track order {{Order Number}}"}
+{"id": "bitext-25622", "intent": "track_order", "row_index": 25622, "text": "i want help checking the ETA of purchase {{Order Number}}"}
+{"id": "bitext-25628", "intent": "track_order", "row_index": 25628, "text": "I want assistance checking order {{Order Number}} status"}
+{"id": "bitext-25678", "intent": "track_order", "row_index": 25678, "text": "I can't locate order {{Order Number}}"}
+{"id": "bitext-25686", "intent": "track_order", "row_index": 25686, "text": "could uhelp me see the eta of purchase {{Order Number}}"}
+{"id": "bitext-25693", "intent": "track_order", "row_index": 25693, "text": "is it possible to see thew ETA of the purchase {{Order Number}}?"}
+{"id": "bitext-25721", "intent": "track_order", "row_index": 25721, "text": "wanna check the status of order {{Order Number}} could uelp me"}
+{"id": "bitext-25724", "intent": "track_order", "row_index": 25724, "text": "how do I see order {{Order Number}} current status?"}
+{"id": "bitext-25737", "intent": "track_order", "row_index": 25737, "text": "check order {{Order Number}} current  status"}
+{"id": "bitext-25771", "intent": "track_order", "row_index": 25771, "text": "i cannot check purchase {{Order Number}} status"}
+{"id": "bitext-25779", "intent": "track_order", "row_index": 25779, "text": "help seeing the current status of purchase {{Order Number}}"}
+{"id": "bitext-25785", "intent": "track_order", "row_index": 25785, "text": "how to see purchase {{Order Number}} current status?"}
+{"id": "bitext-25821", "intent": "track_order", "row_index": 25821, "text": "can you show me the ETA of order {{Order Number}}?"}
+{"id": "bitext-25913", "intent": "track_refund", "row_index": 25913, "text": "I would like to track the restitution"}
+{"id": "bitext-25918", "intent": "track_refund", "row_index": 25918, "text": "I am waiting for a refnd of {{Refund Amount}} dollars"}
+{"id": "bitext-25920", "intent": "track_refund", "row_index": 25920, "text": "I want to check the status of my rebate, I need assistance"}
+{"id": "bitext-25921", "intent": "track_refund", "row_index": 25921, "text": "i expect a rebate of {{Currency Symbol}}{{Refund Amount}}"}
+{"id": "bitext-25941", "intent": "track_refund", "row_index": 25941, "text": "i exepct a compensation of {{Currency Symbol}}{{Refund Amount}}"}
+{"id": "bitext-25972", "intent": "track_refund", "row_index": 25972, "text": "I am waiting for a compensation of  {{Currency Symbol}}{{Refund Amount}}"}
+{"id": "bitext-26005", "intent": "track_refund", "row_index": 26005, "text": "can I see the current status of the compensation?"}
+{"id": "bitext-26021", "intent": "track_refund", "row_index": 26021, "text": "i cant track my reimbursement"}
+{"id": "bitext-26037", "intent": "track_refund", "row_index": 26037, "text": "I'm waiting for a rebate of {{Currency Symbol}}{{Refund Amount}}"}
+{"id": "bitext-26080", "intent": "track_refund", "row_index": 26080, "text": "need help to see my rebate current status"}
+{"id": "bitext-26118", "intent": "track_refund", "row_index": 26118, "text": "I espect a goddamn reimbursement of {{Currency Symbol}}{{Refund Amount}}"}
+{"id": "bitext-26148", "intent": "track_refund", "row_index": 26148, "text": "can ya help me to see my compensation current status"}
+{"id": "bitext-26155", "intent": "track_refund", "row_index": 26155, "text": "I don't know what I have to do to see my compensation status"}
+{"id": "bitext-26190", "intent": "track_refund", "row_index": 26190, "text": "I need help to know if there is anything new on my rebate"}
+{"id": "bitext-26206", "intent": "track_refund", "row_index": 26206, "text": "I'm waiting for a reimbursement of {{Currency Symbol}}{{Refund Amount}}"}
+{"id": "bitext-26217", "intent": "track_refund", "row_index": 26217, "text": "i expect a restitution of {{Refund Amount}} dollars"}
+{"id": "bitext-26245", "intent": "track_refund", "row_index": 26245, "text": "there is anything new on the reimbursement"}
+{"id": "bitext-26259", "intent": "track_refund", "row_index": 26259, "text": "can you help me to see the current status of my refund?"}
+{"id": "bitext-26266", "intent": "track_refund", "row_index": 26266, "text": "I expect a fucking ocmpensation of {{Currency Symbol}}{{Refund Amount}}, was it processed"}
+{"id": "bitext-26305", "intent": "track_refund", "row_index": 26305, "text": "is it possible to check if there are any news on my rebate?"}
+{"id": "bitext-26312", "intent": "track_refund", "row_index": 26312, "text": "I want to check my rebate current status, could you help me?"}
+{"id": "bitext-26342", "intent": "track_refund", "row_index": 26342, "text": "what do I need to do to track my reimbursement?"}
+{"id": "bitext-26350", "intent": "track_refund", "row_index": 26350, "text": "help seeing if there is anything wrong with the rebate"}
+{"id": "bitext-26383", "intent": "track_refund", "row_index": 26383, "text": "I am waiting for a compensation of {{Refund Amount}} doolars"}
+{"id": "bitext-26433", "intent": "track_refund", "row_index": 26433, "text": "know if there is anything new on my restitution"}
+{"id": "bitext-26502", "intent": "track_refund", "row_index": 26502, "text": "i expect an rebate of {{Currency Symbol}}{{Refund Amount}}"}
+{"id": "bitext-26505", "intent": "track_refund", "row_index": 26505, "text": "how do I know if there is anything new on my compensation?"}
+{"id": "bitext-26528", "intent": "track_refund", "row_index": 26528, "text": "i expect an refund of {{Currency Symbol}}{{Refund Amount}} has it been processed"}
+{"id": "bitext-26538", "intent": "track_refund", "row_index": 26538, "text": "I'm waiting for a reimbursement of {{Refund Amount}} dollars"}
+{"id": "bitext-26539", "intent": "track_refund", "row_index": 26539, "text": "i dont know what to do to track my rebate"}
+{"id": "bitext-26585", "intent": "track_refund", "row_index": 26585, "text": "assistance to see if there are any news on the compensation"}
+{"id": "bitext-26612", "intent": "track_refund", "row_index": 26612, "text": "I have to see the bloody status of the refund, how to do it?"}
+{"id": "bitext-26672", "intent": "track_refund", "row_index": 26672, "text": "I'm waiting for a refund of {{Refund Amount}} dollrs"}
+{"id": "bitext-26733", "intent": "track_refund", "row_index": 26733, "text": "I expect a compensation of {{Refund Amount}} dollars"}
+{"id": "bitext-26739", "intent": "track_refund", "row_index": 26739, "text": "where can i see if there are any news on the reimbursement"}
+{"id": "bitext-26755", "intent": "track_refund", "row_index": 26755, "text": "I do not know how I can see the current status of the refund"}
+{"id": "bitext-26792", "intent": "track_refund", "row_index": 26792, "text": "I am waiting for a rebate of {{Refund Amount}} dollars"}
+{"id": "bitext-26809", "intent": "track_refund", "row_index": 26809, "text": "see the status of the reimbursement"}
+{"id": "bitext-26816", "intent": "track_refund", "row_index": 26816, "text": "what do I have to do to see the rebate status?"}
+{"id": "bitext-26864", "intent": "track_refund", "row_index": 26864, "text": "I have got to see my compensation current status"}

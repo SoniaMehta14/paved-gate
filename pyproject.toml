@@ -24,6 +24,9 @@ fastapi = ["fastapi>=0.115", "uvicorn>=0.30"]
 anthropic = ["anthropic>=1,<2"]
 openai = ["openai>=1.40"]
 all = ["paved-gate[fastapi,anthropic,openai]"]
+eval = [
+    "scikit-learn>=1.5",
+]
 
 [dependency-groups]
 dev = [
@@ -34,6 +37,7 @@ dev = [
     "ruff>=0.6",
     "types-pyyaml",
     "python-dotenv>=1.2.3",
+    "scikit-learn>=1.5",
 ]
 
 [build-system]
@@ -46,16 +50,21 @@ packages = ["src/paved_gate"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-pythonpath = ["src", ".", "scripts"]
+pythonpath = ["src", ".", "scripts", "evals/support_tickets"]
 
 [tool.mypy]
 strict = true
-python_version = "3.11"
+python_version = "3.12"  # numpy (via scikit-learn) ships 3.12-syntax stubs; runtime still supports 3.11
 mypy_path = "src"
 
 [[tool.mypy.overrides]]
 module = ["anthropic.*", "openai.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["sklearn.*", "numpy.*", "scipy.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
 
 [tool.ruff]
 line-length = 120

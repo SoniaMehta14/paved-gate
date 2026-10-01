@@ -37,6 +37,7 @@ request ─▶│ detect PII ─▶ mask ─▶ FastEvaluator: 1 request, 3 type
 - [Audit log](#audit-log)
 - [FastAPI / Starlette middleware](#fastapi--starlette-middleware)
 - [Benchmark](#benchmark)
+- [Classification eval](#classification-eval)
 - [Project layout](#project-layout)
 - [Limitations](#limitations)
 - [Troubleshooting](#troubleshooting)
@@ -49,7 +50,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync --all-extras                 # install with FastAPI, Anthropic, and OpenAI extras
-uv run pytest                        # 74 tests
+uv run pytest                        # 84 tests
 uv run python examples/server.py     # demo server on :8000, Jev in mock mode, no keys needed
 ```
 
@@ -473,6 +474,41 @@ Each arm card shows the **actual cost of that run**, calculated from the tokens 
 
 ---
 
+## Classification eval
+
+The benchmark above measures speed and cost. This eval measures **whether the answers are right**: it classifies real customer-support tickets into their intent and compares every prediction with the known label.
+
+```bash
+npm run eval:estimate                                          # estimated cost of a live run; no API calls
+npm run eval:dashboard                                         # mock run + dashboard; no API calls
+uv run python evals/support_tickets/run_eval.py --live --yes   # live run (costs money; see the estimate first)
+```
+
+**Dataset.** [Bitext customer support LLM chatbot training dataset](https://huggingface.co/datasets/bitext/Bitext-customer-support-llm-chatbot-training-dataset) (`bitext/Bitext-customer-support-llm-chatbot-training-dataset`), pinned to revision `430d1a89bd93bd1fa23c16f29dd53e73f0087443`. © Bitext Innovations, 2024, licensed **CDLA-Sharing-1.0**. It has 26,872 tickets across 27 intents, about 1,000 per intent.
+
+**A fixed, versioned sample.** [build_sample.py](evals/support_tickets/build_sample.py) downloads the CSV into `data/cache/` (gitignored), checks its sha256, and draws a stratified sample of 40 tickets per intent (1,080 in total), so no intent dominates the results.
+- The sample size is configurable with `--per-intent`, and 30 to 50 is recommended.
+- The sample is seeded, so rebuilding with the same arguments reproduces the file byte for byte.
+- The result is committed as [data/eval/bitext_support_sample_v1.jsonl](data/eval/bitext_support_sample_v1.jsonl). A manifest records the dataset, revision, seed, per-intent counts and the file's sha256, and the eval refuses to run if the sample no longer matches it.
+- The committed sample is licensed CDLA-Sharing-1.0 (see [data/eval/NOTICE](data/eval/NOTICE)); the code stays Apache-2.0.
+
+**Arms.** Every arm gets the same 27 intents with the same one-line descriptions ([intents.py](evals/support_tickets/intents.py)):
+- **Jev:** one typed Choice question per ticket.
+- **GPT-4o and GPT-4o mini:** a zero-shot prompt with OpenAI structured outputs constrained to the 27 labels. A refusal or unusable reply counts as an `(invalid)` prediction, which is wrong but still counted.
+
+**Metrics** come from scikit-learn: per-intent precision, recall and F1, overall accuracy, macro and weighted F1, and a confusion matrix. Every figure shows its sample size.
+- API errors are counted separately and excluded from `n`.
+- **Accuracy is only ever computed from real label comparisons on live arms.** Mock and not-run arms are shown as "not measured"; nothing is simulated or estimated.
+- Latency and actual run cost use the same Live / Mock / Not run labelling as the benchmark.
+
+**Output.** Each run writes three files to `results/`: `eval-<timestamp>.json` (metrics), `eval-<timestamp>.html` (the same dashboard, with Classification accuracy, Per-intent and Confusion matrix sections added), and `eval-<timestamp>.predictions.jsonl` (every prediction, for auditing).
+
+**Caveats.**
+- Bitext tickets are synthetic and cleanly labelled, so real support traffic will usually score lower.
+- The eval sends 4 requests at a time per arm (`--concurrency`), so its latency figures are not directly comparable with the sequential benchmark.
+
+---
+
 ## Project layout
 
 ```
@@ -498,10 +534,12 @@ scripts/benchmark.py              latency / cost benchmark (illustrative); write
 scripts/dashboard.py              renders a benchmark JSON into the self-contained HTML dashboard
 scripts/dashboard_template.html   dashboard template (inline SVG charts, no dependencies)
 scripts/pricing.py                dated price snapshot
+evals/support_tickets/            classification eval: intents, sample builder, metrics, runner
+data/eval/                        versioned eval sample + manifest (CDLA-Sharing-1.0, see NOTICE)
 scripts/baselines.py              assumed values for --simulate-missing (never a measurement)
 docs/benchmark/                   committed sample: dashboard.png, sample-results.json, sample-dashboard.html
-package.json                      npm task aliases (benchmark, benchmark:dashboard, dashboard, test)
-tests/                            74 tests: decision branches, Jev contract, masking, handlers, middleware, latency, benchmark report
+package.json                      npm task aliases (benchmark, benchmark:dashboard, dashboard, eval:estimate, eval:dashboard, test)
+tests/                            84 tests: decision branches, Jev contract, masking, handlers, middleware, latency, benchmark report, classification eval
 ```
 
 Development: `uv run pytest`, `uv run mypy src tests examples`, `uv run ruff check .` (mypy `--strict`).

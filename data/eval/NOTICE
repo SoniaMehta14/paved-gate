@@ -1,0 +1,14 @@
+bitext_support_sample_v1.jsonl is a subset of the Bitext Customer Support LLM Chatbot
+Training Dataset, (c) Bitext Innovations, 2024.
+
+Source:   https://huggingface.co/datasets/bitext/Bitext-customer-support-llm-chatbot-training-dataset
+Revision: 430d1a89bd93bd1fa23c16f29dd53e73f0087443
+File:     Bitext_Sample_Customer_Support_Training_Dataset_27K_responses-v11.csv
+
+The data in this directory is licensed under the Community Data License Agreement -
+Sharing, Version 1.0 (CDLA-Sharing-1.0); see LICENSE-CDLA-Sharing-1.0.txt. It is not
+covered by the Apache-2.0 license that applies to the Paved Gate source code.
+
+Changes from the source: only the `instruction` and `intent` columns are kept (as `text`
+and `intent`), plus the original row index; rows were selected by a seeded stratified
+sample recorded in bitext_support_sample_v1.manifest.json. No text was modified.
