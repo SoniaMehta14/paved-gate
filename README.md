@@ -39,6 +39,7 @@ request ─▶│ detect PII ─▶ mask ─▶ FastEvaluator: 1 request, 3 type
 - [FastAPI / Starlette middleware](#fastapi--starlette-middleware)
 - [Benchmark](#benchmark)
 - [Classification eval](#classification-eval)
+- [NVIDIA OpenShell integration](#nvidia-openshell-integration)
 - [Project layout](#project-layout)
 - [Limitations](#limitations)
 - [Troubleshooting](#troubleshooting)
@@ -62,7 +63,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync --all-extras                 # install with FastAPI, Anthropic, and OpenAI extras
-uv run pytest                        # 84 tests
+uv run pytest                        # 106 tests
 uv run python examples/server.py     # demo server on :8000, Jev in mock mode, no keys needed
 ```
 
@@ -521,6 +522,49 @@ uv run python evals/support_tickets/run_eval.py --live --yes   # live run (costs
 
 ---
 
+## NVIDIA OpenShell integration
+
+> **OpenShell builds the jail. Paved Gate reads the mail.**
+
+[NVIDIA OpenShell](https://github.com/NVIDIA/OpenShell) runs agents in sandboxes with deny-by-default network,
+filesystem and process policy. Paved Gate plugs into OpenShell's documented
+[supervisor middleware](https://docs.nvidia.com/openshell/extensibility/supervisor-middleware.md) extension point.
+That's a gRPC hook that runs **after** OpenShell's network policy allowed a connection and **before** it injects
+credentials, so Paved Gate sees what is inside the traffic the jail let through:
+
+- **Outbound requests:** local PII/PHI detectors first, so a hit is denied without anything leaving the host; then
+  one batched Jev call for PII/PHI and exfiltration risk. Paved Gate denies the request if the evaluator is down
+  (fail-closed).
+- **Tool responses coming back to the agent:** a prompt-injection score. A hit is flagged or blocked, and it
+  *taints* the sandbox so its next outbound requests get a stricter check.
+
+Code: [`src/paved_gate/integrations/openshell/`](src/paved_gate/integrations/openshell/) (the
+`openshell.middleware.v1` protos are pinned to OpenShell v0.1.2, because NVIDIA says the API "is still evolving").
+Policy: [`policy/openshell_egress.policy.yaml`](policy/openshell_egress.policy.yaml).
+Demo: [`examples/openshell/`](examples/openshell/).
+
+```bash
+uv sync --extra openshell
+examples/openshell/run.sh          # real OpenShell sandbox, mock evaluator; add --live for real Jev, --local for no Docker
+```
+
+**Setup notes (macOS):** this needs Docker Desktop 28 or later **with host networking enabled** and OpenShell 0.1.2.
+Without host networking, OpenShell 0.1.2 sandboxes either don't start
+([NVIDIA/OpenShell#3880](https://github.com/NVIDIA/OpenShell/issues/3880)) or can't reach services on the Mac. The
+full install record, with every error and workaround, is in
+[`docs/openshell/FRICTION_LOG.md`](docs/openshell/FRICTION_LOG.md).
+
+**The trade-off of Docker host networking:** it's a Docker-wide setting.
+- **It does not weaken the sandbox.** OpenShell's sandbox containers still run with no network of their own, every
+  connection still goes through OpenShell's policy check, and a sandbox could reach only the host port its policy
+  allows. This was tested with probes against other host ports, the gateway port, public hosts, Docker's host IP and
+  loopback.
+- **It does widen trust in Docker as a whole.** Any container you start with `--network host` can reach services your
+  Mac binds to `127.0.0.1`. Only run host-network containers you trust, and consider turning the setting off when
+  you're done.
+
+---
+
 ## Project layout
 
 ```
@@ -548,10 +592,14 @@ scripts/dashboard_template.html   dashboard template (inline SVG charts, no depe
 scripts/pricing.py                dated price snapshot
 evals/support_tickets/            classification eval: intents, sample builder, metrics, runner
 data/eval/                        versioned eval sample + manifest (CDLA-Sharing-1.0, see NOTICE)
+src/paved_gate/integrations/openshell/   OpenShell supervisor middleware (gRPC; protos pinned to v0.1.2)
+policy/openshell_egress.policy.yaml      egress rubric and thresholds for the OpenShell middleware
+examples/openshell/               one-command OpenShell demo (jail + mail)
+docs/openshell/                   OpenShell friction log (install record and draft issues)
 scripts/baselines.py              assumed values for --simulate-missing (never a measurement)
 docs/benchmark/                   committed sample: dashboard.png, sample-results.json, sample-dashboard.html
 package.json                      npm task aliases (benchmark, benchmark:dashboard, dashboard, eval:estimate, eval:dashboard, test)
-tests/                            84 tests: decision branches, Jev contract, masking, handlers, middleware, latency, benchmark report, classification eval
+tests/                            106 tests: decision branches, Jev contract, masking, handlers, middleware, latency, benchmark report, classification eval, OpenShell middleware
 ```
 
 Development: `uv run pytest`, `uv run mypy src tests examples`, `uv run ruff check .` (mypy `--strict`).

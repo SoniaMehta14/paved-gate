@@ -21,10 +21,16 @@ import asyncio
 import signal
 import sys
 
+from paved_gate.integrations.openshell.config import load_egress_policy
 from paved_gate.integrations.openshell.server import build_inspector, build_server
 
 
-async def _run(policy: str, bind: str) -> int:
+async def _run(policy_path: str, bind: str, mode: str | None, audit_path: str | None) -> int:
+    policy = load_egress_policy(policy_path)
+    if mode:
+        policy = policy.model_copy(update={"evaluator": policy.evaluator.model_copy(update={"mode": mode})})
+    if audit_path:
+        policy = policy.model_copy(update={"audit": policy.audit.model_copy(update={"path": audit_path})})
     inspector = build_inspector(policy)
     server, port = build_server(inspector, bind)
     await server.start()
@@ -50,8 +56,10 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--policy", default="policy/openshell_egress.policy.yaml")
     ap.add_argument("--bind", default="127.0.0.1:50051")
+    ap.add_argument("--mode", choices=["mock", "live"], help="override the policy's evaluator mode")
+    ap.add_argument("--audit", help="override the policy's audit log path")
     args = ap.parse_args()
-    return asyncio.run(_run(args.policy, args.bind))
+    return asyncio.run(_run(args.policy, args.bind, args.mode, args.audit))
 
 
 if __name__ == "__main__":

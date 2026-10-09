@@ -1,0 +1,24 @@
+# OpenShell sandbox policy for the demo ("the jail").
+# Deny by default. The agent's Python may reach exactly one host port: the demo API on the Mac.
+# Every request to it passes through the Paved Gate supervisor middleware ("reads the mail").
+version: 1
+# Filesystem (Landlock): OpenShell adds its baseline system paths; the agent's code lives in /app (read-only).
+filesystem_policy:
+  include_workdir: true
+  read_only: [/app]
+  read_write: [/tmp]
+network_policies:
+  demo_api:
+    endpoints:
+      - host: host.openshell.internal
+        port: 8099
+        protocol: rest
+        enforcement: enforce
+        access: read-write
+    binaries:
+      - path: /usr/local/bin/python3.12
+network_middlewares:
+  paved_gate:
+    middleware: paved-gate
+    endpoints:
+      include: ["host.openshell.internal"]

@@ -16,6 +16,8 @@ was **verified** (observed or read in a primary source, with its URL) or is an *
 
 ## Log
 
+> Addresses in this log: `192.168.65.x` is Docker Desktop's built-in internal subnet (`host.docker.internal` = `192.168.65.254`), the same on every install; `127.0.0.1` is loopback. No machine-specific addresses, usernames, paths or credentials are recorded.
+
 ### 2026-10-09T13:14Z · Discovery (documentation only)
 
 1. **The architecture page doesn't mention the extension points.** The
@@ -291,6 +293,60 @@ committed). It denies any request body containing a marker string.
     production: register with TLS and JWT audience checks; this integration binds to loopback only.)
 32. **Cleanup:** the adapter and test API are stopped, `gateway.toml` is back to the install default, and there are
     no sandboxes.
+
+### 2026-10-09 · How Paved Gate hooks into OpenShell: documented or inferred?
+
+33. **Documented and supported, with one undocumented detail.** Paved Gate plugs into OpenShell through
+    **supervisor middleware**, a documented extension point:
+    - The [Extensibility overview](https://docs.nvidia.com/openshell/extensibility/overview.md) lists it as one of
+      four extension points and assigns it "application traffic processing": it "inspects, transforms, or denies
+      allowed HTTP and WebSocket traffic. It runs after policy evaluation and before OpenShell injects provider
+      credentials, so deployments can add content controls and auditing without exposing managed secrets."
+    - The [Supervisor middleware](https://docs.nvidia.com/openshell/extensibility/supervisor-middleware.md) page says
+      "A middleware service is a gRPC server that implements the services in `proto/supervisor_middleware.proto`",
+      and documents what it can see, its limits and its fail-closed default.
+    - The [Configure](https://docs.nvidia.com/openshell/extensibility/supervisor-middleware/configure.md) page
+      documents the `[[openshell.supervisor.middleware]]` gateway registration and the `network_middlewares` policy
+      section that this integration uses.
+    - The service contract is the proto itself:
+      [`proto/supervisor_middleware.proto` @ v0.1.2](https://github.com/NVIDIA/OpenShell/blob/v0.1.2/proto/supervisor_middleware.proto).
+
+    **What was inferred rather than documented:** only the negotiation metadata that `Describe` must return
+    (`protocol_version 1.0`, capability `openshell.supervisor-middleware.contract`), taken from
+    [`openshell-core/src/extension_protocol.rs` @ v0.1.2](https://github.com/NVIDIA/OpenShell/blob/v0.1.2/crates/openshell-core/src/extension_protocol.rs)
+    (entry 22). Everything else follows the documentation and the proto's own comments.
+
+    **Support level:** documented and present in the released v0.1.2 binaries (verified working, entries 23–24 and
+    30), but explicitly unstable: "The middleware API is still evolving. Future versions will change it…"
+    ([source](https://docs.nvidia.com/openshell/extensibility/supervisor-middleware.md)). That's why the protos are
+    pinned to v0.1.2 in this repo.
+
+### 2026-10-09T14:32Z · Phase 3: the demo in a real sandbox
+
+34. **The default filesystem policy blocks reading files baked into the image.** A demo image with
+    `COPY agent.py /app/agent.py` failed at start with `python3: can't open file '/app/agent.py': [Errno 13]
+    Permission denied`. Without an explicit `filesystem_policy`, Landlock allows only OpenShell's baseline paths (the
+    sandbox log says "Enriched policy with baseline filesystem paths"), and `/app` isn't one of them. The error is a
+    bare `EACCES`, with nothing naming the filesystem policy. *Verified.* Workaround: add
+    `filesystem_policy: {include_workdir: true, read_only: [/app], read_write: [/tmp]}` to the sandbox policy. The
+    [default policy page](https://docs.nvidia.com/openshell/how-it-works/policies/default-policy.md) documents
+    the baseline paths, but a first-time user meets this as an unexplained permission error. *Assumption:* the
+    baseline contents are as documented; I didn't diff them against the source.
+35. **The demo works end to end** (`examples/openshell/run.sh`, mock evaluator, 14:32Z). The five requests behaved as
+    designed:
+    - the unlisted host was blocked by OpenShell
+    - the clean request passed both layers
+    - synthetic PHI was allowed by OpenShell and denied by Paved Gate (local detectors, under 1 ms)
+    - the injected tool result was flagged at `PRE_RETURN`
+    - the follow-through request was denied
+
+    Only the clean request reached the upstream API. On exit the demo restored `gateway.toml` byte for byte and
+    restarted the gateway, leaving no sandbox and no open listeners. *Verified.*
+36. **Minor:** registering, then unregistering, the middleware costs two gateway restarts per demo run, because
+    "registration changes require a gateway restart"
+    ([configure docs](https://docs.nvidia.com/openshell/extensibility/supervisor-middleware/configure.md)). Each takes
+    about 2–3 s here. Registering a middleware dynamically, or per sandbox, would make integrations like this less
+    intrusive. *Verified* (behaviour), *suggestion* (fix).
 
 ## Status at end of Phase 1 (2026-10-09T13:42Z)
 
