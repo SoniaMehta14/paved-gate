@@ -74,4 +74,34 @@ class SensitiveDataEvent(BaseModel):
     payload_sha256: str
 
 
-AuditRecord = GateDecisionEntry | SensitiveDataEvent
+class EgressDecisionEntry(BaseModel):
+    """One OpenShell supervisor-middleware evaluation (an outbound request or a returned response).
+
+    Never stores payload content: only its sha256, size, audit-safe finding types and scores.
+    """
+
+    event: Literal["openshell_egress"] = "openshell_egress"
+    ts: str = Field(default_factory=_now)
+    direction: Literal["request", "response"]
+    request_id: str
+    sandbox_id: str
+    policy_name: str
+    policy_hash: str
+    host: str
+    port: int
+    method: str
+    path: str
+    decision: Literal["allow", "deny", "flag"]
+    enforced: bool
+    reason_code: str | None
+    findings: list[str]
+    scores: dict[str, float]
+    evaluator: EvaluatorInfo | None
+    tainted: bool
+    latency: LatencyInfo
+    body_sha256: str
+    body_bytes: int
+    error: str | None = None
+
+
+AuditRecord = GateDecisionEntry | SensitiveDataEvent | EgressDecisionEntry

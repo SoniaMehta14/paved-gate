@@ -274,6 +274,24 @@ committed). It denies any request body containing a marker string.
     Workaround: pass the script inline (`python3 -c "$(cat probe.py)"`) or upload into a kept sandbox and then use
     `sandbox exec`. *Verified.*
 
+### 2026-10-09T13:52Z – 13:54Z · Phase 2: the Paved Gate adapter against the real gateway
+
+30. **The production adapter works with OpenShell 0.1.2 end to end.** I registered
+    `paved_gate.integrations.openshell` (a Python `grpc.aio` service implementing `SupervisorMiddleware` and
+    `HttpResponsePreReturn`) as `paved-gate` in `gateway.toml`, and ran a sandbox through it (`network_middlewares`
+    selecting `host.openshell.internal`). The gateway negotiated `Describe` (protocol 1.0) and called
+    `ValidateConfig`. Request evaluation (`PRE_CREDENTIALS`) and the **streaming response hook** (`PRE_RETURN`,
+    `WHOLE_BODY_BYTES`) both worked as the proto describes. `request_id` and `sandbox_id` arrive on both sides, so a
+    request can be linked to its response. *Verified* (13:53Z): a synthetic-PHI POST and an injection-driven
+    follow-up POST got HTTP 403 `middleware_denied` with our `reason_code`, and the upstream server received only
+    the clean POST.
+31. **The plaintext-mode warning is clear and specific** (positive): on startup the gateway logs `WARN … extension
+    authentication is DISABLED for this registration by allow_insecure_transport; OpenShell attaches no caller
+    credential and the service cannot distinguish OpenShell from any other network client`. *Verified.* (For
+    production: register with TLS and JWT audience checks; this integration binds to loopback only.)
+32. **Cleanup:** the adapter and test API are stopped, `gateway.toml` is back to the install default, and there are
+    no sandboxes.
+
 ## Status at end of Phase 1 (2026-10-09T13:42Z)
 
 | Component | Version / state |

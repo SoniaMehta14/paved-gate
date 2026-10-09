@@ -27,6 +27,10 @@ all = ["paved-gate[fastapi,anthropic,openai]"]
 eval = [
     "scikit-learn>=1.5",
 ]
+openshell = [
+    "grpcio>=1.76",
+    "protobuf>=6.31",
+]
 
 [dependency-groups]
 dev = [
@@ -38,6 +42,10 @@ dev = [
     "types-pyyaml",
     "python-dotenv>=1.2.3",
     "scikit-learn>=1.5",
+    "grpcio>=1.76",
+    "protobuf>=6.31",
+    "grpcio-tools>=1.76",
+    "types-protobuf>=7.35.1.20260906",
 ]
 
 [build-system]
@@ -62,6 +70,15 @@ module = ["anthropic.*", "openai.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+module = ["grpc", "grpc.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# protoc-generated code (scripts/gen_openshell_stubs.sh); typed via the generated .pyi files
+module = ["paved_gate.integrations.openshell._gen.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
 module = ["sklearn.*", "numpy.*", "scipy.*"]
 ignore_missing_imports = true
 follow_imports = "skip"
@@ -69,6 +86,7 @@ follow_imports = "skip"
 [tool.ruff]
 line-length = 120
 target-version = "py311"
+extend-exclude = ["src/paved_gate/integrations/openshell/_gen"]
 
 [tool.ruff.format]
 exclude = ["*.md"]
