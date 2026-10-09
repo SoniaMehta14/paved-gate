@@ -230,6 +230,50 @@ committed). It denies any request body containing a marker string.
 26. **Clean-up:** the smoke middleware and test server are stopped, `gateway.toml` is back to the install default,
     and there are no sandboxes. Docker Desktop host networking stays **on**, which the integration needs.
 
+### 2026-10-09T13:44Z · Isolation check with Docker Desktop host networking enabled
+
+27. **Host networking does not weaken sandbox isolation.** It is a Docker-wide setting, so after enabling it I
+    checked that the sandbox boundary is unchanged. One sandbox ran a policy allowing **only**
+    `host.openshell.internal:8099`, with two servers on the Mac: `:8099` (allowed) and `:8098` (not allowed). Probes
+    from inside the sandbox (Python `urllib` and raw `socket`):
+
+    | Probe from inside the sandbox | Result |
+    |---|---|
+    | `http://host.openshell.internal:8099/` (allowed) | **reached**, HTTP 200 |
+    | `http://host.openshell.internal:8098/` (port not in policy) | blocked, `EACCES` |
+    | `host.openshell.internal:17670` (the gateway's own port) | blocked, `EACCES` |
+    | `https://example.com/` (public host, not in policy) | blocked, `EACCES` |
+    | `1.1.1.1:443` (public IP, raw TCP) | blocked, `EACCES` |
+    | `127.0.0.1:8098` and `127.0.0.1:17670` (raw loopback) | `ECONNREFUSED`: the sandbox's **own** loopback, not the Mac's |
+    | `192.168.65.254:8098` (Docker Desktop host IP, raw TCP) | blocked, `EACCES` |
+    | `host.docker.internal:8098` | does not resolve |
+
+    The servers' access logs agree: `:8099` logged the sandbox's request, while `:8098` logged only my own check
+    from the Mac. *Verified* (13:44Z).
+
+    **Why:** `docker inspect` shows the **workload** container with `NetworkMode=none`, `Privileged=false`, no added
+    capabilities and no published ports. Its only interface is `lo` plus the kernel's default unconfigured tunnel
+    devices, with no `eth0`. Only the trusted **supervisor** container uses `NetworkMode=host`, and every workload
+    connection goes through it and its policy check. This matches the driver source, which requires the workload's
+    "outer fence" to be `network_mode=none`
+    ([`openshell-driver-docker/src/lib.rs`](https://github.com/NVIDIA/OpenShell/blob/v0.1.2/crates/openshell-driver-docker/src/lib.rs),
+    around lines 3008–3015). *Verified.*
+
+    **Host-level side effect, outside OpenShell:** with host networking on, *any* container started with
+    `--network host` on this Mac (not only OpenShell's supervisor) can reach services the Mac binds to `127.0.0.1`.
+    That widens trust in the Docker VM as a whole, not the sandbox boundary. Only run host-network containers you
+    trust; OpenShell sandbox workloads are not host-network containers. *Assumption* based on Docker Desktop's
+    documented behaviour, consistent with the probe results above.
+
+28. **Default deny holds:** every destination not named in the policy was refused (public hostnames, public IPs,
+    other host ports, Docker's host IP and alias), and the connection-stage denial stays `EACCES` (entry 15).
+    *Verified.*
+
+29. **Minor CLI friction:** `openshell sandbox create --upload <file> -- <command>` errors with "the argument
+    '--upload <UPLOAD>' cannot be used with '[COMMAND]...'". You can't upload a script and run it in one step.
+    Workaround: pass the script inline (`python3 -c "$(cat probe.py)"`) or upload into a kept sandbox and then use
+    `sandbox exec`. *Verified.*
+
 ## Status at end of Phase 1 (2026-10-09T13:42Z)
 
 | Component | Version / state |
@@ -237,5 +281,6 @@ committed). It denies any request body containing a marker string.
 | Docker Desktop | 4.88.1 (engine 29.8.2), **host networking enabled** |
 | OpenShell | 0.1.2 via the Homebrew local tap, LaunchAgent `sh.brew.openshell`, gateway `https://localhost:17670` (mTLS) |
 | Sandbox start | works (under 1 s) with host networking and the default gateway config |
-| Sandbox → host service | works via `host.openshell.internal` |
+| Sandbox → host service | works via `host.openshell.internal`, **only on ports the policy allows** (entry 27) |
+| Default-deny egress | holds under host networking (entries 27–28) |
 | Supervisor middleware (Python gRPC) | works: `Describe`, `ValidateConfig` and `EvaluateHttpRequest` with allow and deny |
