@@ -196,12 +196,23 @@ committed). It denies any request body containing a marker string.
 
 21. **Generating stubs works:** `proto/supervisor_middleware.proto` plus its import `proto/extension.proto` at tag
     `v0.1.2`, compiled with `grpcio-tools` 1.76.0. *Verified.*
-22. **The negotiation values aren't in the proto or the docs.** `MiddlewareManifest.extension` (`PeerMetadata`) is
-    "Required for negotiation", but the version and capability to declare are found only in Rust:
-    [`openshell-core/src/extension_protocol.rs`](https://github.com/NVIDIA/OpenShell/blob/v0.1.2/crates/openshell-core/src/extension_protocol.rs)
-    gives `protocol_version {major: 1, minor: 0}` and the capability `openshell.supervisor-middleware.contract`
-    (both supported and required). *Verified* (source). A non-Rust implementer has to read the Rust source to get
-    past `Describe`.
+22. **The capability name isn't in the v0.1.2 proto or docs; the protocol version is.** `MiddlewareManifest.extension`
+    (`PeerMetadata`) is "Required for negotiation". The proto gives no values. The v0.1.2
+    [0.1.0 upgrade guide](https://github.com/NVIDIA/OpenShell/blob/v0.1.2/docs/upgrade/0-1-0.mdx) says to "use
+    protocol `1.0`, and advertise their family base capability", but never names that capability. The name is in
+    [`openshell-core/src/extension_protocol.rs`](https://github.com/NVIDIA/OpenShell/blob/v0.1.2/crates/openshell-core/src/extension_protocol.rs):
+    `protocol_version {major: 1, minor: 0}` and the capability `openshell.supervisor-middleware.contract` (both
+    supported and required). *Verified* (source and docs at v0.1.2).
+
+    **Correction (2026-10-09):** an earlier version of this entry said neither value was documented. That was
+    wrong. Also, the capability name *was* documented for a few days:
+    [#3352](https://github.com/NVIDIA/OpenShell/pull/3352) (merged 2026-09-21) added an extension negotiation page
+    with a base capability table, and a line in the middleware guide naming `openshell.supervisor-middleware.contract`.
+    Neither is in the v0.1.2 docs. The middleware docs reorganization
+    ([#3636](https://github.com/NVIDIA/OpenShell/pull/3636), merged 2026-09-24) replaced the middleware guide's
+    sentence with a link to the negotiation page, and a docs refresh
+    ([#3705](https://github.com/NVIDIA/OpenShell/pull/3705), commit 2026-09-25) removed that page. *Verified* (commit
+    history). Whether the table was meant to move somewhere else is unknown.
 23. **Registration and policy work as documented.** I added to `gateway.toml`:
     ```toml
     [[openshell.supervisor.middleware]]
@@ -311,10 +322,11 @@ committed). It denies any request body containing a marker string.
     - The service contract is the proto itself:
       [`proto/supervisor_middleware.proto` @ v0.1.2](https://github.com/NVIDIA/OpenShell/blob/v0.1.2/proto/supervisor_middleware.proto).
 
-    **What was inferred rather than documented:** only the negotiation metadata that `Describe` must return
-    (`protocol_version 1.0`, capability `openshell.supervisor-middleware.contract`), taken from
-    [`openshell-core/src/extension_protocol.rs` @ v0.1.2](https://github.com/NVIDIA/OpenShell/blob/v0.1.2/crates/openshell-core/src/extension_protocol.rs)
-    (entry 22). Everything else follows the documentation and the proto's own comments.
+    **What was taken from source rather than the v0.1.2 docs:** only the capability that `Describe` must return,
+    `openshell.supervisor-middleware.contract`, taken from
+    [`openshell-core/src/extension_protocol.rs` @ v0.1.2](https://github.com/NVIDIA/OpenShell/blob/v0.1.2/crates/openshell-core/src/extension_protocol.rs).
+    The protocol version (`1.0`) is in the v0.1.2 upgrade guide. See entry 22, including its correction. Everything
+    else follows the documentation and the proto's own comments.
 
     **Support level:** documented and present in the released v0.1.2 binaries (verified working, entries 23–24 and
     30), but explicitly unstable: "The middleware API is still evolving. Future versions will change it…"
