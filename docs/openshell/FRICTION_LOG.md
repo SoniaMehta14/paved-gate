@@ -395,6 +395,57 @@ committed). It denies any request body containing a marker string.
     follow-through requests passed when the sandbox was untainted, and all 15 were denied after an injection was
     flagged. *Verified* (results JSON).
 
+### 2026-10-11T20:08Z – 20:15Z · Testing the fix for #3880 / #4403 (PR #4404)
+
+NVIDIA opened [#4403](https://github.com/NVIDIA/OpenShell/issues/4403) from the #3880 comment, with the fix
+[#4404](https://github.com/NVIDIA/OpenShell/pull/4404) ("fix(docker): pin Docker Desktop host gateway", head
+`dca78bd`, one commit on `main` at `eeba0e7`). The PR changes only the Docker driver
+(`crates/openshell-driver-docker/src/lib.rs`): when `grpc_endpoint` uses `host.docker.internal`, the gateway starts a
+short-lived, confined resolver container (no network, all capabilities dropped, read-only root, the supervisor image)
+with `extra_hosts host.openshell.internal:host-gateway`, reads the address Docker wrote into its `/etc/hosts`, rejects
+missing, ambiguous, unspecified, multicast, broadcast and metadata addresses, and passes the one address into the
+existing `host.openshell.internal` trust pin. *Verified* (diff).
+
+41. **The fix works on this Mac, with host networking off.** Setup, all isolated from the Homebrew install:
+    - gateway and CLI built from `dca78bd` (debug build; `--features openshell-server/prebuilt-z3`, because the
+      default build links a system `libz3` and this Mac has none), with the default supervisor and sandbox images
+      pinned to `eeba0e7` through `OPENSHELL_IMAGE_TAG` (published images for that exact commit exist on ghcr.io; the
+      PR changes no image code)
+    - run as a second gateway on `127.0.0.1:17680` with its own `XDG_STATE_HOME`, PKI and `sandbox_label`, and
+      `[openshell.drivers.docker] grpc_endpoint = "https://host.docker.internal:17680"`
+    - Docker Desktop host networking **off** (verified: a `--network host` container could not reach the Mac's
+      loopback)
+    - a policy allowing only `host.openshell.internal:18099`; two loopback services on the Mac, `:18099` and `:18098`
+    - the same setup with a gateway built from the base commit `eeba0e7` as the control
+
+    | From inside the sandbox | Base `eeba0e7` | PR `dca78bd` |
+    |---|---|---|
+    | Sandbox starts (create to first output) | yes, 0.56 s | yes, 0.70 s and 0.65 s (two runs) |
+    | `host.openshell.internal` resolves | no (`No address associated with hostname`) | yes |
+    | `host.openshell.internal:18099` (allowed) | refused, `policy_dns_trusted_gateway_unavailable` | **HTTP 200** |
+    | `host.openshell.internal:18098` (port not in policy) | refused (no DNS) | blocked, `EACCES` |
+    | `host.openshell.internal:17680` and `:17670` (gateway ports) | refused (no DNS) | blocked, `EACCES` |
+    | `https://example.com`, `1.1.1.1:443` | blocked, `EACCES` | blocked, `EACCES` |
+    | `192.168.65.254:18098` (Docker Desktop host IP), raw TCP | blocked | blocked |
+    | `198.18.0.2:18098` (the synthetic address the name resolves to), raw TCP | not applicable | blocked |
+    | `host.docker.internal` | unresolved | unresolved (`policy_dns_ineligible`) |
+    | `127.0.0.1:18098` | refused (the sandbox's own loopback) | refused (the sandbox's own loopback) |
+
+    With the PR, the sandbox log shows the pin: `Policy DNS mapped host.openshell.internal resolved=192.168.65.254
+    synthetic=198.18.0.2 ports=18099`. The Mac's services logged exactly one request per PR run, the allowed one.
+    `docker events` (second PR run) shows the resolver container created, started, exited and removed within the same second, and no
+    containers or volumes were left after deleting the sandboxes. The workload container ran with `NetworkMode=none`,
+    the supervisor with no added capabilities and `Privileged=false`. *Verified* (2026-10-11T20:10Z to 20:13Z).
+    *Not tested:* the resolver's failure paths, Docker Engine on Linux, an IPv6 only engine, a release build.
+42. **`openshell-gateway generate-certs --output-dir` also overwrites the CLI's default gateway credentials.**
+    Generating a PKI for the second gateway replaced `~/.config/openshell/gateways/openshell/mtls/{ca.crt,tls.crt,tls.key}`
+    with the new client bundle, so the CLI could no longer talk to the Homebrew gateway (`invalid peer certificate:
+    BadSignature`). The source documents it (`certgen.rs`: local mode "also copies client materials to
+    `$XDG_CONFIG_HOME/openshell/gateways/openshell/mtls/`"), but `--help` describes `--output-dir` only as "Write PEMs to a
+    filesystem directory instead of Kubernetes Secrets". My own mistake was not isolating `XDG_CONFIG_HOME` for that one
+    command; I restored the three files from a snapshot taken before the test. *Verified.* Suggestion: mention the copy
+    in `--help`, or skip it when the target already holds a different CA.
+
 ## Status at end of Phase 1 (2026-10-09T13:42Z)
 
 | Component | Version / state |

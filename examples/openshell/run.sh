@@ -5,4 +5,8 @@
 #   examples/openshell/run.sh --local    no Docker/OpenShell: simulated supervisor
 set -eu
 cd "$(dirname "$0")/../.."
-exec uv run --extra openshell python examples/openshell/demo.py "$@"
+uv sync --quiet --extra openshell
+# macOS: iCloud Drive can mark files in .venv as hidden, and Python skips hidden .pth files, which breaks the
+# editable install ("No module named 'paved_gate'"). Clear the flag after syncing, then run without re-syncing.
+if [ "$(uname)" = Darwin ]; then chflags -R nohidden .venv 2>/dev/null || true; fi
+exec uv run --no-sync python examples/openshell/demo.py "$@"
