@@ -15,3 +15,6 @@ results/
 
 # full downloaded datasets (the versioned eval sample in data/eval/ is committed)
 data/cache/
+
+# macOS Finder metadata
+.DS_Store

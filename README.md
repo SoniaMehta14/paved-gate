@@ -538,6 +538,42 @@ credentials, so Paved Gate sees what is inside the traffic the jail let through:
 - **Tool responses coming back to the agent:** a prompt-injection score. A hit is flagged or blocked, and it
   *taints* the sandbox so its next outbound requests get a stricter check.
 
+```mermaid
+flowchart LR
+    subgraph JAIL["OpenShell sandbox: the jail"]
+        A["Agent<br/>(no network of its own)"]
+    end
+    subgraph SUP["OpenShell supervisor"]
+        P{"Network policy<br/>host, port, binary"}
+        C["Inject credentials"]
+    end
+    subgraph GATE["Paved Gate middleware: reads the mail"]
+        L["Local PII/PHI detectors"]
+        J["Jev: PII/PHI +<br/>exfiltration risk"]
+        I["Jev: prompt injection<br/>score"]
+        T[("Taint per sandbox")]
+    end
+    API["Allowed API or tool"]
+    X1["Blocked by OpenShell<br/>EACCES or policy_denied"]
+    X2["Denied by Paved Gate<br/>403 middleware_denied"]
+
+    A -->|outbound request| P
+    P -->|not in policy| X1
+    P -->|"EvaluateHttpRequest<br/>PRE_CREDENTIALS"| L
+    L -->|identifier found| X2
+    L -->|no local hit| J
+    J -->|over threshold| X2
+    J -->|allow| C --> API
+    API -->|"response<br/>HttpResponsePreReturn, PRE_RETURN"| I
+    I -->|"delivered (flag mode)"| A
+    I -.->|injection flagged| T
+    T -.->|"stricter threshold and<br/>the flagged text as context"| J
+```
+
+Hook names and phases are from
+[`proto/supervisor_middleware.proto` at v0.1.2](https://github.com/NVIDIA/OpenShell/blob/v0.1.2/proto/supervisor_middleware.proto);
+the deny response body (`middleware_denied`) was observed from inside a sandbox (friction log entry 24).
+
 Code: [`src/paved_gate/integrations/openshell/`](src/paved_gate/integrations/openshell/) (the
 `openshell.middleware.v1` protos are pinned to OpenShell v0.1.2, because NVIDIA says the API "is still evolving").
 Policy: [`policy/openshell_egress.policy.yaml`](policy/openshell_egress.policy.yaml).
@@ -548,11 +584,33 @@ uv sync --extra openshell
 examples/openshell/run.sh          # real OpenShell sandbox, mock evaluator; add --live for real Jev, --local for no Docker
 ```
 
+### Results
+
+A benchmark sent 290 synthetic cases through real OpenShell sandboxes in three setups with the same policy
+(2026-10-11, live Jev for the third). Attack requests are synthetic PHI, injection follow-through and unlisted hosts.
+
+| Setup | Attack requests that reached the API | Added latency p50 / p95 |
+|---|---|---|
+| OpenShell only | 90 of 110 | baseline |
+| OpenShell + local detectors | 54 of 110 | 4.1 / 10.2 ms |
+| OpenShell + local detectors + Jev | 2 of 110 | 112 / 225 ms |
+
+With Jev, Paved Gate flagged all 40 injected tool responses and denied all 30 follow-through requests. Precision is
+99.0% and recall 98.0% in an untainted sandbox, and the false positive rate is 1.0%; after an injection, the false
+positive rate on legitimate requests is 2.5%. 15 follow-through requests passed in a sandbox that had never seen an
+injection; all 15 were denied once one had been flagged.
+Dashboard: [soniamehta14.github.io/paved-gate/openshell](https://soniamehta14.github.io/paved-gate/openshell/).
+Tables, definitions and caveats: [`docs/openshell/RESULTS.md`](docs/openshell/RESULTS.md). Reproduce with
+[`evals/openshell/`](evals/openshell/).
+
 **Setup notes (macOS):** this needs Docker Desktop 28 or later **with host networking enabled** and OpenShell 0.1.2.
 Without host networking, OpenShell 0.1.2 sandboxes either don't start
-([NVIDIA/OpenShell#3880](https://github.com/NVIDIA/OpenShell/issues/3880)) or can't reach services on the Mac. The
-full install record, with every error and workaround, is in
-[`docs/openshell/FRICTION_LOG.md`](docs/openshell/FRICTION_LOG.md).
+([NVIDIA/OpenShell#3880](https://github.com/NVIDIA/OpenShell/issues/3880)) or can't reach services on the Mac. A fix
+that removes the need for host networking is in review
+([NVIDIA/OpenShell#4404](https://github.com/NVIDIA/OpenShell/pull/4404)); it worked when built and tested on this Mac
+(friction log entry 41). The full install record, with every error and workaround, is in
+[`docs/openshell/FRICTION_LOG.md`](docs/openshell/FRICTION_LOG.md), and draft issues for OpenShell are in
+[`docs/openshell/FEEDBACK.md`](docs/openshell/FEEDBACK.md).
 
 **The trade-off of Docker host networking:** it's a Docker-wide setting.
 - **It does not weaken the sandbox.** OpenShell's sandbox containers still run with no network of their own, every
@@ -595,11 +653,13 @@ data/eval/                        versioned eval sample + manifest (CDLA-Sharing
 src/paved_gate/integrations/openshell/   OpenShell supervisor middleware (gRPC; protos pinned to v0.1.2)
 policy/openshell_egress.policy.yaml      egress rubric and thresholds for the OpenShell middleware
 examples/openshell/               one-command OpenShell demo (jail + mail)
-docs/openshell/                   OpenShell friction log (install record and draft issues)
+evals/openshell/                  OpenShell benchmark: payload builder, runner (three arms), report and dashboard
+data/openshell/                   versioned synthetic payload set + manifest
+docs/openshell/                   friction log, feedback drafts, results (JSON, tables, dashboard, LinkedIn images)
 scripts/baselines.py              assumed values for --simulate-missing (never a measurement)
 docs/benchmark/                   committed sample: dashboard.png, sample-results.json, sample-dashboard.html
 package.json                      npm task aliases (benchmark, benchmark:dashboard, dashboard, eval:estimate, eval:dashboard, test)
-tests/                            106 tests: decision branches, Jev contract, masking, handlers, middleware, latency, benchmark report, classification eval, OpenShell middleware
+tests/                            113 tests: decision branches, Jev contract, masking, handlers, middleware, latency, benchmark report, classification eval, OpenShell middleware and benchmark helpers
 ```
 
 Development: `uv run pytest`, `uv run mypy src tests examples`, `uv run ruff check .` (mypy `--strict`).
