@@ -47,6 +47,8 @@ class EgressPolicy(_Strict):
     version: Literal[1]
     name: str
     evaluator: EvaluatorConfig = EvaluatorConfig()
+    # False = local detectors only: requests without a local hit are allowed and responses are not scored.
+    evaluator_enabled: bool = True
     local_detectors: list[DetectorName] = Field(default_factory=lambda: list(ALL_DETECTORS))
     deny_on_local_detection: bool = True
     mask_before_evaluate: bool = True

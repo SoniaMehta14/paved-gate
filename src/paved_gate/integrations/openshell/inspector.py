@@ -193,7 +193,7 @@ class EgressInspector:
             await self._record("request", target, v, body, None, enforce)
             return v
 
-        if not scanned.strip():
+        if not scanned.strip() or not self.policy.evaluator_enabled:
             v = Verdict(False, "allow", None, tuple(findings), scores, None, _ms(started), tainted)
             await self._record("request", target, v, body, None, enforce)
             return v
@@ -274,7 +274,7 @@ class EgressInspector:
         started = time.perf_counter()
         text = self._text(body)
         findings: list[Finding] = []
-        if not text.strip():
+        if not text.strip() or not self.policy.evaluator_enabled:
             v = Verdict(False, "allow", None, (), {}, None, _ms(started), self.is_tainted(target.sandbox_id))
             await self._record("response", target, v, body, None, block)
             return v

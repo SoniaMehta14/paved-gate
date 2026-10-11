@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenShell + Paved Gate</title>
+<meta name="description" content="Benchmark of NVIDIA OpenShell sandboxes with the Paved Gate supervisor middleware on a synthetic payload set: who caught what, accuracy, the effect of sandbox taint, and added latency.">
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --border: rgba(11, 11, 11, 0.10); --link: #256abf;
+    --c-openshell: #2f6fb5; --c-gate: #d9822b; --c-passed: #c9c7bf; --c-error: #b3261e;
+    --ok-bg: #e6f4e6; --ok-ink: #006300; --warn-bg: #fdf0d8; --warn-ink: #7a4b00; --bad-ink: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --border: rgba(255, 255, 255, 0.10); --link: #86b6ef;
+      --c-openshell: #6ea5e6; --c-gate: #f0a35b; --c-passed: #4a4945; --c-error: #f2766c;
+      --ok-bg: #11301a; --ok-ink: #7fd67f; --warn-bg: #3a2a0c; --warn-ink: #f3c46b; --bad-ink: #f2766c;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --border: rgba(255, 255, 255, 0.10); --link: #86b6ef;
+    --c-openshell: #6ea5e6; --c-gate: #f0a35b; --c-passed: #4a4945; --c-error: #f2766c;
+    --ok-bg: #11301a; --ok-ink: #7fd67f; --warn-bg: #3a2a0c; --warn-ink: #f3c46b; --bad-ink: #f2766c;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--page); color: var(--ink); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 44px 24px 56px; }
+  @media (max-width: 600px) { .wrap { padding: 28px 16px 40px; } }
+  .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 6px; }
+  h1 { font-size: 30px; line-height: 1.2; font-weight: 650; letter-spacing: -0.01em; margin: 0 0 10px; }
+  h2 { font-size: 20px; font-weight: 650; margin: 40px 0 6px; }
+  h3 { font-size: 15px; font-weight: 650; margin: 0 0 8px; }
+  p { margin: 0 0 12px; }
+  .lede { color: var(--ink-2); margin: 0 0 16px; max-width: 720px; }
+  .sub { color: var(--ink-2); font-size: 14px; margin: 0 0 16px; max-width: 760px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .b-live { background: var(--ok-bg); color: var(--ok-ink); }
+  .b-mock { background: var(--warn-bg); color: var(--warn-ink); }
+  .b-plain { background: var(--surface); color: var(--ink-2); border: 1px solid var(--border); }
+  .banner { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 10px 14px; font-size: 14px; margin: 0 0 20px; }
+  .tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 820px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .tile .v { font-size: 30px; font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .tile .l { font-size: 13px; color: var(--ink-2); margin-top: 4px; }
+  .tile .s { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin: 12px 0 0; overflow-x: auto; }
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-2); font-size: 13px; }
+  td.num, th.num { text-align: right; padding-right: 0; padding-left: 10px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 6px 0 10px; }
+  .kpi .v { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .kpi .l { font-size: 12.5px; color: var(--ink-2); }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--ink-2); margin: 4px 0 8px; }
+  .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .pass { color: var(--ok-ink); font-weight: 600; }
+  .fail { color: var(--bad-ink); font-weight: 600; }
+  .muted { color: var(--muted); }
+  ul.plain { margin: 0; padding-left: 18px; }
+  ul.plain li { margin: 2px 0; }
+  details { margin-top: 10px; }
+  summary { cursor: pointer; color: var(--link); font-size: 14px; }
+  pre { background: var(--page); border: 1px solid var(--grid); border-radius: 8px; padding: 12px; font-size: 12.5px; overflow-x: auto; }
+  svg text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  footer { color: var(--muted); font-size: 12.5px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--grid); }
+  footer a, .panel a, .sub a { color: var(--link); }
+  footer p { margin: 0 0 6px; }
+
+  /* LinkedIn cards: #card=square (1200x1200) and #card=wide (1200x627); always light */
+  html.card { color-scheme: light; }
+  html.card body { overflow: hidden; }
+  html.card .wrap { max-width: none; margin: 0; }
+  html.card-square .wrap { width: 1200px; height: 1200px; padding: 64px 64px 48px; display: flex; flex-direction: column; }
+  html.card-wide .wrap { width: 1200px; height: 627px; padding: 34px 44px 24px; display: flex; flex-direction: column; }
+  html.card h1 { font-size: 46px; }
+  html.card-wide h1 { font-size: 32px; margin-bottom: 4px; }
+  html.card .eyebrow { font-size: 18px; }
+  html.card-wide .eyebrow { font-size: 14px; margin-bottom: 2px; }
+  html.card .lede { font-size: 22px; }
+  html.card .lede { max-width: none; }
+  html.card-wide .lede { font-size: 15px; margin-bottom: 14px; }
+  html.card-square .banner { font-size: 19px; }
+  html.card-wide .banner { font-size: 13px; padding: 6px 12px; }
+  html.card .tile .v { font-size: 52px; }
+  html.card .tile .l { font-size: 18px; }
+  html.card .tile .s { font-size: 15px; }
+  html.card-wide .tile { padding: 10px 14px; }
+  html.card-wide .tile .v { font-size: 34px; }
+  html.card-wide .tile .l { font-size: 13.5px; }
+  html.card-wide .tile .s { font-size: 12px; }
+  html.card-square .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  html.card .cardfoot { margin-top: auto; color: var(--ink-2); font-size: 17px; display: flex; justify-content: space-between; }
+  html.card-wide .cardfoot { font-size: 13px; }
+  html.card .legend { font-size: 18px; }
+  html.card-wide .legend { font-size: 13px; margin: 0 0 2px; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+const DATA = /*__RESULTS__*/null;
+
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const isNum = (v) => typeof v === "number" && isFinite(v);
+const pct = (v) => isNum(v) ? (v * 100).toFixed(1) + "%" : "n/a";
+const ms = (v) => isNum(v) ? (v < 10 ? v.toFixed(2) : v.toFixed(0)) + " ms" : "n/a";
+const num = (v) => isNum(v) ? v.toLocaleString("en-US") : "n/a";
+const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+const card = (location.hash.match(/card=(square|wide)/) || [])[1];
+if (card) {
+  document.documentElement.classList.add("card", "card-" + card);
+  document.documentElement.setAttribute("data-theme", "light");
+}
+
+const run = DATA.run;
+const arms = DATA.arms;
+const full = arms.full;
+const live = run.evaluator_mode === "live";
+const modeBadge = live ? '<span class="badge b-live">Jev live</span>' : '<span class="badge b-mock">Jev mock</span>';
+const runDate = new Date(run.started_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+
+function tilesHtml() {
+  const h = full.headline;
+  const added = DATA.latency.per_arm.full.added_ms;
+  const tiles = [
+    [num(h.requests_tested), "requests tested", "real OpenShell sandboxes"],
+    [num(h.blocked_by_openshell), "blocked by OpenShell", "host or port not in policy"],
+    [num(h.denied_by_paved_gate), "denied by Paved Gate", num(h.injected_responses_flagged) + " of " + num(h.injected_responses) + " injected tool responses flagged"],
+    [num(h.leaked_to_upstream), "leaked to upstream", "of " + num(h.attack_requests) + " attack requests"],
+    [ms(added && added.p50), "median added latency", "p95 " + ms(added && added.p95) + (live ? "" : " (mock)")],
+  ];
+  return '<div class="tiles">' + tiles.map(([v, l, s]) =>
+    `<div class="tile"><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div><div class="s">${esc(s)}</div></div>`).join("") + "</div>";
+}
+
+const SERIES = [
+  ["openshell", "Stopped by OpenShell", "--c-openshell"],
+  ["paved_gate", "Stopped or flagged by Paved Gate", "--c-gate"],
+  ["passed", "Passed through", "--c-passed"],
+  ["error", "Error", "--c-error"],
+];
+
+function legendHtml(groups) {
+  return '<div class="legend">' + SERIES.filter(([k]) => k !== "error" || groups.some((g) => g.error > 0))
+    .map(([, label, color]) => `<span><i style="background:var(${color})"></i>${esc(label)}</span>`).join("") + "</div>";
+}
+
+function caughtSvg(groups, opts) {
+  const { width, rowH, font, labelW, gap } = opts;
+  const barW = width - labelW - 70;
+  const h = groups.length * (rowH + gap);
+  let out = `<svg width="${width}" height="${h}" viewBox="0 0 ${width} ${h}" role="img" aria-label="Who caught what, by request type">`;
+  groups.forEach((g, i) => {
+    const y = i * (rowH + gap);
+    out += `<text x="0" y="${y + rowH / 2 + font * 0.35}" font-size="${font}" fill="${cssVar("--ink")}">${esc(g.label)}</text>`;
+    let x = labelW;
+    for (const [key, , color] of SERIES) {
+      const v = g[key] || 0;
+      if (!v || !g.n) continue;
+      const w = (v / g.n) * barW;
+      out += `<rect x="${x}" y="${y}" width="${w}" height="${rowH}" fill="${cssVar(color)}"><title>${esc(g.label)}: ${v} ${esc(key)}</title></rect>`;
+      if (w > font * 1.6) {
+        const ink = key === "passed" ? cssVar("--ink") : "#ffffff";
+        out += `<text x="${x + w / 2}" y="${y + rowH / 2 + font * 0.35}" font-size="${font * 0.9}" text-anchor="middle" fill="${ink}" font-weight="600">${v}</text>`;
+      }
+      x += w;
+    }
+    out += `<text x="${labelW + barW + 10}" y="${y + rowH / 2 + font * 0.35}" font-size="${font * 0.85}" fill="${cssVar("--muted")}">n=${g.n}</text>`;
+  });
+  return out + "</svg>";
+}
+
+function header(compact) {
+  return `<p class="eyebrow">Paved Gate · NVIDIA OpenShell · ${esc(runDate)}</p>
+    <h1>OpenShell builds the jail. Paved Gate reads the mail.</h1>
+    <p class="lede">${compact ? "" : "Synthetic agent traffic through real OpenShell sandboxes. "}OpenShell decides where an agent may connect; Paved Gate checks what it sends and what comes back.</p>`;
+}
+
+function renderCard() {
+  const app = document.getElementById("app");
+  const square = card === "square";
+  const width = 1200 - (square ? 128 : 88);
+  const groups = full.caught_by;
+  const avail = square ? 520 : 290;
+  const gap = square ? 16 : 7;
+  const rowH = Math.floor((avail - gap * groups.length) / groups.length);
+  const mockNote = live ? "" : '<div class="banner" style="margin:0 0 14px">MOCK RUN: the evaluator was the Jev mock (keyword heuristics). These are not real Jev results.</div>';
+  app.innerHTML = header(true) + mockNote + tilesHtml() +
+    `<div style="margin-top:${square ? 36 : 14}px">${legendHtml(groups)}${caughtSvg(groups, { width, rowH, font: square ? 20 : 14, labelW: square ? 270 : 190, gap })}</div>` +
+    `<div class="cardfoot"><span>Synthetic data only · Jev ${live ? "live" : "MOCK"} · ${esc(num(DATA.dataset.cases))} cases, ${esc(Object.keys(arms).length)} arms</span><span>github.com/SoniaMehta14/paved-gate</span></div>`;
+}
+
+function armsTable() {
+  const rows = Object.entries(arms).map(([id, a]) => {
+    const acc = a.accuracy, r = acc.recall_by_type, lat = DATA.latency.per_arm[id].added_ms;
+    return `<tr><td>${esc(a.label)}<div class="muted" style="font-size:12.5px">${esc(a.evaluator)}</div></td>
+      <td class="num">${lat ? ms(lat.p50) : "baseline"}</td><td class="num">${lat ? ms(lat.p95) : "baseline"}</td>
+      <td class="num">${pct(r.phi.recall)}</td><td class="num">${pct(r.injection.recall)}</td><td class="num">${pct(r.follow_through.recall)}</td>
+      <td class="num">${pct(acc.untainted.fpr)}</td><td class="num">${pct(acc.tainted.fpr)}</td><td class="num">${num(a.steps)}</td></tr>`;
+  }).join("");
+  const r0 = full.accuracy.recall_by_type, a0 = full.accuracy;
+  return `<table><thead><tr><th>Arm</th><th class="num">Added p50</th><th class="num">Added p95</th><th class="num">Recall PHI<br><span class="muted">n=${r0.phi.n}</span></th>
+    <th class="num">Recall injection<br><span class="muted">n=${r0.injection.n}</span></th><th class="num">Recall follow-through<br><span class="muted">n=${r0.follow_through.n}</span></th>
+    <th class="num">FPR untainted<br><span class="muted">n=${a0.untainted.negatives}</span></th><th class="num">FPR tainted<br><span class="muted">n=${a0.tainted.negatives}</span></th><th class="num">Steps</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function accCard(title, m, note) {
+  return `<div class="panel"><h3>${esc(title)}</h3><p class="sub" style="margin:0 0 6px">${esc(note)}</p>
+    <div class="kpis">
+      <div class="kpi"><div class="v">${pct(m.precision)}</div><div class="l">precision</div></div>
+      <div class="kpi"><div class="v">${pct(m.recall)}</div><div class="l">recall</div></div>
+      <div class="kpi"><div class="v">${pct(m.f1)}</div><div class="l">F1</div></div>
+      <div class="kpi"><div class="v">${pct(m.fpr)}</div><div class="l">false positive rate</div></div>
+    </div>
+    <div class="muted" style="font-size:13px">n=${m.n} (${m.positives} positives, ${m.negatives} negatives) · TP ${m.tp} · FP ${m.fp} · TN ${m.tn} · FN ${m.fn}</div></div>`;
+}
+
+function latencySvg(items, width) {
+  const max = Math.max(...items.flatMap((d) => [d.p50 || 0, d.p95 || 0])) || 1;
+  const labelW = 210, barW = width - labelW - 90, rowH = 16;
+  let y = 0, out = "";
+  for (const d of items) {
+    out += `<text x="0" y="${y + 24}" font-size="14" fill="${cssVar("--ink")}">${esc(d.label)}</text>`;
+    out += `<text x="0" y="${y + 42}" font-size="12" fill="${cssVar("--muted")}">n=${d.n}</text>`;
+    [["p50", d.p50, "--c-gate"], ["p95", d.p95, "--c-openshell"]].forEach(([k, v, c], j) => {
+      const yy = y + 8 + j * (rowH + 6);
+      const w = isNum(v) ? Math.max(2, (v / max) * barW) : 0;
+      out += `<rect x="${labelW}" y="${yy}" width="${w}" height="${rowH}" rx="3" fill="${cssVar(c)}"></rect>`;
+      out += `<text x="${labelW + w + 8}" y="${yy + 12.5}" font-size="13" fill="${cssVar("--ink-2")}">${k} ${ms(v)}</text>`;
+    });
+    y += 64;
+  }
+  return `<svg width="${width}" height="${y}" viewBox="0 0 ${width} ${y}" role="img" aria-label="Latency, local detectors versus Jev calls">${out}</svg>`;
+}
+
+function sequenceSvg(seq, th, width) {
+  const cols = ["Agent (sandbox)", "OpenShell supervisor", "Paved Gate", "Jev", "Tool API"];
+  const colX = cols.map((_, i) => 70 + i * ((width - 140) / (cols.length - 1)));
+  const fts = seq.follow_through_scores || {};
+  const msgs = [
+    [0, 1, "GET /tool/… (host and port in policy)"],
+    [1, 2, "EvaluateHttpRequest · PRE_CREDENTIALS"],
+    [2, 1, "ALLOW", true],
+    [1, 4, "forward request"],
+    [4, 1, "200 · body carries instructions for the agent", true],
+    [1, 2, "HttpResponsePreReturn.Evaluate · PRE_RETURN"],
+    [2, 3, "injection score"],
+    [3, 2, `${seq.injection_score} > threshold ${th.injection} · ${ms(seq.injection_evaluator_ms)}`, true],
+    [2, 1, `pass_through · ${seq.injection_reason} · sandbox tainted`, true],
+    [1, 0, "tool result delivered (flag mode)", true],
+    [0, 1, `POST ${seq.follow_through_path} (acts on the instruction)`],
+    [1, 2, "EvaluateHttpRequest · PRE_CREDENTIALS"],
+    [2, 3, "sensitive + exfiltration, flagged text as context"],
+    [3, 2, `exfiltration ${fts.exfiltration} > tainted threshold ${th.tainted_exfiltration} · ${ms(seq.follow_through_evaluator_ms)}`, true],
+    [2, 1, `DENY · ${seq.follow_through_reason}`, true],
+    [1, 0, "403 middleware_denied · never reaches the API", true],
+  ];
+  const top = 40, step = 34, h = top + msgs.length * step + 20;
+  let out = "";
+  cols.forEach((c, i) => {
+    out += `<text x="${colX[i]}" y="18" font-size="13" font-weight="600" text-anchor="middle" fill="${cssVar("--ink")}">${esc(c)}</text>`;
+    out += `<line x1="${colX[i]}" y1="28" x2="${colX[i]}" y2="${h - 6}" stroke="${cssVar("--grid")}" stroke-width="2"></line>`;
+  });
+  msgs.forEach(([a, b, label, reply], i) => {
+    const y = top + i * step + 14, x1 = colX[a], x2 = colX[b], dir = x2 > x1 ? 1 : -1;
+    const color = /DENY|403/.test(label) ? cssVar("--bad-ink") : /tainted|threshold/.test(label) ? cssVar("--c-gate") : cssVar("--ink-2");
+    out += `<line x1="${x1}" y1="${y}" x2="${x2 - dir * 7}" y2="${y}" stroke="${color}" stroke-width="1.6" ${reply ? 'stroke-dasharray="5 4"' : ""}></line>`;
+    out += `<path d="M ${x2} ${y} l ${-dir * 8} -4.5 l 0 9 z" fill="${color}"></path>`;
+    const mid = (x1 + x2) / 2;
+    out += `<text x="${mid}" y="${y - 6}" font-size="12" text-anchor="middle" fill="${color}">${esc(label)}</text>`;
+  });
+  return `<svg width="${width}" height="${h}" viewBox="0 0 ${width} ${h}" role="img" aria-label="Sequence: injected tool response flagged, follow-through denied">${out}</svg>`;
+}
+
+function renderPage() {
+  const app = document.getElementById("app");
+  const W = Math.min(app.clientWidth || 930, 930) - 42;
+  const lat = DATA.latency, pol = DATA.policy, th = pol.thresholds;
+  const te = DATA.taint_effect.full, ft = te.follow_through, bt = ft.below_threshold, tl = te.tainted_legit;
+  const acc = full.accuracy, rbt = acc.recall_by_type;
+  let html = header(false);
+  html += `<div class="badges">${modeBadge}<span class="badge b-plain">OpenShell ${esc(run.openshell_version)}</span><span class="badge b-plain">synthetic data only</span><span class="badge b-plain">${esc(num(DATA.dataset.cases))} cases · ${esc(Object.keys(arms).length)} arms</span></div>`;
+  if (!live) html += `<div class="banner"><strong>Mock run.</strong> The full arm used the Jev mock: keyword heuristics with simulated latency. Its accuracy and latency numbers show the pipeline works; they are not real Jev judgments or real Jev timings.</div>`;
+  html += tilesHtml();
+  html += `<p class="sub" style="margin-top:10px">Full arm: ${esc(full.headline.definition)}. Attack requests are synthetic PHI, follow-through and unlisted host requests; leaked means the demo API received it.</p>`;
+
+  html += `<h2>Who caught what</h2><p class="sub">Full arm. OpenShell stops connections the policy does not allow; everything it allows passes through Paved Gate. For the clean rows, passing through is the right outcome and anything Paved Gate stopped is a false positive. Injected tool responses are flagged (delivered and recorded), not blocked, in this configuration.</p>`;
+  html += `<div class="panel">${legendHtml(full.caught_by)}${caughtSvg(full.caught_by, { width: W, rowH: 26, font: 14, labelW: 190, gap: 12 })}</div>`;
+
+  html += `<h2>Three arms, same payloads</h2><p class="sub">Each arm ran every case through real OpenShell sandboxes with the same policy. Added latency is paired per request against the OpenShell only arm. Recall counts what Paved Gate caught among requests OpenShell allowed.</p>`;
+  html += `<div class="panel">${armsTable()}</div>`;
+
+  html += `<h2>Paved Gate accuracy ${live ? "" : '<span class="badge b-mock" style="vertical-align:3px">mock</span>'}</h2>`;
+  html += `<div class="grid2">${accCard("Untainted sandbox", acc.untainted, acc.untainted.definition)}${accCard("Tainted sandbox (after an injection was flagged)", acc.tainted, acc.tainted.definition)}</div>`;
+  html += `<div class="panel"><table><thead><tr><th>Recall by type</th><th class="num">n</th><th class="num">caught</th><th class="num">recall</th></tr></thead><tbody>` +
+    [["phi_structured", "Synthetic PHI with identifiers (caught by local detectors)"], ["phi_unstructured", "Synthetic PHI without identifier patterns"],
+     ["injection", "Injected tool responses (flagged)"], ["follow_through", "Follow-through requests (tainted sandbox)"]]
+      .map(([k, l]) => `<tr><td>${esc(l)}</td><td class="num">${rbt[k].n}</td><td class="num">${rbt[k].caught}</td><td class="num">${pct(rbt[k].recall)}</td></tr>`).join("") +
+    `</tbody></table></div>`;
+
+  html += `<h2>Does the taint change decisions?</h2><p class="sub">Every follow-through and legitimate request ran twice: in a sandbox that never saw an injection, and right after an injected tool response. Untainted exfiltration threshold ${te.untainted_threshold}, tainted ${th.tainted_exfiltration}, on a ${esc(th.scale)} scale.</p>`;
+  html += `<div class="panel"><table><thead><tr><th></th><th class="num">n</th><th class="num">denied untainted</th><th class="num">denied tainted</th></tr></thead><tbody>
+    <tr><td>Follow-through requests</td><td class="num">${ft.n}</td><td class="num">${ft.denied_untainted}</td><td class="num">${ft.denied_tainted}</td></tr>
+    <tr><td>Legitimate requests</td><td class="num">${tl.n}</td><td class="num">${tl.denied_untainted}</td><td class="num">${tl.denied_tainted}</td></tr></tbody></table>
+    <ul class="plain" style="margin-top:12px">
+      <li><strong>${bt.denied_when_tainted} of ${bt.n}</strong> follow-through requests that passed when untainted were denied once the sandbox was tainted: ${bt.of_which_score_alone_would_deny} because the evaluator, given the flagged instruction as context, scored them above the untainted threshold, and ${bt.of_which_only_the_stricter_threshold_denies} only because of the stricter tainted threshold.</li>
+      <li>Of those below threshold, routine looking (subtle) cases: ${bt.by_designed_subtype.subtle.denied_when_tainted} of ${bt.by_designed_subtype.subtle.n} denied when tainted; overt: ${bt.by_designed_subtype.overt.denied_when_tainted} of ${bt.by_designed_subtype.overt.n}.</li>
+      <li>Taint-induced false positives: <strong>${tl.taint_induced_false_positives} of ${tl.n}</strong> legitimate requests passed untainted but were denied after an injection.</li>
+    </ul></div>`;
+
+  html += `<h2>Latency ${live ? "" : '<span class="badge b-mock" style="vertical-align:3px">mock</span>'}</h2><p class="sub">${esc(lat.definitions.local_detectors)}; ${esc(lat.definitions.jev_calls)}.</p>`;
+  html += `<div class="panel">${latencySvg([
+    { label: "Local detectors", ...lat.middleware.local_detectors },
+    { label: "Jev calls" + (live ? "" : " (mock)"), ...lat.middleware.jev_calls },
+  ], W)}
+    <table style="margin-top:8px"><thead><tr><th>End to end inside the sandbox</th><th class="num">n</th><th class="num">p50</th><th class="num">p95</th></tr></thead><tbody>` +
+    Object.entries(arms).map(([id, a]) => { const d = lat.per_arm[id].end_to_end_ms; return `<tr><td>${esc(a.label)}</td><td class="num">${d.n}</td><td class="num">${ms(d.p50)}</td><td class="num">${ms(d.p95)}</td></tr>`; }).join("") +
+    `</tbody></table></div>`;
+
+  html += `<h2>OpenShell</h2><p class="sub">The jail: what the sandbox could and could not reach, measured from inside it during this run.</p><div class="grid2">`;
+  html += `<div class="panel"><h3>Isolation probes</h3><table><thead><tr><th>Target</th><th>Expected</th><th>Observed</th><th></th></tr></thead><tbody>` +
+    full.probes.map((p) => `<tr><td>${esc(p.label)}</td><td>${esc(p.expect)}</td><td>${esc(p.result)}</td><td class="${p.pass ? "pass" : "fail"}">${p.pass ? "pass" : "FAIL"}</td></tr>`).join("") +
+    `</tbody></table><p class="muted" style="font-size:12.5px;margin-top:8px">${Array.isArray(full.probe_target_hits) ? `Probe target on the Mac (:8098) received ${full.probe_target_hits.length} connections from the sandbox.` : "Connections received by the probe target on the Mac were not recorded in this run; the results above are what the sandbox observed."}</p></div>`;
+  html += `<div class="panel"><h3>Sandbox startup</h3><table><thead><tr><th>Arm</th><th>Sandbox</th><th class="num">create to first line</th></tr></thead><tbody>` +
+    Object.values(arms).flatMap((a) => a.sandboxes.map((s) => `<tr><td>${esc(a.label)}</td><td>${esc(s.phase)}</td><td class="num">${isNum(s.startup_s) ? s.startup_s.toFixed(2) + " s" : "n/a"}</td></tr>`)).join("") +
+    `</tbody></table></div></div>`;
+  html += `<div class="panel"><h3>Enforced policy</h3><ul class="plain">
+    <li>Default: <strong>${esc(pol.default)}</strong></li>
+    <li>Allowed endpoints: ${pol.allowed_endpoints.map(esc).join(", ")}</li>
+    <li>Allowed binaries: ${pol.allowed_binaries.map(esc).join(", ")}</li>
+    <li>Filesystem: read only ${pol.filesystem_read_only.map(esc).join(", ")}; read write ${pol.filesystem_read_write.map(esc).join(", ")}</li>
+    <li>Middleware: ${pol.middlewares.map(esc).join("; ")}</li>
+    <li>Paved Gate thresholds: PII/PHI probability ${th.sensitive_probability}, exfiltration ${th.exfiltration} (tainted ${th.tainted_exfiltration}), injection ${th.injection}; local detectors ${pol.local_detectors.map(esc).join(", ")}; responses: ${esc(pol.response_mode)}</li>
+    </ul><p class="muted" style="font-size:12.5px;margin:8px 0 0">Sources: <code>${esc(pol.file)}</code> and <code>${esc(pol.paved_gate_policy)}</code>.</p></div>`;
+
+  if (DATA.sequence_example) {
+    html += `<h2>An injected tool response, then the follow-through</h2><p class="sub">A real pair from this run (full arm, sandbox T): hook names and reason codes as they appear in the middleware.</p>`;
+    html += `<div class="panel">${sequenceSvg(DATA.sequence_example, th, Math.max(W, 760))}<details><summary>Mermaid source</summary><pre>${esc(DATA.mermaid || "")}</pre></details></div>`;
+  }
+
+  const counts = Object.entries(DATA.dataset.counts).map(([k, v]) => `${esc(k)} ${v}`).join(" · ");
+  html += `<footer>
+    <p><strong>Sample sizes:</strong> ${esc(num(DATA.dataset.cases))} cases (${counts}); per arm, sandbox U ran ${run.plan.sandbox_u_steps} steps plus ${run.plan.probes} isolation probes and sandbox T ran ${run.plan.sandbox_t_steps} steps (each follow-through or post-taint request preceded by an injected tool response).</p>
+    <p><strong>Synthetic data only.</strong> Names, identifiers and dates are invented; domains are reserved examples. Dataset sha256 <code>${esc(DATA.dataset.sha256.slice(0, 16))}…</code>, seed ${DATA.dataset.seed}.</p>
+    <p><strong>Live or mock:</strong> full arm evaluator ${live ? "Jev live" : "Jev MOCK (keyword heuristics, simulated latency)"}${full.evaluator_models.length ? " (" + full.evaluator_models.map(esc).join(", ") + ")" : ""}; the other arms make no evaluator calls. Run ${esc(run.started_at)} to ${esc(run.finished_at)} UTC on ${esc(run.runtime)}, OpenShell ${esc(run.openshell_version)}, Docker ${esc(run.docker_version)}.${run.meta_reconstructed ? " Run times reconstructed: " + esc(run.meta_reconstructed) + "." : ""}</p>
+    <p><a href="${esc(DATA.links.repo)}">Repository</a> · <a href="${esc(DATA.links.friction_log)}">Friction log</a> · <a href="${esc(DATA.links.results_md)}">Results tables</a> · <a href="${esc(DATA.links.results_json)}">results.json</a></p>
+  </footer>`;
+  app.innerHTML = html;
+}
+
+if (card) renderCard(); else renderPage();
+</script>
+</body>
+</html>

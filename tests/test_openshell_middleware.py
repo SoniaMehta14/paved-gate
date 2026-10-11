@@ -348,3 +348,20 @@ async def test_tainted_request_gives_the_evaluator_the_flagged_instruction_as_co
     assert "[REDACTED:EMAIL]" in tainted_state and "ops@collector.example.test" not in tainted_state  # masked
     assert "ignore previous instructions" not in clean_state  # other sandboxes unaffected
     assert all("ignore previous instructions" not in r.model_dump_json() for r in records)  # never logged
+
+
+# ------------------------------------------------------------------ local detectors only (evaluator off)
+
+
+async def test_evaluator_off_still_denies_local_hits_and_never_calls_the_evaluator() -> None:
+    ev = ScriptedEvaluator(sensitive=0.99, exfil=4.0, injection=4.0)
+    async with Harness(ev, _policy(evaluator_enabled=False)) as h:
+        phi = await h.request(f'{{"ssn": "{SYNTHETIC_SSN}"}}'.encode())
+        clean = await h.request(b'{"summary": "status update"}')
+        results = await h.response(INJECTED)
+        after = await h.request(b'{"summary": "status update"}')
+    assert phi.decision == pb.DECISION_DENY and phi.reason_code == "paved_gate_sensitive_data"
+    assert clean.decision == pb.DECISION_ALLOW and "paved_gate.evaluator_ms" not in clean.metadata
+    assert results[1].body_result.WhichOneof("action") == "pass_through" and results[1].body_result.reason_code == ""
+    assert after.decision == pb.DECISION_ALLOW  # nothing scored the response, so the sandbox is not tainted
+    assert ev.calls == []

@@ -1,0 +1,20 @@
+{
+  "file": "egress_payloads_v1.jsonl",
+  "sha256": "f9e52c844aa1659a28187783d38e7edaa83b77234679bf4cb545b49c8071164b",
+  "seed": 20261009,
+  "cases": 290,
+  "counts": {
+    "benign_response/benign": 40,
+    "clean/clean": 60,
+    "follow_through/overt": 15,
+    "follow_through/subtle": 15,
+    "injection/paired": 30,
+    "injection/unpaired": 10,
+    "phi/structured": 36,
+    "phi/unstructured": 24,
+    "tainted_legit/legit": 40,
+    "unlisted_host/unlisted": 20
+  },
+  "synthetic": true,
+  "generated_by": "evals/openshell/build_payloads.py"
+}

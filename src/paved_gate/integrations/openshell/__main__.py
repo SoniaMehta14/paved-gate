@@ -21,12 +21,20 @@ import asyncio
 import signal
 import sys
 
-from paved_gate.integrations.openshell.config import load_egress_policy
+from paved_gate.integrations.openshell.config import EgressPolicy, load_egress_policy
 from paved_gate.integrations.openshell.server import build_inspector, build_server
 
 
-async def _run(policy_path: str, bind: str, mode: str | None, audit_path: str | None) -> int:
+def _evaluator_label(policy: EgressPolicy) -> str:
+    if not policy.evaluator_enabled:
+        return "off (local detectors only)"
+    return f"{policy.evaluator.provider}/{policy.evaluator.mode}"
+
+
+async def _run(policy_path: str, bind: str, mode: str | None, audit_path: str | None, no_evaluator: bool) -> int:
     policy = load_egress_policy(policy_path)
+    if no_evaluator:
+        policy = policy.model_copy(update={"evaluator_enabled": False})
     if mode:
         policy = policy.model_copy(update={"evaluator": policy.evaluator.model_copy(update={"mode": mode})})
     if audit_path:
@@ -38,7 +46,7 @@ async def _run(policy_path: str, bind: str, mode: str | None, audit_path: str | 
     print(
         f"paved-gate OpenShell middleware listening on {host}:{port} "
         f"(policy {inspector.policy.name}, "
-        f"evaluator {inspector.policy.evaluator.provider}/{inspector.policy.evaluator.mode}, "
+        f"evaluator {_evaluator_label(inspector.policy)}, "
         f"responses: {inspector.policy.response_mode})",
         flush=True,
     )
@@ -58,8 +66,9 @@ def main() -> int:
     ap.add_argument("--bind", default="127.0.0.1:50051")
     ap.add_argument("--mode", choices=["mock", "live"], help="override the policy's evaluator mode")
     ap.add_argument("--audit", help="override the policy's audit log path")
+    ap.add_argument("--no-evaluator", action="store_true", help="local detectors only: never call the evaluator")
     args = ap.parse_args()
-    return asyncio.run(_run(args.policy, args.bind, args.mode, args.audit))
+    return asyncio.run(_run(args.policy, args.bind, args.mode, args.audit, args.no_evaluator))
 
 
 if __name__ == "__main__":

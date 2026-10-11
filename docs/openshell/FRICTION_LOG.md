@@ -360,6 +360,41 @@ committed). It denies any request body containing a marker string.
     about 2–3 s here. Registering a middleware dynamically, or per sandbox, would make integrations like this less
     intrusive. *Verified* (behaviour), *suggestion* (fix).
 
+### 2026-10-09 to 2026-10-11 · Phase 4: the benchmark (`evals/openshell/`)
+
+37. **Sandbox names are capped at 19 characters, and only the server says so.** `openshell sandbox create --name
+    pg-bench-u-<unix time>` (21 characters) failed with `Client specified an invalid argument … name exceeds maximum length (21 > 19)`.
+    `openshell sandbox create --help` describes `--name` only as "Optional sandbox name (auto-generated when
+    omitted)". The benchmark now uses names like `pgb-u-573059`. *Verified.* Stating the limit in the help text, or
+    checking it in the CLI before the request, would save a round trip.
+38. **A few requests to the allowed host fail in transit, with or without the middleware.** Each benchmark arm sends
+    430 sequential HTTP requests from one sandbox to the one allowed host port. A handful failed inside the sandbox
+    with `RemoteDisconnected: Remote end closed connection without response` or a 20 s client timeout, then succeeded
+    on retry:
+
+    | Run | OpenShell only (no middleware selected) | + local detectors | + local detectors + Jev |
+    |---|---|---|---|
+    | Mock, 2026-10-09 | 2 of 430 | 3 of 430 | 3 of 430 |
+    | Live, 2026-10-11 | 0 of 430 | 1 of 430 | 5 of 430 |
+
+    It happens in the arm with no middleware selected, so it is not the middleware. In one live case the abandoned
+    attempt still reached the middleware later, after the agent had moved on to later requests, so the middleware's
+    log was out of order with the agent's. *Verified* (counts in the results JSON). *Unknown:* the cause. The upstream
+    is a local Python `ThreadingHTTPServer`, which could also be the cause; I did not isolate it. The benchmark retries
+    a failed step up to twice and reports the counts instead of hiding them.
+39. **`PRE_RETURN` runs on every response OpenShell forwards from a selected endpoint, not only tool calls.** With
+    `network_middlewares` selecting `host.openshell.internal`, every allowed POST's reply (`{"stored": true}`) went
+    through `HttpResponsePreReturn.Evaluate`, so the gate scored it too. I had expected the response hook to matter
+    only for tool calls. It matters for cost and latency, because each forwarded response is one more evaluator call (530 Jev
+    calls for 410 requests in the live arm). *Verified* (audit log). A middleware that only cares about tool output
+    can skip short or known-safe bodies itself, or use a narrower `endpoints.include`.
+40. **Results.** The live benchmark (2026-10-11, Jev 1.13.0, synthetic data only) is in
+    [RESULTS.md](RESULTS.md), with the dashboard at [index.html](index.html). With local detectors and Jev, 2 of 110
+    attack requests reached the upstream API (both synthetic PHI without identifier patterns), against 90 of 110 with
+    OpenShell alone. The added latency was 112 ms at p50. The paired taint test is in the results: 15 of 30
+    follow-through requests passed when the sandbox was untainted, and all 15 were denied after an injection was
+    flagged. *Verified* (results JSON).
+
 ## Status at end of Phase 1 (2026-10-09T13:42Z)
 
 | Component | Version / state |

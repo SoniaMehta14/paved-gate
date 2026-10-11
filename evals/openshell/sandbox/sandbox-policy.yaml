@@ -1,0 +1,23 @@
+# OpenShell sandbox policy for the benchmark ("the jail"). Same shape as examples/openshell/sandbox-policy.yaml.
+# Deny by default: the agent's Python may reach exactly one host port, the benchmark API on the Mac.
+# The "OpenShell only" arm runs this policy with the network_middlewares section removed.
+version: 1
+filesystem_policy:
+  include_workdir: true
+  read_only: [/app]
+  read_write: [/tmp]
+network_policies:
+  bench_api:
+    endpoints:
+      - host: host.openshell.internal
+        port: 8099
+        protocol: rest
+        enforcement: enforce
+        access: read-write
+    binaries:
+      - path: /usr/local/bin/python3.12
+network_middlewares:
+  paved_gate:
+    middleware: paved-gate
+    endpoints:
+      include: ["host.openshell.internal"]
