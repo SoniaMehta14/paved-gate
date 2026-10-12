@@ -213,6 +213,14 @@ committed). It denies any request body containing a marker string.
     sentence with a link to the negotiation page, and a docs refresh
     ([#3705](https://github.com/NVIDIA/OpenShell/pull/3705), commit 2026-09-25) removed that page. *Verified* (commit
     history). Whether the table was meant to move somewhere else is unknown.
+
+    **Update (2026-10-12):** reported as [#4378](https://github.com/NVIDIA/OpenShell/issues/4378) and fixed by
+    [#4405](https://github.com/NVIDIA/OpenShell/pull/4405) (merged 2026-10-12, `6b7a00e`). On `main`, the
+    [Protocol Negotiation section](https://github.com/NVIDIA/OpenShell/blob/main/docs/extensibility/overview.mdx)
+    now has a base capability table for all four extension families with an example `Describe` manifest, each
+    `extension` field in the protos names its expected values, and the missing metadata and missing version errors
+    name the expected protocol and capability. *Verified* (docs and proto on `main`, 2026-10-12). Not yet in a
+    release as of this update.
 23. **Registration and policy work as documented.** I added to `gateway.toml`:
     ```toml
     [[openshell.supervisor.middleware]]
@@ -326,7 +334,8 @@ committed). It denies any request body containing a marker string.
     `openshell.supervisor-middleware.contract`, taken from
     [`openshell-core/src/extension_protocol.rs` @ v0.1.2](https://github.com/NVIDIA/OpenShell/blob/v0.1.2/crates/openshell-core/src/extension_protocol.rs).
     The protocol version (`1.0`) is in the v0.1.2 upgrade guide. See entry 22, including its correction. Everything
-    else follows the documentation and the proto's own comments.
+    else follows the documentation and the proto's own comments. Since #4405 (2026-10-12) the capability is also
+    documented on `main` (entry 22, update).
 
     **Support level:** documented and present in the released v0.1.2 binaries (verified working, entries 23–24 and
     30), but explicitly unstable: "The middleware API is still evolving. Future versions will change it…"

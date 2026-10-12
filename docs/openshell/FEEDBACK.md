@@ -13,7 +13,10 @@ macOS, Apple Silicon, with Docker Desktop. Every item comes from the timestamped
   [#4404 comment](https://github.com/NVIDIA/OpenShell/pull/4404#issuecomment-6115080249) (friction log entries 13 to 20,
   27 and 41).
 - **The base capability that `Describe` must return is no longer in the docs.**
-  [#4378](https://github.com/NVIDIA/OpenShell/issues/4378) (entries 22 and 33).
+  [#4378](https://github.com/NVIDIA/OpenShell/issues/4378) (entries 22 and 33). **Fixed** by
+  [#4405](https://github.com/NVIDIA/OpenShell/pull/4405), merged 2026-10-12: a base capability table and example
+  manifest in the docs, the values in each proto, and clearer negotiation errors
+  ([reply confirming it](https://github.com/NVIDIA/OpenShell/issues/4378#issuecomment-6132126928)).
 - **A file baked into the image fails with a bare "Permission denied".** Comment on
   [#4270](https://github.com/NVIDIA/OpenShell/issues/4270#issuecomment-6085162496), which asks for filesystem denial
   events (entry 34).
