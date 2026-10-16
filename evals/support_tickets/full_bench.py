@@ -67,6 +67,9 @@ DEFAULT_FLAGSHIP_PER_INTENT = 50
 SMOKE_ROWS = 50
 RUNS = 3
 BUDGET_USD = 120.0
+# Records without "runner": 2 (written 2026-10-16T02:56Z to 02:58Z) have latencies inflated by a starved event loop; their
+# predictions and token usage are valid. Latency is reported from runner 2 records only.
+RUNNER_VERSION = 2
 QUESTION = ChoiceQuestion(
     instructions="Which intent does this customer support message express? Choose exactly one.",
     criteria=dict(INTENTS),
@@ -173,14 +176,26 @@ def raw_path(cfg_id: str, run: str) -> Path:
     return OUT / "raw" / cfg_id / f"{run}.jsonl"
 
 
+def _parse_lines(lines: Iterable[str]) -> list[dict[str, object]]:
+    out: list[dict[str, object]] = []
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            out.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue  # a line cut short by a killed process; the row is simply redone
+    return out
+
+
 def read_records(path: Path) -> list[dict[str, object]]:
     if path.exists():
         with path.open(encoding="utf-8") as f:
-            return [json.loads(line) for line in f if line.strip()]
+            return _parse_lines(f)
     gz = path.with_suffix(".jsonl.gz")
     if gz.exists():
         with gzip.open(gz, "rt", encoding="utf-8") as f:
-            return [json.loads(line) for line in f if line.strip()]
+            return _parse_lines(f)
     return []
 
 
@@ -234,25 +249,14 @@ class Fatal(Exception):
 
 
 class AdaptiveLimit:
-    """Concurrency that halves when many calls needed retries (rate limiting) and creeps back up when clean."""
+    """How many of a configuration's workers may be busy. Halves when many calls needed retries (rate limiting)
+    and creeps back up after clean stretches. Workers above the limit idle; nothing is woken in bulk."""
 
     def __init__(self, start: int) -> None:
         self.max = start
         self.limit = start
-        self.active = 0
-        self.cond = asyncio.Condition()
         self.recent: list[bool] = []
         self.last_cut = 0.0
-
-    async def __aenter__(self) -> None:
-        async with self.cond:
-            await self.cond.wait_for(lambda: self.active < self.limit)
-            self.active += 1
-
-    async def __aexit__(self, *_: object) -> None:
-        async with self.cond:
-            self.active -= 1
-            self.cond.notify_all()
 
     def observe(self, retried: bool) -> None:
         self.recent = [*self.recent, retried][-100:]
@@ -264,6 +268,20 @@ class AdaptiveLimit:
         elif len(self.recent) >= 100 and not any(self.recent) and self.limit < self.max:
             self.limit += 1
             self.recent = []
+
+
+async def watch_loop_lag(stop: asyncio.Event) -> None:
+    """Warn if the event loop falls behind: latency measured in a starved loop includes our own queueing."""
+    worst = 0.0
+    last_report = time.monotonic()
+    while not stop.is_set():
+        t = time.perf_counter()
+        await asyncio.sleep(0.05)
+        worst = max(worst, (time.perf_counter() - t - 0.05) * 1000)
+        if time.monotonic() - last_report > 60:
+            flag = "  WARNING: latency would be inflated" if worst > 50 else ""
+            print(f"    event loop lag (max over the last minute): {worst:.1f} ms{flag}", flush=True)
+            worst, last_report = 0.0, time.monotonic()
 
 
 async def classify(evaluator: FastEvaluator, t: Ticket) -> dict[str, object]:
@@ -321,22 +339,27 @@ async def run_task(
     path.parent.mkdir(parents=True, exist_ok=True)
     evaluator = cfg.make(data.exemplars)
     limit = AdaptiveLimit(cfg.concurrency)
-    lock = asyncio.Lock()
+    queue: asyncio.Queue[Ticket] = asyncio.Queue()
+    for t in todo:
+        queue.put_nowait(t)
     n_done = 0
     started = time.monotonic()
     print(f"  {cfg.id} {run}: {len(todo)} rows to do ({len(tickets) - len(todo)} already done)", flush=True)
     with path.open("a", encoding="utf-8") as f:
 
-        async def one(t: Ticket) -> None:
+        async def worker(i: int) -> None:
             nonlocal n_done
-            if budget.exceeded.is_set():
-                return
-            async with limit:
-                if budget.exceeded.is_set():
+            while not budget.exceeded.is_set():
+                if i >= limit.limit:  # throttled: this worker sits out until the limit recovers
+                    await asyncio.sleep(1.0)
+                    continue
+                try:
+                    t = queue.get_nowait()
+                except asyncio.QueueEmpty:
                     return
                 rec = await classify(evaluator, t)
-            limit.observe(int(str(rec.get("attempts") or 1)) > 1 or rec.get("pred") is None)
-            async with lock:
+                rec["runner"] = RUNNER_VERSION
+                limit.observe(int(str(rec.get("attempts") or 1)) > 1 or rec.get("pred") is None)
                 f.write(json.dumps(rec, ensure_ascii=False) + "\n")
                 f.flush()
                 budget.add(record_cost(rec, cfg.price_key))
@@ -350,7 +373,7 @@ async def run_task(
                     )
 
         try:
-            await asyncio.gather(*(one(t) for t in todo))
+            await asyncio.gather(*(worker(i) for i in range(cfg.concurrency)))
         finally:
             await evaluator.aclose()
     print(
@@ -438,19 +461,31 @@ async def smoke(data: Data) -> None:
 
 async def run_plan(data: Data) -> None:
     budget = Budget(BUDGET_USD - 1.0, spent_so_far())  # $1 margin for in-flight calls
+    stop = asyncio.Event()
+    lag = asyncio.create_task(watch_loop_lag(stop))
+    try:
+        await _run_plan(data, budget)
+    finally:
+        stop.set()
+        await lag
+
+
+async def _run_plan(data: Data, budget: Budget) -> None:
     for k in range(1, RUNS + 1):
         run = f"run{k}"
         tasks = []
+        committed = 0.0  # projected cost of the configurations already launched for this run
         for cfg in CONFIGS:
             rows = scope_rows(cfg, data)
             projected = estimate_cost(cfg, remaining_rows(cfg, run, rows))
-            if budget.spent + projected > budget.cap:
+            if budget.spent + committed + projected > budget.cap:
                 print(
                     f"  SKIP {cfg.id} {run}: projected ${projected:.2f} would pass the ${BUDGET_USD:.0f} cap "
                     f"(spent ${budget.spent:.2f})",
                     flush=True,
                 )
                 continue
+            committed += projected
             tasks.append(run_task(cfg, run, rows, data, budget, raw_path(cfg.id, run)))
         print(f"== {run}: {len(tasks)} configurations, spent so far ${budget.spent:.2f}", flush=True)
         await asyncio.gather(*tasks)
@@ -511,7 +546,11 @@ def finalize(data: Data, flagship_per_intent: int) -> None:
                 y_true = [str(r["true"]) for r in ok]
                 y_pred = [str(r["pred"]) for r in ok]
                 m = compute_metrics(y_true, y_pred, labels(), INVALID)
-                lat = [float(str(r["latency_ms"])) for r in ok if r.get("latency_ms") is not None]
+                lat = [
+                    float(str(r["latency_ms"]))
+                    for r in ok
+                    if r.get("latency_ms") is not None and int(str(r.get("runner") or 1)) >= RUNNER_VERSION
+                ]
                 cost = sum(record_cost(r, cfg.price_key) for r in ok)
                 preds[(cfg.id, run, scope)] = {int(str(r["row"])): str(r["pred"]) for r in ok}
                 summary.append(
@@ -535,6 +574,7 @@ def finalize(data: Data, flagship_per_intent: int) -> None:
                         "api_errors": errors,
                         "latency_p50_ms": pct(lat, 50),
                         "latency_p95_ms": pct(lat, 95),
+                        "latency_n": len(lat),
                         "cost_usd": round(cost, 4),
                         "cost_per_1k_usd": round(cost / len(ok) * 1000, 4),
                         "input_tokens": sum(int(str(r.get("input_tokens") or 0)) for r in ok),
