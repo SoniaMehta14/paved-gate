@@ -12,6 +12,8 @@ logs/
 
 # benchmark output (changes every run; see docs/benchmark/ for a committed sample)
 results/
+# ...except published eval results, which are committed so the numbers can be reproduced
+!evals/support_tickets/results/
 
 # full downloaded datasets (the versioned eval sample in data/eval/ is committed)
 data/cache/
