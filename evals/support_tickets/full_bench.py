@@ -67,8 +67,8 @@ DEFAULT_FLAGSHIP_PER_INTENT = 50
 SMOKE_ROWS = 50
 RUNS = 3
 BUDGET_USD = 120.0
-# Records without "runner": 2 (written 2026-10-16T02:56Z to 02:58Z) have latencies inflated by a starved event loop; their
-# predictions and token usage are valid. Latency is reported from runner 2 records only.
+# Records without "runner": 2 (written 2026-10-16T02:56Z to 02:58Z) have latencies inflated by a starved event
+# loop; their predictions and token usage are valid. Latency is reported from runner 2 records only.
 RUNNER_VERSION = 2
 QUESTION = ChoiceQuestion(
     instructions="Which intent does this customer support message express? Choose exactly one.",
@@ -351,6 +351,8 @@ async def run_task(
             nonlocal n_done
             while not budget.exceeded.is_set():
                 if i >= limit.limit:  # throttled: this worker sits out until the limit recovers
+                    if queue.empty():
+                        return
                     await asyncio.sleep(1.0)
                     continue
                 try:
