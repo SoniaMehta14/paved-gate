@@ -70,6 +70,9 @@ BUDGET_USD = 120.0
 # Records without "runner": 2 (written 2026-10-16T02:56Z to 02:58Z) have latencies inflated by a starved event
 # loop; their predictions and token usage are valid. Latency is reported from runner 2 records only.
 RUNNER_VERSION = 2
+# Latency excludes each run's first minute: the runner reads its checkpoint files while the first calls are in
+# flight, which inflated tail latency slightly (Jev run 2 p95: 259 ms in the first minute, 208 ms afterwards).
+WARMUP_S = 60.0
 QUESTION = ChoiceQuestion(
     instructions="Which intent does this customer support message express? Choose exactly one.",
     criteria=dict(INTENTS),
@@ -527,16 +530,28 @@ def mcnemar(a_correct: Sequence[bool], b_correct: Sequence[bool]) -> dict[str, f
     return {"a_only": b, "b_only": c, "p_value": min(1.0, round(p, 6))}
 
 
+def run_start(cfg: Config, run: str) -> float:
+    """When the runner 2 records of a run began (the latency warm-up window is measured from here)."""
+    ts = [
+        float(str(r["ts"]))
+        for r in read_records(raw_path(cfg.id, run))
+        if int(str(r.get("runner") or 1)) >= RUNNER_VERSION
+    ]
+    return min(ts) if ts else math.inf
+
+
 def finalize(data: Data, flagship_per_intent: int) -> None:
     scopes = {"full": data.eval_set, "subset": data.subset, "flagship": data.flagship}
     scope_order = ["full", "subset", "flagship"]
     summary: list[dict[str, object]] = []
     per_class: list[dict[str, object]] = []
     preds: dict[tuple[str, str, str], dict[int, str]] = {}
+    pooled: dict[str, list[float]] = defaultdict(list)  # latency over all runs, the configuration's own rows
     for cfg in CONFIGS:
         allowed = scope_order[scope_order.index(cfg.scope) :]
         for k in range(1, RUNS + 1):
             run = f"run{k}"
+            start = run_start(cfg, run)
             for scope in allowed:
                 rows = scopes[scope]
                 ok, errors = scored(cfg, run, rows)
@@ -551,8 +566,12 @@ def finalize(data: Data, flagship_per_intent: int) -> None:
                 lat = [
                     float(str(r["latency_ms"]))
                     for r in ok
-                    if r.get("latency_ms") is not None and int(str(r.get("runner") or 1)) >= RUNNER_VERSION
+                    if r.get("latency_ms") is not None
+                    and int(str(r.get("runner") or 1)) >= RUNNER_VERSION
+                    and float(str(r["ts"])) - start >= WARMUP_S
                 ]
+                if scope == cfg.scope:
+                    pooled[cfg.id] += lat
                 cost = sum(record_cost(r, cfg.price_key) for r in ok)
                 preds[(cfg.id, run, scope)] = {int(str(r["row"])): str(r["pred"]) for r in ok}
                 summary.append(
@@ -598,6 +617,11 @@ def finalize(data: Data, flagship_per_intent: int) -> None:
         w.writerows(per_class)
 
     stats = aggregate(summary)
+    latency = latency_table(summary, pooled)
+    by_cfg = {str(row["config"]): row for row in latency}
+    for st in stats:  # latency belongs to the configuration, not to the row set it is scored on
+        row = by_cfg[str(st["config"])]
+        st["latency_p50_ms"], st["latency_p95_ms"] = row["p50_ms"], row["p95_ms"]
     agreement = run_agreement(preds)
     tests = paired_tests(preds, data)
     spent = spent_so_far()
@@ -635,13 +659,41 @@ def finalize(data: Data, flagship_per_intent: int) -> None:
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
     (OUT / "results.json").write_text(
         json.dumps(
-            {"aggregate": stats, "run_agreement": agreement, "paired_tests": tests, "summary": summary}, indent=1
+            {
+                "aggregate": stats,
+                "latency": latency,
+                "run_agreement": agreement,
+                "paired_tests": tests,
+                "summary": summary,
+            },
+            indent=1,
         )
         + "\n",
         encoding="utf-8",
     )
-    (OUT / "report.md").write_text(render_report(stats, agreement, tests, manifest, data), encoding="utf-8")
+    (OUT / "report.md").write_text(
+        render_report(stats, agreement, tests, manifest, data, per_class, latency, summary), encoding="utf-8"
+    )
     print(f"wrote {OUT.relative_to(ROOT)}/summary.csv, per_class.csv, results.json, manifest.json, report.md")
+
+
+def latency_table(summary: list[dict[str, object]], pooled: dict[str, list[float]]) -> list[dict[str, object]]:
+    out: list[dict[str, object]] = []
+    for cfg in CONFIGS:
+        runs = [s for s in summary if s["config"] == cfg.id and s["scope"] == cfg.scope]
+        p95s = [float(str(s["latency_p95_ms"])) for s in runs if s["latency_p95_ms"] is not None]
+        out.append(
+            {
+                "config": cfg.id,
+                "scope": cfg.scope,
+                "n": len(pooled[cfg.id]),
+                "p50_ms": pct(pooled[cfg.id], 50),
+                "p95_ms": pct(pooled[cfg.id], 95),
+                "run_p95_min_ms": min(p95s) if p95s else None,
+                "run_p95_max_ms": max(p95s) if p95s else None,
+            }
+        )
+    return out
 
 
 def aggregate(summary: list[dict[str, object]]) -> list[dict[str, object]]:
@@ -726,6 +778,11 @@ def paired_tests(preds: dict[tuple[str, str, str], dict[int, str]], data: Data) 
     return out
 
 
+def fmt_p(v: object) -> str:
+    x = float(str(v))
+    return "< 0.000001" if x < 1e-6 else f"{x:.6f}".rstrip("0").rstrip(".") if x < 0.001 else f"{x:.3f}"
+
+
 def fmt(v: object, pct_: bool = False, sd: object = None) -> str:
     if v is None:
         return "n/a"
@@ -736,12 +793,86 @@ def fmt(v: object, pct_: bool = False, sd: object = None) -> str:
     return s
 
 
+def where_jev_loses(stats: list[dict[str, object]], tests: list[dict[str, object]]) -> str:
+    """Plain statements of every configuration that beat Jev on accuracy, on the shared scopes."""
+    lines = ["## Where Jev loses", ""]
+    p_by = {(str(t["scope"]), str(t["jev_vs"])): t for t in tests}
+    for scope in ("subset", "flagship"):
+        rows = {str(s["config"]): s for s in stats if s["scope"] == scope}
+        jev = rows.get("jev")
+        if not jev:
+            continue
+        for cid, s in sorted(rows.items(), key=lambda kv: -float(str(kv[1]["accuracy"]))):
+            if cid == "jev" or float(str(s["accuracy"])) <= float(str(jev["accuracy"])):
+                continue
+            gap = (float(str(s["accuracy"])) - float(str(jev["accuracy"]))) * 100
+            t = p_by.get((scope, cid))
+            sig = (
+                f"paired McNemar p {'' if fmt_p(t['p_value']).startswith('<') else '= '}{fmt_p(t['p_value'])} on run 1"
+                if t
+                else "no paired test"
+            )
+            cost_ratio = float(str(s["cost_per_1k_usd"])) / float(str(jev["cost_per_1k_usd"]))
+            lat_j, lat_s = jev["latency_p50_ms"], s["latency_p50_ms"]
+            lat = (
+                f", with {float(str(lat_s)) / float(str(lat_j)):.0f}x Jev's p50 latency"
+                if lat_j is not None and lat_s is not None
+                else ""
+            )
+            lines.append(
+                f"- {BY_ID[cid].label} beats Jev by {gap:.2f} accuracy points on the {scope} "
+                f"({sig}), at {cost_ratio:.0f}x Jev's cost per classification{lat}."
+            )
+    lines.append("")
+    return "\n".join(lines)
+
+
+def intent_gaps(per_class: list[dict[str, object]], stats: list[dict[str, object]]) -> str:
+    """Per intent F1 on the subset: Jev against the most accurate configuration that ran on the whole subset."""
+    subset = [s for s in stats if s["scope"] == "subset" and s["config"] != "jev"]
+    if not subset:
+        return ""
+    best = max(subset, key=lambda s: float(str(s["accuracy"])))
+    best_id = str(best["config"])
+    f1: dict[tuple[str, str], list[float]] = defaultdict(list)
+    for r in per_class:
+        if r["scope"] == "subset" and r["config"] in ("jev", best_id):
+            f1[(str(r["config"]), str(r["label"]))].append(float(str(r["f1"])))
+    gaps = sorted(
+        (
+            (statistics.fmean(f1[(best_id, lab)]) - statistics.fmean(f1[("jev", lab)]), lab)
+            for lab in labels()
+            if f1.get(("jev", lab)) and f1.get((best_id, lab))
+        ),
+        reverse=True,
+    )
+    out = [
+        f"## Intents where Jev trails most (subset, mean F1 over runs, against {BY_ID[best_id].label})",
+        "",
+        f"| Intent | Jev F1 | {BY_ID[best_id].label} F1 | Gap (points) |",
+        "|---|---|---|---|",
+    ]
+    for gap, lab in gaps[:8]:
+        out.append(
+            f"| {lab} | {statistics.fmean(f1[('jev', lab)]) * 100:.1f} | "
+            f"{statistics.fmean(f1[(best_id, lab)]) * 100:.1f} | {gap * 100:+.1f} |"
+        )
+    ahead = [lab for gap, lab in gaps if gap < 0]
+    out.append("")
+    out.append(f"Jev has the higher F1 on {len(ahead)} of 27 intents: {', '.join(ahead) or 'none'}.")
+    out.append("")
+    return "\n".join(out)
+
+
 def render_report(
     stats: list[dict[str, object]],
     agreement: list[dict[str, object]],
     tests: list[dict[str, object]],
     manifest: dict[str, object],
     data: Data,
+    per_class: list[dict[str, object]],
+    latency: list[dict[str, object]],
+    summary: list[dict[str, object]],
 ) -> str:
     lines = ["# Bitext support ticket intents: Jev vs OpenAI baselines", ""]
     w = lines.append
@@ -797,9 +928,41 @@ def render_report(
         for t in tests:
             w(
                 f"| {t['scope']} | {BY_ID[str(t['jev_vs'])].label} | {t['n']} | {t['jev_only_correct']} | "
-                f"{t['other_only_correct']} | {t['p_value']} |"
+                f"{t['other_only_correct']} | {fmt_p(t['p_value'])} |"
             )
         w("")
+    w("## Latency (all runs pooled, each configuration's own rows)")
+    w("")
+    w("| Configuration | Scope | Calls timed | p50 ms | p95 ms | p95 range across runs |")
+    w("|---|---|---|---|---|---|")
+    for row in latency:
+        w(
+            f"| {BY_ID[str(row['config'])].label} | {row['scope']} | {row['n']} | {fmt(row['p50_ms'])} | "
+            f"{fmt(row['p95_ms'])} | {fmt(row['run_p95_min_ms'])} to {fmt(row['run_p95_max_ms'])} |"
+        )
+    w("")
+    w("## Spend by configuration")
+    w("")
+    w("| Configuration | Scope | Calls | Spend | Input tokens | Cached share |")
+    w("|---|---|---|---|---|---|")
+    for cfg in CONFIGS:
+        runs = [x for x in summary if x["config"] == cfg.id and x["scope"] == cfg.scope]
+        calls = sum(int(str(x["n"])) for x in runs)
+        spend = sum(float(str(x["cost_usd"])) for x in runs)
+        tokens = sum(int(str(x["input_tokens"])) for x in runs)
+        cached = sum(int(str(x["cached_tokens"])) for x in runs)
+        w(
+            f"| {cfg.label} | {cfg.scope} | {calls:,} | ${spend:.2f} | {tokens:,} | "
+            f"{cached / tokens * 100 if tokens else 0:.0f}% |"
+        )
+    w("")
+    w(
+        f"Total spend including the 50 row smoke test and calls that ended in an API error: "
+        f"${manifest['total_spend_usd']}."
+    )
+    w("")
+    w(where_jev_loses(stats, tests))
+    w(intent_gaps(per_class, stats))
     w("## Setup")
     w("")
     for c in CONFIGS:
@@ -817,12 +980,34 @@ def render_report(
             f"${p['output']}/M ({p['source']})."
         )
     w("")
+    w("## Files and reproduction")
+    w("")
+    w(
+        "- `raw/<config>/run<k>.jsonl.gz`: one record per call (row index, ticket id, true and predicted label, "
+        "the raw model reply, token usage including cached and reasoning tokens, latency, attempts, errors). "
+        "Ticket text is not repeated; it comes from the pinned dataset."
+    )
+    w(
+        "- `summary.csv` (one row per configuration, run and scope), `per_class.csv` (per intent precision, recall, F1 "
+        "and support), `results.json` (aggregates, latency, agreement, paired tests) and `manifest.json` "
+        "(dataset hash, seeds, exemplar, subset and flagship row indexes, prices)."
+    )
+    w(
+        "- Reproduce: `uv run python evals/support_tickets/full_bench.py --estimate`, then `--smoke`, `--run "
+        "--flagship-per-intent 30` and `--finalize --flagship-per-intent 30`. Keys are read from the environment "
+        "(`OPENAI_API_KEY`, `TYPESAFE_API_KEY`)."
+    )
+    w("")
     w("## Caveats")
     w("")
     w("- Bitext tickets are synthetic with clean labels; real support traffic will usually score lower.")
     w(
-        "- Latency is the HTTP latency of the attempt that succeeded, measured with several requests in flight; "
-        "it depends on concurrency, the network and the provider's load at the time."
+        "- Latency is the HTTP latency of the attempt that succeeded, measured with several requests in flight "
+        "from one Mac; it depends on concurrency, the network and the provider's load at the time. It is computed "
+        "from runner 2 records only (the first 8,447 records were timed by an event loop starved by a runner bug; "
+        "their predictions and costs are kept) and excludes each run's first minute, while the runner was still "
+        "reading its checkpoint files. Otherwise the runner's event loop fell behind by up to about 50 to 100 ms "
+        "at its worst moment in a minute, so treat latency differences of a few milliseconds as noise."
     )
     w(
         "- Cost is reported tokens times list price, with OpenAI's cached input rate where the response reported "
