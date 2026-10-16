@@ -16,6 +16,7 @@ from paved_gate.evaluator.base import (
 )
 from paved_gate.evaluator.heuristic import HeuristicEvaluator
 from paved_gate.evaluator.jev import JevEvaluator
+from paved_gate.evaluator.openai_eval import OpenAIEvaluator
 from paved_gate.gate import PavedGate, paved_gate
 from paved_gate.handlers.base import DeterministicHandler, FrontierHandler
 from paved_gate.handlers.deterministic import DeterministicRegistry, default_registry
@@ -56,6 +57,7 @@ __all__ = [
     "JsonlFileSink",
     "LoadedPolicy",
     "MemorySink",
+    "OpenAIEvaluator",
     "PavedGate",
     "Policy",
     "Question",
