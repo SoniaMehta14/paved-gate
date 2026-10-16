@@ -20,3 +20,5 @@ data/cache/
 
 # macOS Finder metadata
 .DS_Store
+# working checkpoints of the Bitext benchmark; completed runs are committed as .jsonl.gz
+evals/support_tickets/results/*/raw/**/*.jsonl
