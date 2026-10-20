@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paved Gate Bitext Benchmark</title>
+<meta name="description" content="Jev vs GPT-4o, GPT-4o mini and GPT-6 Astra on Bitext support ticket intents: accuracy overall and per intent, latency, cost per 1,000 classifications, and three-run variance.">
+<script>
+  // ?theme=light|dark forces a theme (handy for screenshots); otherwise follow the OS.
+  (() => {
+    const t = new URLSearchParams(location.search).get("theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  })();
+</script>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --link: #256abf;
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --other: #a3a29a;
+    --badge-mock-bg: #fdf1dc;   --badge-mock-ink: #7a4b00;
+    --notice-bg: #fdf6e8;       --notice-border: #f0d9a8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10); --link: #86b6ef;
+      --series-1: #3987e5; --series-2: #d95926; --other: #6b6a65;
+      --badge-mock-bg: #3a2c10; --badge-mock-ink: #f3c46b;
+      --notice-bg: #2b2412; --notice-border: #5a4618;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10); --link: #86b6ef;
+    --series-1: #3987e5; --series-2: #d95926; --other: #6b6a65;
+    --badge-mock-bg: #3a2c10; --badge-mock-ink: #f3c46b;
+    --notice-bg: #2b2412; --notice-border: #5a4618;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--link); }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 40px 24px 56px; }
+  @media (max-width: 600px) { .wrap { padding: 24px 16px 40px; } }
+
+  .top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: start; margin-bottom: 24px; }
+  @media (max-width: 860px) { .top { grid-template-columns: minmax(0, 1fr); } }
+  header { min-width: 0; }
+  .delta { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; min-width: 300px; }
+  @media (max-width: 860px) { .delta { min-width: 0; } }
+  .delta-title { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 8px; }
+  .kpis { display: flex; gap: 28px; flex-wrap: wrap; }
+  .kpi .v { font-size: 34px; font-weight: 650; line-height: 1.1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+  .kpi .l { font-size: 13px; color: var(--ink-2); }
+  .delta-vs { font-size: 12px; color: var(--ink-2); margin: 10px 0 0; }
+  .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 6px; }
+  h1 { font-size: 28px; line-height: 1.2; font-weight: 650; margin: 0 0 10px; letter-spacing: -0.01em; }
+  .meta { color: var(--ink-2); font-size: 14px; margin: 0; }
+  .meta strong { color: var(--ink); font-weight: 600; }
+
+  .notice {
+    background: var(--notice-bg); border: 1px solid var(--notice-border); border-radius: 10px;
+    padding: 12px 16px; font-size: 14px; margin: 0 0 20px; color: var(--ink);
+  }
+  .notice b { font-weight: 650; }
+  .notice ul { margin: 6px 0 0; padding-left: 18px; }
+  .notice li + li { margin-top: 4px; }
+
+  .seg { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 16px; align-items: center; }
+  .seg .seg-label { font-size: 13px; color: var(--ink-2); margin-right: 4px; }
+  .seg button { font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 999px; cursor: pointer;
+    background: transparent; color: var(--ink-2); border: 1px solid var(--border); }
+  .seg button[aria-selected="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 20px 16px; margin-bottom: 16px; }
+  .card h2 { font-size: 17px; font-weight: 650; margin: 0; }
+  .card .sub { color: var(--ink-2); font-size: 13px; margin: 2px 0 12px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); margin: 0 0 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  svg { display: block; width: 100%; overflow: visible; }
+  svg text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .tick { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .row-label { fill: var(--ink); font-size: 13px; font-weight: 600; }
+  @media (max-width: 600px) { .row-label { font-size: 11.5px; } .value { font-size: 11.5px; } }
+  .value { fill: var(--ink); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .gridline { stroke: var(--grid); stroke-width: 1; }
+  .baseline { stroke: var(--axis); stroke-width: 1; }
+  .whisker { stroke-width: 2; stroke-linecap: round; }
+
+  .tooltip {
+    position: fixed; pointer-events: none; z-index: 10; background: var(--ink); color: var(--surface);
+    font-size: 13px; padding: 6px 10px; border-radius: 6px; white-space: nowrap; opacity: 0; transition: opacity 80ms;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .table-scroll { overflow-x: auto; }
+  th, td { text-align: left; padding: 9px 6px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  th { font-size: 12px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; vertical-align: bottom; }
+  td.arm { white-space: nowrap; font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td .sd { color: var(--ink-2); }
+  tr:last-child td { border-bottom: none; }
+  tr.jev td.arm { color: var(--series-1); }
+  .table-note { color: var(--ink-2); font-size: 12px; margin: 10px 0 0; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+  .flag { display: inline-block; font-size: 11px; font-weight: 650; border-radius: 6px; padding: 1px 6px; margin-left: 6px;
+    background: var(--badge-mock-bg); color: var(--badge-mock-ink); letter-spacing: 0.03em; text-transform: uppercase; }
+
+  .intent-table th, .intent-table td { padding: 5px 6px; font-size: 12.5px; }
+  .intent-table th.cfg { white-space: normal; text-align: right; min-width: 70px; max-width: 96px; text-transform: none; letter-spacing: 0; }
+  .intent-table td.heat { text-align: right; font-variant-numeric: tabular-nums; }
+  .intent-table tr:hover td { outline: none; background-image: linear-gradient(var(--border), var(--border)); }
+
+  ul.caveats { margin: 6px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--ink-2); }
+  ul.caveats li + li { margin-top: 4px; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--grid); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <header>
+      <p class="eyebrow">Paved Gate · Bitext full benchmark</p>
+      <h1>Support ticket intents: Jev vs OpenAI baselines</h1>
+      <p class="meta" id="meta"></p>
+    </header>
+    <aside class="delta" id="delta" aria-label="Headline numbers"></aside>
+  </div>
+
+  <div class="notice" id="notice"></div>
+
+  <div class="seg" id="scopes" role="tablist" aria-label="Evaluation set"></div>
+
+  <section class="card" aria-labelledby="acc-title">
+    <h2 id="acc-title">Accuracy</h2>
+    <p class="sub" id="acc-sub"></p>
+    <div class="legend">
+      <span><i style="background: var(--series-1)"></i>Jev</span>
+      <span><i style="background: var(--other)"></i>OpenAI baselines</span>
+      <span>Dot = mean of 3 runs · line = lowest to highest run</span>
+    </div>
+    <div id="acc-chart"></div>
+  </section>
+
+  <section class="card" aria-labelledby="lat-title">
+      <h2 id="lat-title">Latency per classification</h2>
+      <p class="sub">Milliseconds, all runs pooled. Lower is faster.</p>
+      <div class="legend">
+        <span><i style="background: var(--series-1)"></i>p50</span>
+        <span><i style="background: var(--series-2)"></i>p95</span>
+      </div>
+      <div id="lat-chart"></div>
+    </section>
+    <section class="card" aria-labelledby="cost-title">
+      <h2 id="cost-title">Cost per 1,000 classifications</h2>
+      <p class="sub">USD, reported tokens × list price, mean of 3 runs. Lower is cheaper.</p>
+      <div class="legend">
+        <span><i style="background: var(--series-1)"></i>Jev</span>
+        <span><i style="background: var(--other)"></i>OpenAI baselines</span>
+      </div>
+      <div id="cost-chart"></div>
+    </section>
+
+  <section class="card" aria-labelledby="table-title">
+    <h2 id="table-title">Results and run-to-run variance</h2>
+    <p class="sub" id="table-sub"></p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Configuration</th><th>Temp.</th><th class="num">Accuracy<br>mean ± SD</th><th class="num">Runs 1 / 2 / 3<br>%</th>
+            <th class="num">Macro F1<br>mean ± SD</th><th class="num">p50 ms</th><th class="num">p95 ms<br>(run range)</th>
+            <th class="num">$ per 1,000</th><th class="num">Same in<br>all 3 runs</th>
+          </tr>
+        </thead>
+        <tbody id="results-body"></tbody>
+      </table>
+    </div>
+    <p class="table-note">SD is the sample standard deviation over 3 runs, in percentage points. "Same in all 3 runs" is the share of tickets with an identical prediction in every run, measured on each configuration's widest set (full, subset, or flagship set). Latency pools every run on each configuration's widest set, so it does not change with the selected set.</p>
+  </section>
+
+  <section class="card" aria-labelledby="intent-title">
+    <h2 id="intent-title">Accuracy per intent</h2>
+    <p class="sub" id="intent-sub"></p>
+    <div class="table-scroll"><table class="intent-table" id="intent-table"></table></div>
+    <p class="table-note">Per-intent accuracy is recall: the share of tickets with that true intent labelled correctly, mean of 3 runs. Darker cells are lower. Hover a cell for SD and F1.</p>
+  </section>
+
+  <section class="card" aria-labelledby="paired-title">
+    <h2 id="paired-title">Is the gap real? Paired tests against Jev</h2>
+    <p class="sub">Exact McNemar test on run 1, same tickets for both configurations. Not corrected for running 10 tests.</p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Set</th><th>Jev vs</th><th class="num">Tickets</th><th class="num">Only Jev<br>correct</th><th class="num">Only the other<br>correct</th><th class="num">p value</th></tr>
+        </thead>
+        <tbody id="paired-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="caveats-title">
+    <h2 id="caveats-title">Setup and caveats</h2>
+    <ul class="caveats" id="caveats">
+      <li>Three evaluation sets, nested: the <b>full set</b> (every ticket except the 27 few-shot exemplars), a stratified <b>subset</b> (100 per intent) and the <b>flagship set</b> (30 per intent, drawn from the subset). GPT-4o ran on the subset; GPT-6 Astra only on the flagship set.</li>
+      <li>GPT-6 Astra is a reasoning model that rejects temperature 0. It ran at its default temperature (1) with reasoning_effort=low, so its run-to-run variance is not comparable with the temperature 0 baselines.</li>
+      <li>The 10 paired tests against Jev are not corrected for multiple comparisons, so borderline results should not be read as wins.</li>
+      <li>Bitext tickets are synthetic with clean labels; real support traffic will usually score lower.</li>
+      <li>Latency is the HTTP latency of the successful attempt, measured with several requests in flight from one Mac. It depends on concurrency, the network and provider load, so treat differences of a few milliseconds as noise.</li>
+      <li>Cost is reported tokens × list price, with OpenAI's cached input rate where the response reported cached tokens. Jev bills input only.</li>
+      <li>Invalid outputs (not one of the 27 labels) count as wrong. Rows that still had an API error after retries are left out, and a run is only reported when it is complete.</li>
+    </ul>
+  </section>
+
+  <footer id="footer"></footer>
+</div>
+<div class="tooltip" id="tooltip" role="tooltip"></div>
+<script id="results-data" type="application/json">/*__RESULTS__*/null</script>
+<script>
+(() => {
+  "use strict";
+  const data = JSON.parse(document.getElementById("results-data").textContent);
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const SCOPE_NAME = { flagship: "Flagship set", subset: "Subset", full: "Full set" };
+  const SCOPE_ORDER = ["flagship", "subset", "full"];
+
+  const el = (tag, attrs = {}, ...children) => {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+    for (const c of children) node.append(c);
+    return node;
+  };
+  const svgEl = (tag, attrs = {}, text) => {
+    const node = document.createElementNS(SVGNS, tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+  const fmtInt = (v) => v.toLocaleString("en-US");
+  const pct = (v, d = 2) => `${(v * 100).toFixed(d)}%`;
+  const pts = (v, d = 2) => v == null ? "–" : (v * 100).toFixed(d);
+  const fmtMs = (v) => v >= 1000 ? fmtInt(Math.round(v)) : v >= 100 ? v.toFixed(0) : v.toFixed(1);
+  const fmtUsd = (v) => `$${v.toFixed(3)}`;
+  const ratio = (a, b) => Number((a / b).toPrecision(2));
+  const fmtP = (p) => p < 0.000001 ? "< 0.000001" : p < 0.001 ? p.toFixed(6) : p.toFixed(3);
+
+  const configById = Object.fromEntries(data.configs.map((c) => [c.id, c]));
+  const label = (id) => configById[id]?.label ?? id;
+  const isAstra = (id) => configById[id]?.temperature.startsWith("default");
+  const latency = Object.fromEntries(data.latency.map((l) => [l.config, l]));
+  const agreement = Object.fromEntries(data.run_agreement.map((a) => [a.config, a]));
+  const aggAt = (scope) => data.aggregate.filter((a) => a.scope === scope).sort((a, b) => b.accuracy - a.accuracy);
+  const runsOf = (config, scope) => data.runs.filter((r) => r.config === config && r.scope === scope).sort((a, b) => a.run - b.run);
+  const borderline = data.paired_tests.filter((t) => t.p_value >= data.borderline.low && t.p_value < data.borderline.high);
+  const isBorderline = (t) => borderline.includes(t);
+  const tempText = (c) => c.temperature === "n/a" ? "n/a" : c.temperature === "0" ? "0" : "1 (default)";
+
+  // ------------------------------------------------------------ header
+  const m = data.meta;
+  const finalized = new Date(m.finalized_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+  document.getElementById("meta").append(
+    "Finalized ", el("strong", {}, finalized),
+    ` · ${data.configs.length} configurations × 3 runs · ${m.intents} intents · up to ${fmtInt(data.scopes.full)} tickets per run · total API spend $${m.total_spend_usd.toFixed(2)}`,
+  );
+
+  // ------------------------------------------------------------ notice (temperature + borderline tests)
+  const astraLabels = data.configs.filter((c) => isAstra(c.id)).map((c) => c.label);
+  const notice = document.getElementById("notice");
+  const items = el("ul");
+  items.append(el("li", {},
+    el("b", {}, "Different temperature for the flagship model. "),
+    `GPT-6 Astra rejects temperature 0, so both of its configurations (${astraLabels.length === 2 ? "zero-shot and few-shot" : astraLabels.join(", ")}) ran at its default temperature of 1 with reasoning_effort=low. ` +
+    "Every GPT-4o and GPT-4o mini configuration ran at temperature 0. Its run-to-run variance is not comparable with theirs.",
+  ));
+  items.append(el("li", {},
+    el("b", {}, `${borderline.length === 2 ? "Two" : borderline.length} comparisons are borderline significant. `),
+    borderline.map((t) => `Jev vs ${label(t.jev_vs)} on the ${SCOPE_NAME[t.scope].toLowerCase()} (p = ${fmtP(t.p_value)})`).join(" and ") +
+    `. Treat these gaps as uncertain; the paired tests below give all ${data.paired_tests.length} comparisons.`,
+  ));
+  notice.append(el("b", {}, "Read with care:"), items);
+
+  // ------------------------------------------------------------ tooltip
+  const tip = document.getElementById("tooltip");
+  const showTip = (evt, text) => {
+    tip.textContent = text;
+    tip.style.opacity = "1";
+    const pad = 12, w = tip.offsetWidth;
+    tip.style.left = `${Math.min(evt.clientX + pad, window.innerWidth - w - 8)}px`;
+    tip.style.top = `${evt.clientY + pad}px`;
+  };
+  const hideTip = () => { tip.style.opacity = "0"; };
+  const hover = (node, text) => {
+    node.addEventListener("mousemove", (e) => showTip(e, text));
+    node.addEventListener("mouseleave", hideTip);
+    node.append(svgEl("title", {}, text));
+  };
+
+  function niceScale(v, target = 5) {
+    if (!(v > 0)) return { max: 1, step: 0.2 };
+    const raw = v / target;
+    const base = 10 ** Math.floor(Math.log10(raw));
+    const step = [1, 2, 2.5, 5, 10].map((k) => k * base).find((s) => s >= raw);
+    return { max: Math.ceil(v / step) * step, step };
+  }
+  function barPath(x, y, w, h) {
+    const r = Math.min(4, w, h / 2);
+    if (w <= 0) return "";
+    return `M${x},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x} Z`;
+  }
+  const labelWidth = (w) => w < 520 ? 150 : 180;
+
+  function frame(container, rows, rowH, ticks, x) {
+    const width = container.clientWidth || 600;
+    const top = 6, bottom = 24;
+    const height = top + rows * rowH + bottom;
+    const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, height, role: "img" });
+    for (const t of ticks) {
+      svg.append(svgEl("line", { class: "gridline", x1: x(t.v), x2: x(t.v), y1: top, y2: top + rows * rowH }));
+      svg.append(svgEl("text", { class: "tick", x: x(t.v), y: height - 6, "text-anchor": "middle" }, t.text));
+    }
+    return { svg, top, width };
+  }
+
+  // Dot = mean, whisker = min to max run. Axis spans the data, not zero, so it is labelled on every tick.
+  function dotChart(container, rows) {
+    container.textContent = "";
+    const width = container.clientWidth || 600;
+    const lw = labelWidth(width), right = 64, rowH = 30;
+    const lo = Math.floor(Math.min(...rows.map((r) => r.min)) * 100 - 0.5);
+    const hi = Math.min(100, Math.ceil(Math.max(...rows.map((r) => r.max)) * 100 + 0.5));
+    const x = (v) => lw + ((v - lo) / (hi - lo)) * (width - lw - right);
+    const plotW = width - lw - right;
+    const step = [1, 2, 5].find((s) => plotW / ((hi - lo) / s) >= 40) ?? 5;
+    const ticks = [];
+    for (let v = lo; v <= hi; v += step) ticks.push({ v, text: `${v}%` });
+    const { svg, top } = frame(container, rows.length, rowH, ticks, x);
+    svg.setAttribute("aria-label", "Accuracy by configuration, mean with lowest and highest run");
+    rows.forEach((r, i) => {
+      const cy = top + i * rowH + rowH / 2;
+      const color = r.jev ? "var(--series-1)" : "var(--other)";
+      svg.append(svgEl("text", { class: "row-label", x: 0, y: cy + 4 }, r.label + (r.astra ? " †" : "")));
+      const g = svgEl("g");
+      g.append(svgEl("line", { class: "whisker", x1: x(r.min * 100), x2: x(r.max * 100), y1: cy, y2: cy, stroke: color }));
+      g.append(svgEl("circle", { cx: x(r.mean * 100), cy, r: 5.5, fill: color }));
+      g.append(svgEl("rect", { x: lw, y: cy - rowH / 2, width: width - lw - right, height: rowH, fill: "transparent" }));
+      hover(g, `${r.label}: ${pct(r.mean)} ± ${pts(r.sd)} (runs ${pct(r.min)} to ${pct(r.max)})`);
+      svg.append(g);
+      svg.append(svgEl("text", { class: "value", x: width - right + 10, y: cy + 4 }, pct(r.mean)));
+    });
+    container.append(svg);
+  }
+
+  // Bars from zero; one or more series per row.
+  function barChart(container, rows, fmt, tickFmt) {
+    container.textContent = "";
+    const width = container.clientWidth || 600;
+    const lw = labelWidth(width), right = 70;
+    const nSeries = rows[0].values.length, barH = 12, gap = 3;
+    const rowH = nSeries * barH + (nSeries - 1) * gap + 14;
+    const target = Math.max(2, Math.min(5, Math.floor((width - lw - right) / 70)));
+    const { max, step } = niceScale(Math.max(...rows.flatMap((r) => r.values.map((v) => v.v))), target);
+    const x = (v) => lw + (v / max) * (width - lw - right);
+    const ticks = [];
+    for (let i = 0; i * step <= max + step / 2; i++) {
+      const v = Number((i * step).toPrecision(6));
+      ticks.push({ v, text: tickFmt(v) });
+    }
+    const { svg, top } = frame(container, rows.length, rowH, ticks, x);
+    rows.forEach((r, i) => {
+      const y0 = top + i * rowH + 7;
+      svg.append(svgEl("text", { class: "row-label", x: 0, y: y0 + (rowH - 14) / 2 + 4 }, r.label + (r.astra ? " †" : "")));
+      r.values.forEach((s, j) => {
+        const y = y0 + j * (barH + gap);
+        const p = svgEl("path", { d: barPath(x(0), y, Math.max(1, x(s.v) - x(0)), barH), fill: s.color });
+        hover(p, `${r.label} ${s.name}: ${fmt(s.v)}`);
+        svg.append(p);
+        svg.append(svgEl("text", { class: "value", x: x(s.v) + 6, y: y + barH - 2 }, fmt(s.v)));
+      });
+    });
+    svg.append(svgEl("line", { class: "baseline", x1: x(0), x2: x(0), y1: top, y2: top + rows.length * rowH }));
+    container.append(svg);
+  }
+
+  // ------------------------------------------------------------ scope switch
+  const scopesBox = document.getElementById("scopes");
+  scopesBox.append(el("span", { class: "seg-label" }, "Evaluation set:"));
+  let scope = "flagship";
+  const buttons = SCOPE_ORDER.filter((s) => data.scopes[s]).map((s) => {
+    const n = aggAt(s).length;
+    const b = el("button", { role: "tab", type: "button" }, `${SCOPE_NAME[s]} · ${fmtInt(data.scopes[s])} tickets · ${n} configs`);
+    b.addEventListener("click", () => { scope = s; render(); });
+    scopesBox.append(b);
+    return [s, b];
+  });
+
+  function renderKpis(rows) {
+    const box = document.getElementById("delta");
+    box.textContent = "";
+    const jev = rows.find((r) => r.config === "jev");
+    const best = rows[0];
+    box.append(el("p", { class: "delta-title" }, `${SCOPE_NAME[scope]} · ${fmtInt(data.scopes[scope])} tickets`));
+    const kpi = (v, l) => el("div", { class: "kpi" }, el("div", { class: "v" }, v), el("div", { class: "l" }, l));
+    box.append(el("div", { class: "kpis" },
+      kpi(pct(jev.accuracy, 1), "Jev accuracy"),
+      kpi(fmtUsd(jev.cost_per_1k_usd), "Jev $ per 1,000"),
+    ));
+    if (best.config !== "jev") {
+      box.append(el("p", { class: "delta-vs" },
+        `Most accurate: ${best.label}, ${pct(best.accuracy, 1)} at ${fmtUsd(best.cost_per_1k_usd)} per 1,000 ` +
+        `(${ratio(best.cost_per_1k_usd, jev.cost_per_1k_usd)}× Jev's cost, ${ratio(latency[best.config].p50_ms, latency.jev.p50_ms)}× its p50 latency).`,
+      ));
+    }
+  }
+
+  function renderTable(rows) {
+    const body = document.getElementById("results-body");
+    body.textContent = "";
+    for (const r of rows) {
+      const c = configById[r.config], l = latency[r.config], a = agreement[r.config];
+      const runs = runsOf(r.config, scope).map((x) => pts(x.accuracy)).join(" / ");
+      const temp = el("td", {}, tempText(c));
+      if (isAstra(r.config)) temp.append(el("span", { class: "flag", title: c.temperature }, "differs"));
+      body.append(el("tr", { class: r.config === "jev" ? "jev" : "" },
+        el("td", { class: "arm" }, c.label),
+        temp,
+        el("td", { class: "num" }, pct(r.accuracy), el("span", { class: "sd" }, ` ± ${pts(r.accuracy_sd)}`)),
+        el("td", { class: "num" }, runs),
+        el("td", { class: "num" }, pct(r.macro_f1), el("span", { class: "sd" }, ` ± ${pts(r.macro_f1_sd)}`)),
+        el("td", { class: "num" }, fmtMs(l.p50_ms)),
+        el("td", { class: "num" }, fmtMs(l.p95_ms), el("br"), el("span", { class: "sd" }, `${fmtMs(l.run_p95_min_ms)}–${fmtMs(l.run_p95_max_ms)}`)),
+        el("td", { class: "num" }, fmtUsd(r.cost_per_1k_usd)),
+        el("td", { class: "num" }, pct(a.rate)),
+      ));
+    }
+    document.getElementById("table-sub").textContent =
+      `${SCOPE_NAME[scope]}, ${fmtInt(data.scopes[scope])} tickets. Sorted by mean accuracy.` +
+      (rows.some((r) => isAstra(r.config)) ? " † GPT-6 Astra ran at temperature 1; see the note above." : "");
+  }
+
+  function renderIntents(rows) {
+    const table = document.getElementById("intent-table");
+    table.textContent = "";
+    const ids = rows.map((r) => r.config);
+    const cell = {};
+    for (const p of data.per_class) if (p.scope === scope) cell[`${p.config}|${p.label}`] = p;
+    const labels = [...new Set(data.per_class.filter((p) => p.scope === scope).map((p) => p.label))];
+    const gap = (lab) => Math.max(...ids.filter((id) => id !== "jev").map((id) => cell[`${id}|${lab}`].recall)) - cell[`jev|${lab}`].recall;
+    labels.sort((a, b) => gap(b) - gap(a));
+    const head = el("tr", {}, el("th", {}, "Intent"));
+    for (const id of ids) head.append(el("th", { class: "cfg" }, label(id) + (isAstra(id) ? " †" : "")));
+    head.append(el("th", { class: "num" }, "Best other", el("br"), "minus Jev"));
+    const tbody = el("tbody");
+    for (const lab of labels) {
+      const tr = el("tr", {}, el("td", { class: "mono" }, lab));
+      for (const id of ids) {
+        const p = cell[`${id}|${lab}`];
+        const shade = Math.min(60, Math.max(0, (1 - p.recall) * 300));
+        const td = el("td", { class: "heat", style: `background: color-mix(in srgb, var(--series-2) ${shade.toFixed(0)}%, transparent)` }, pts(p.recall, 1));
+        td.title = `${label(id)}, ${lab}: accuracy ${pct(p.recall, 1)} ± ${pts(p.recall_sd, 1)}, F1 ${pts(p.f1, 1)} (${p.support} tickets)`;
+        tr.append(td);
+      }
+      const g = Math.round(gap(lab) * 1000) / 10;
+      tr.append(el("td", { class: "num" }, `${g > 0 ? "+" : ""}${(g === 0 ? 0 : g).toFixed(1)}`));
+      tbody.append(tr);
+    }
+    table.append(el("thead", {}, head), tbody);
+    const n = cell[`jev|${labels[0]}`].support;
+    document.getElementById("intent-sub").textContent =
+      `${SCOPE_NAME[scope]}, ${labels.length} intents, about ${fmtInt(n)} tickets each. Accuracy in %, sorted by how far Jev trails the best other configuration.`;
+  }
+
+  function renderPaired() {
+    const body = document.getElementById("paired-body");
+    for (const t of data.paired_tests) {
+      const p = el("td", { class: "num" }, fmtP(t.p_value));
+      if (isBorderline(t)) p.append(el("span", { class: "flag" }, "borderline"));
+      body.append(el("tr", {},
+        el("td", {}, SCOPE_NAME[t.scope]),
+        el("td", {}, label(t.jev_vs)),
+        el("td", { class: "num" }, fmtInt(t.n)),
+        el("td", { class: "num" }, fmtInt(t.jev_only_correct)),
+        el("td", { class: "num" }, fmtInt(t.other_only_correct)),
+        p,
+      ));
+    }
+  }
+
+  function render() {
+    for (const [s, b] of buttons) b.setAttribute("aria-selected", String(s === scope));
+    const rows = aggAt(scope);
+    renderKpis(rows);
+    document.getElementById("acc-sub").textContent =
+      `${SCOPE_NAME[scope]}, ${fmtInt(data.scopes[scope])} tickets. The axis starts just below the lowest run, not at zero, so the spread between runs is visible.`;
+    dotChart(document.getElementById("acc-chart"), rows.map((r) => ({
+      label: r.label, jev: r.config === "jev", astra: isAstra(r.config),
+      mean: r.accuracy, sd: r.accuracy_sd, min: r.accuracy_min, max: r.accuracy_max,
+    })));
+    const byLatency = [...rows].sort((a, b) => latency[a.config].p50_ms - latency[b.config].p50_ms);
+    barChart(document.getElementById("lat-chart"), byLatency.map((r) => ({
+      label: r.label, astra: isAstra(r.config),
+      values: [
+        { name: "p50", v: latency[r.config].p50_ms, color: "var(--series-1)" },
+        { name: "p95", v: latency[r.config].p95_ms, color: "var(--series-2)" },
+      ],
+    })), (v) => `${fmtMs(v)} ms`, fmtInt);
+    const byCost = [...rows].sort((a, b) => a.cost_per_1k_usd - b.cost_per_1k_usd);
+    barChart(document.getElementById("cost-chart"), byCost.map((r) => ({
+      label: r.label, astra: isAstra(r.config),
+      values: [{ name: "per 1,000", v: r.cost_per_1k_usd, color: r.config === "jev" ? "var(--series-1)" : "var(--other)" }],
+    })), fmtUsd, (v) => `$${v}`);
+    renderTable(rows);
+    renderIntents(rows);
+  }
+
+  renderPaired();
+  const footer = document.getElementById("footer");
+  footer.append(
+    "Generated by ", el("a", { href: m.repo }, "paved-gate"), " (Apache-2.0) from ",
+    el("a", { href: "results.json" }, "results.json"), " and ", el("a", { href: "per_class.csv" }, "per_class.csv"),
+    ". Data: ", el("a", { href: m.source_url }, "Bitext customer support dataset"),
+    ` at revision ${m.revision}, © Bitext Innovations 2024, ${m.license}.`,
+  );
+  render();
+  let resizeTimer;
+  window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 120); });
+})();
+</script>
+</body>
+</html>
