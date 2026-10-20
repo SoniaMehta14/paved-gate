@@ -67,7 +67,8 @@ def page_data(results: J, manifest: J, class_rows: list[dict[str, str]]) -> dict
     low, high = BORDERLINE_P
     config_keys = ("id", "label", "model", "prompt", "scope", "temperature")
     configs = [{k: obj(c)[k] for k in config_keys} for c in lst(manifest["configs"])]
-    runs = [{k: obj(s)[k] for k in ("config", "scope", "run", "accuracy")} for s in lst(results["summary"])]
+    run_keys = ("config", "scope", "run", "accuracy", "api_errors")
+    runs = [{k: obj(s)[k] for k in run_keys} for s in lst(results["summary"])]
     return {
         "configs": configs,
         "aggregate": results["aggregate"],
@@ -85,6 +86,7 @@ def page_data(results: J, manifest: J, class_rows: list[dict[str, str]]) -> dict
             "license": manifest["license"],
             "intents": len({r["label"] for r in class_rows}),
             "total_spend_usd": num(manifest["total_spend_usd"]),
+            "price_sources": {m: obj(p)["source"] for m, p in obj(manifest["prices_per_mtok"]).items()},
             "finalized_at": manifest["finalized_at"],
             "repo": REPO_URL,
         },
