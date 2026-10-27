@@ -146,6 +146,7 @@ class AdoptionRegression(BaseModel):
     used_outputs: bool
     raw_evaluator_response: dict[str, JsonValue] | None
     error: str | None
+    fail_mode: Literal["closed", "open"] = "closed"
 
 
 class HarnessAdoptionEntry(BaseModel):
@@ -172,6 +173,7 @@ class HarnessAdoptionEntry(BaseModel):
     files: list[AdoptionFileResult]
     skill_trigger_lines: Literal["allow", "review", "deny"]
     skill_triggers: list[AdoptionTriggerLink]
+    skill_trigger_note: str | None = None
     regression: AdoptionRegression
     evaluator: EvaluatorInfo | None
     latency: LatencyInfo

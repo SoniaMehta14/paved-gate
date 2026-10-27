@@ -16,9 +16,9 @@ import sys
 from pathlib import Path
 
 from paved_gate.audit.models import HarnessAdoptionEntry
-from paved_gate.integrations.harness2.config import load_adoption_policy
-from paved_gate.integrations.harness2.gate import build_gate
-from paved_gate.integrations.harness2.run_dir import Adoption, RunDirError, discover
+from paved_gate.integrations.harness2.config import AdoptionPolicy, load_adoption_policy
+from paved_gate.integrations.harness2.gate import run_gate
+from paved_gate.integrations.harness2.run_dir import RunDirError, Skipped
 
 LABELS = {"accept": "ACCEPT", "reject": "REJECT", "needs_review": "REVIEW"}
 
@@ -27,41 +27,44 @@ def _record_name(entry: HarnessAdoptionEntry) -> str:
     return f"{entry.namespace}__{entry.task_id.replace('/', '__')}__{entry.adopted_label}.json"
 
 
+def with_evaluator(policy: AdoptionPolicy, provider: str | None, mode: str | None) -> AdoptionPolicy:
+    update = {k: v for k, v in (("provider", provider), ("mode", mode)) if v}
+    if not update:
+        return policy
+    return policy.model_copy(update={"evaluator": policy.evaluator.model_copy(update=update)})
+
+
+def write_records(entries: list[HarnessAdoptionEntry], out: Path) -> None:
+    out.mkdir(parents=True, exist_ok=True)
+    for entry in entries:
+        (out / _record_name(entry)).write_text(entry.model_dump_json(indent=2) + "\n", encoding="utf-8")
+
+
+def print_summary(entries: list[HarnessAdoptionEntry], skipped: list[Skipped], root: Path, out: Path) -> None:
+    for entry in entries:
+        first = entry.reasons[0] if entry.reasons else ""
+        more = f" (+{len(entry.reasons) - 1} more)" if len(entry.reasons) > 1 else ""
+        print(f"  {LABELS[entry.decision]:<7} {entry.task_id} [{entry.mode}] {entry.adopted_label}: {first}{more}")
+    for item in skipped:
+        print(f"  SKIP    {item.selection_path.relative_to(root)}: {item.reason}")
+    counts = {d: sum(e.decision == d for e in entries) for d in LABELS}
+    print(
+        f"{counts['accept']} accepted, {counts['reject']} rejected, {counts['needs_review']} need review, "
+        f"{len(skipped)} skipped. Audit records: {out}"
+    )
+
+
 async def _run(root: Path, policy_path: str, out: Path, provider: str | None, mode: str | None) -> int:
-    policy = load_adoption_policy(policy_path)
-    if provider or mode:
-        update = {k: v for k, v in (("provider", provider), ("mode", mode)) if v}
-        policy = policy.model_copy(update={"evaluator": policy.evaluator.model_copy(update=update)})
+    policy = with_evaluator(load_adoption_policy(policy_path), provider, mode)
+    print(f"Harness² adoption gate: policy {policy.name}, evaluator {policy.evaluator.provider}, run {root}")
     try:
-        found = discover(root)
+        entries, skipped = await run_gate(root, policy)
     except RunDirError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
-
-    gate = build_gate(policy)
-    out.mkdir(parents=True, exist_ok=True)
-    print(f"Harness² adoption gate: policy {policy.name}, evaluator {policy.evaluator.provider}, run {root}")
-    counts = {"accept": 0, "reject": 0, "needs_review": 0, "skipped": 0}
-    try:
-        for item in found:
-            if not isinstance(item, Adoption):
-                counts["skipped"] += 1
-                print(f"  SKIP    {item.selection_path.relative_to(root)}: {item.reason}")
-                continue
-            entry = await gate.evaluate(item, root)
-            counts[entry.decision] += 1
-            (out / _record_name(entry)).write_text(entry.model_dump_json(indent=2) + "\n", encoding="utf-8")
-            first = entry.reasons[0] if entry.reasons else ""
-            more = f" (+{len(entry.reasons) - 1} more)" if len(entry.reasons) > 1 else ""
-            print(f"  {LABELS[entry.decision]:<7} {item.task_id} [{item.mode}] {item.label}: {first}{more}")
-    finally:
-        await gate.aclose()
-    print(
-        f"{counts['accept']} accepted, {counts['reject']} rejected, {counts['needs_review']} need review, "
-        f"{counts['skipped']} skipped. Audit records: {out}"
-    )
-    adopted = counts["accept"] + counts["reject"] + counts["needs_review"]
-    return 0 if adopted and counts["accept"] == adopted else 1
+    write_records(entries, out)
+    print_summary(entries, skipped, root, out)
+    return 0 if entries and all(e.decision == "accept" for e in entries) else 1
 
 
 def main() -> int:

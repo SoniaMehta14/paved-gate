@@ -23,7 +23,7 @@ from paved_gate.integrations.harness2.deterministic import HarnessRegressionHeur
 from paved_gate.integrations.harness2.diff import FileChange, diff_trees
 from paved_gate.integrations.harness2.policy_check import FileResult, check_policy
 from paved_gate.integrations.harness2.regression import RegressionOutcome, run_regression
-from paved_gate.integrations.harness2.run_dir import Adoption, tree_sha256
+from paved_gate.integrations.harness2.run_dir import Adoption, Skipped, discover, tree_sha256
 
 Decision = Literal["accept", "reject", "needs_review"]
 UNMAPPED = "(unmapped)"
@@ -130,6 +130,7 @@ class AdoptionGate:
                 for r in check.files
             ],
             skill_trigger_lines=self.policy.skill_trigger_lines,
+            skill_trigger_note=check.trigger_note,
             skill_triggers=[
                 AdoptionTriggerLink(
                     line=t.line,
@@ -153,6 +154,7 @@ class AdoptionGate:
                 used_outputs=reg.used_outputs if reg is not None else False,
                 raw_evaluator_response=reg.evaluation.raw if reg is not None and reg.evaluation else None,
                 error=reg.error if reg is not None else None,
+                fail_mode=self.policy.evaluator.fail_mode,
             ),
             evaluator=(
                 EvaluatorInfo(name=reg.evaluation.evaluator, model=reg.evaluation.model, mode=reg.evaluation.mode)
@@ -178,3 +180,19 @@ class AdoptionGate:
 def build_gate(policy: AdoptionPolicy | str | Path, *, evaluator: FastEvaluator | None = None) -> AdoptionGate:
     p = policy if isinstance(policy, AdoptionPolicy) else load_adoption_policy(policy)
     return AdoptionGate(policy=p, evaluator=evaluator or evaluator_for(p), policy_hash=adoption_policy_hash(p))
+
+
+async def run_gate(
+    root: Path, policy: AdoptionPolicy, *, evaluator: FastEvaluator | None = None
+) -> tuple[list[HarnessAdoptionEntry], list[Skipped]]:
+    """Every adoption under a Harness² output directory, through one gate. Raises RunDirError."""
+    found = discover(root)
+    gate = build_gate(policy, evaluator=evaluator)
+    entries: list[HarnessAdoptionEntry] = []
+    try:
+        for item in found:
+            if isinstance(item, Adoption):
+                entries.append(await gate.evaluate(item, root))
+    finally:
+        await gate.aclose()
+    return entries, [item for item in found if isinstance(item, Skipped)]

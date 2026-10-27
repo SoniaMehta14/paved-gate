@@ -43,6 +43,7 @@ class TriggerLink:
 class PolicyCheck:
     files: list[FileResult]
     triggers: list[TriggerLink]
+    trigger_note: str | None = None  # why the skill trigger exemption did not apply, when it was considered
 
 
 def component_of(policy: AdoptionPolicy, path: str) -> str | None:
@@ -156,7 +157,7 @@ def check_policy(policy: AdoptionPolicy, changes: list[FileChange], adopted: Tre
         results[idx] = FileResult(
             current.change, current.component, current.access, current.source, current.result, reason
         )
-        return PolicyCheck(results, links)
+        return PolicyCheck(results, links, f"not a pure skill trigger addition: {why_not}")
 
     mode = policy.skill_trigger_lines
     names = ", ".join(link.skill or "" for link in links)
