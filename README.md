@@ -40,6 +40,7 @@ request ─▶│ detect PII ─▶ mask ─▶ FastEvaluator: 1 request, 3 type
 - [Benchmark](#benchmark)
 - [Classification eval](#classification-eval)
 - [NVIDIA OpenShell integration](#nvidia-openshell-integration)
+- [Harness² edit adoption gate](#harness2-edit-adoption-gate)
 - [Project layout](#project-layout)
 - [Limitations](#limitations)
 - [Troubleshooting](#troubleshooting)
@@ -623,6 +624,153 @@ that removes the need for host networking is in review
 
 ---
 
+<a id="harness2-edit-adoption-gate"></a>
+
+## Harness² edit adoption gate
+
+> **Unofficial integration.** This is not affiliated with or endorsed by Google. Harness² is not a Google supported
+> product; its own README says "This is not an officially supported Google product." No Harness² code is included in
+> this repository.
+
+[Harness²](https://github.com/google-research/harness2) (Google Research, Apache 2.0) improves an agent by rewriting
+its harness: system prompt, guardrails, memory, tool guidance, subagents, skills, scripts and plugins. It composes a
+refined harness from contrasts between executions and adopts it **without ground truth verification**. The adoption
+gate sits between the composed harness and its adoption and decides whether the edit is allowed:
+
+1. **Diff** the baseline harness against the composed harness, file by file, grouped by component.
+2. **Policy check** each changed file against a YAML adoption policy, with a reason for every result.
+3. **Regression check** through the same `FastEvaluator` interface the ingestion gate uses, so Jev or any other
+   evaluator plugs in. A local deterministic evaluator ships for tests and the demo; it makes no network calls.
+4. **Decide** accept, reject or needs_review, and write a JSON audit record.
+
+Code: [`src/paved_gate/integrations/harness2/`](src/paved_gate/integrations/harness2/).
+Policy: [`policy/harness2_adoption.policy.yaml`](policy/harness2_adoption.policy.yaml).
+Example policy for the demo: [`examples/harness2/demo.policy.yaml`](examples/harness2/demo.policy.yaml).
+
+### Quickstart
+
+Harness² needs Python 3.12 and [uv](https://docs.astral.sh/uv/). Its README asks for Linux; the local demo also ran
+on macOS for this integration. The demo uses scripted editors and needs no model credentials.
+
+```bash
+# Harness² in a sibling directory, pinned to the commit this integration was built against
+git clone https://github.com/google-research/harness2 ../harness2
+git -C ../harness2 checkout 1cfe254
+(cd ../harness2 && uv venv --python 3.12 .venv \
+  && uv pip install --python .venv/bin/python -e '.[render]' \
+  && .venv/bin/harness2-demo --output runs/demo --k 2)
+
+# Default policy: the demo edits scripts/summarize.py, and scripts are protected
+uv run python -m paved_gate.integrations.harness2 ../harness2/runs/demo
+
+# Example policy: a path rule makes that one script editable
+uv run python -m paved_gate.integrations.harness2 ../harness2/runs/demo --policy examples/harness2/demo.policy.yaml
+```
+
+```
+Harness² adoption gate: policy harness2-adoption-default, evaluator heuristic, run ../harness2/runs/demo
+  REJECT  ledger-1 [agg] agg1: scripts/summarize.py: scripts is protected
+  REJECT  ledger-2 [agg] agg2: scripts/summarize.py: scripts is protected
+  REJECT  ledger-1 [seq] c1: scripts/summarize.py: scripts is protected
+  REJECT  ledger-2 [seq] c2: scripts/summarize.py: scripts is protected
+0 accepted, 4 rejected, 0 need review, 0 skipped. Audit records: logs/harness2
+
+Harness² adoption gate: policy harness2-adoption-demo, evaluator heuristic, run ../harness2/runs/demo
+  ACCEPT  ledger-1 [agg] agg1: 1 file(s) changed, all allowed by policy; regression check passed
+  ...
+4 accepted, 0 rejected, 0 need review, 0 skipped. Audit records: logs/harness2
+```
+
+The demo runs two tasks in both recursion modes, so there are four adoptions. In each one the editor drops a
+positive only filter from `scripts/summarize.py`. The exit code is 0 only when every adoption is accepted. Use
+`--evaluator jev --mode mock` to run the regression check through the Jev mock, or `--mode live` with
+`TYPESAFE_API_KEY` set. A live run sends the harness diff and task outputs to Jev.
+
+### The adoption policy
+
+```yaml
+components:            # access: editable | review | protected
+  system_prompt: {access: editable,  paths: ["systemprompt.md"]}
+  guardrails:    {access: protected, paths: ["guardrails.md"]}
+  memory:        {access: editable,  paths: ["LongTermMEMORY.md"]}
+  tool_guidance: {access: editable,  paths: ["tool_descriptions/tool_guidance.md"]}
+  skills:        {access: editable,  paths: ["skills/*"]}
+  subagents:     {access: review,    paths: ["sub_agents/*"]}
+  scripts:       {access: protected, paths: ["scripts/*"]}
+  plugins:       {access: protected, paths: ["plugin/*"]}
+rules:                 # first match wins and overrides the component access
+  - {pattern: "scripts/summarize.py", access: editable, reason: "demo ledger helper, safe to tune"}
+unmapped_files: review
+skill_trigger_lines: review   # allow | review | deny
+```
+
+Paths are fnmatch patterns relative to the harness root, where `*` also matches `/`. Component paths live in the
+policy, so a different Harness² executor layout can be mapped without code changes. A file that matches no component
+gets the `unmapped_files` access. Removing a file is checked the same way as changing it.
+
+**Decision.** Any protected change, a failed regression check, or an evaluator failure with `fail_mode: closed` gives
+**reject**. Otherwise any change that needs review, or an evaluator failure with `fail_mode: open`, gives
+**needs_review**. Everything else is **accept**. A composed harness identical to its baseline is accepted without
+calling the evaluator.
+
+**Skill trigger lines.** When a skill is added, Harness² appends a line like
+``- When <description>, load the `<name>` skill.`` to `guardrails.md`. Under a protected guardrails policy that would
+reject every skill addition, so `skill_trigger_lines` decides these lines instead (`allow`, `review` or `deny`). It
+applies only when all of these hold:
+
+* the guardrails diff only adds lines at the end and changes nothing else (Harness² strips trailing blank lines
+  before it appends, so that is the one other change tolerated);
+* every added line exactly matches the trigger template, with the description Harness² takes from the skill's
+  `SKILL.md`;
+* each named skill is added in the same composition and is not rejected by the policy;
+* the regression check passes.
+
+Any other guardrails change is a normal protected edit and is rejected. The audit record links each trigger line to
+its skill file and says why it was or was not accepted. The demo never adds a skill, so the template was not observed
+in its output; it comes from `harness2/substrate/opencode.py` at commit 1cfe254 and is set in
+`skill_trigger_format` in the policy.
+
+**Regression check.** The evaluator gets the harness diff and, when the run directory has them, the task outputs of
+the baseline runs and of the adopted run. It answers two typed questions: a 1 to 5 Score for how likely the edit makes
+results worse, and a Truth question for whether it removes or weakens a stated constraint. Thresholds are in the
+policy. The deterministic evaluator scores the outputs by rule (no output, new error markers, output much shorter than
+the baseline) and looks for removed lines that state a rule (must, never, always, only, do not). It is a stand in for
+tests and the demo, not a judge of quality.
+
+### What the gate reads
+
+The layout below was observed in the output of `harness2-demo` at commit 1cfe254. Each `selection.json` is one
+adoption.
+
+```
+runs/<namespace>/<task>/harnesses/base/                         baseline harness
+runs/<namespace>/<task>/harnesses/<chosen_label>/               adopted harness
+runs/<namespace>/<task>/selection/<mode><k>/selection.json      chosen_label, lesson fields
+runs/<namespace>/<task>/reflection/<mode><k>/edits.md           reflection note on each edit
+runs/<namespace>/<task>/reflection/<mode><k>/deliverables/      task outputs per run, as text
+library/.../harnesses/<task>/EXPERIENCE.md                      retained lesson for later tasks
+```
+
+### Audit record
+
+One JSON file per adoption under `--out` (default `logs/harness2/`), event `harness2_adoption`. It holds the decision
+and reasons, a per component diff summary (files added, removed and modified, line counts), the policy result and
+reason for every changed file, the skill trigger links, the regression scores with the raw evaluator answers, policy
+name and hash, sha256 fingerprints of both harness trees, and links to the selection, the reflection note
+(`edits.md`) and the lesson (`EXPERIENCE.md`), plus the lesson fields Harness² recorded. It stores no file or output
+bodies, and all paths are relative to the run directory.
+
+### Limitations of the adoption gate
+
+* **It runs after Harness², not inside it.** Harness² has no adoption hook, so by the time the gate runs, Harness²
+  has already written the adopted harness to its library. The gate tells you whether to keep it; acting on a reject
+  (removing the library entry, or not deploying the harness) is up to you.
+* Built and tested against the OpenCode executor layout of Harness² commit 1cfe254. The Codex executor puts its
+  prose in `AGENTS.md` and its skills in `.agents/skills/`, so it needs its own component paths and trigger format.
+* The deterministic evaluator is a set of rules, not a quality judgment. Use a real evaluator for real adoptions.
+
+---
+
 ## Project layout
 
 ```
@@ -656,6 +804,9 @@ examples/openshell/               one-command OpenShell demo (jail + mail)
 evals/openshell/                  OpenShell benchmark: payload builder, runner (three arms), report and dashboard
 data/openshell/                   versioned synthetic payload set + manifest
 docs/openshell/                   friction log, feedback drafts, results (JSON, tables, dashboard, LinkedIn images)
+src/paved_gate/integrations/harness2/    Harness² edit adoption gate: run reader, diff, policy check, regression check, CLI
+policy/harness2_adoption.policy.yaml     default adoption policy for Harness² harness edits
+examples/harness2/demo.policy.yaml       example policy for the Harness² demo
 scripts/baselines.py              assumed values for --simulate-missing (never a measurement)
 docs/benchmark/                   committed sample: dashboard.png, sample-results.json, sample-dashboard.html
 package.json                      npm task aliases (benchmark, benchmark:dashboard, dashboard, eval:estimate, eval:dashboard, test)
