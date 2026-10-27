@@ -173,6 +173,7 @@ class HarnessAdoptionEntry(BaseModel):
     files: list[AdoptionFileResult]
     skill_trigger_lines: Literal["allow", "review", "deny"]
     skill_triggers: list[AdoptionTriggerLink]
+    skill_trigger_file: str | None = None
     skill_trigger_note: str | None = None
     regression: AdoptionRegression
     evaluator: EvaluatorInfo | None

@@ -130,6 +130,7 @@ class AdoptionGate:
                 for r in check.files
             ],
             skill_trigger_lines=self.policy.skill_trigger_lines,
+            skill_trigger_file=self.policy.skill_trigger_format.file,
             skill_trigger_note=check.trigger_note,
             skill_triggers=[
                 AdoptionTriggerLink(
