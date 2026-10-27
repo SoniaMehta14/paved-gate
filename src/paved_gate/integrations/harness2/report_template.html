@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Harness² Adoption Gate</title>
+<meta name="description" content="Paved Gate adoption decisions for Harness² harness edits: what changed per component, the policy result, the regression check, and the reason for every rejection or review flag.">
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --border: rgba(11, 11, 11, 0.10); --link: #256abf;
+    --ok-bg: #e6f4e6; --ok-ink: #006300; --warn-bg: #fdf0d8; --warn-ink: #7a4b00; --bad-bg: #fbe7e5; --bad-ink: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --border: rgba(255, 255, 255, 0.10); --link: #86b6ef;
+      --ok-bg: #11301a; --ok-ink: #7fd67f; --warn-bg: #3a2a0c; --warn-ink: #f3c46b; --bad-bg: #3a1512; --bad-ink: #f2766c;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --border: rgba(255, 255, 255, 0.10); --link: #86b6ef;
+    --ok-bg: #11301a; --ok-ink: #7fd67f; --warn-bg: #3a2a0c; --warn-ink: #f3c46b; --bad-bg: #3a1512; --bad-ink: #f2766c;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--page); color: var(--ink); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 44px 24px 56px; }
+  @media (max-width: 600px) { .wrap { padding: 28px 16px 40px; } }
+  .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 6px; }
+  h1 { font-size: 30px; line-height: 1.2; font-weight: 650; letter-spacing: -0.01em; margin: 0 0 10px; }
+  h2 { font-size: 20px; font-weight: 650; margin: 0; overflow-wrap: anywhere; }
+  h3 { font-size: 15px; font-weight: 650; margin: 18px 0 8px; }
+  p { margin: 0 0 12px; }
+  .lede { color: var(--ink-2); margin: 0 0 16px; max-width: 720px; }
+  .sub { color: var(--ink-2); font-size: 14px; margin: 0 0 12px; max-width: 760px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .b-plain { background: var(--surface); color: var(--ink-2); border: 1px solid var(--border); }
+  .d-accept, .r-ok { background: var(--ok-bg); color: var(--ok-ink); }
+  .d-needs_review, .r-review { background: var(--warn-bg); color: var(--warn-ink); }
+  .d-reject, .r-reject { background: var(--bad-bg); color: var(--bad-ink); }
+  .banner { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 10px 14px; font-size: 14px; margin: 0 0 20px; }
+  .tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 820px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .tile .v { font-size: 30px; font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .tile .l { font-size: 13px; color: var(--ink-2); margin-top: 4px; }
+  .tile.t-accept .v { color: var(--ok-ink); } .tile.t-needs_review .v { color: var(--warn-ink); } .tile.t-reject .v { color: var(--bad-ink); }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin: 16px 0 0; overflow-x: auto; }
+  .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+  .meta { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-2); font-size: 13px; }
+  td code, li code, .links code { font-size: 12.5px; overflow-wrap: anywhere; }
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 6px 0 4px; }
+  @media (max-width: 720px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .kpi .v { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .kpi .l { font-size: 12.5px; color: var(--ink-2); }
+  .pass { color: var(--ok-ink); font-weight: 600; }
+  .fail { color: var(--bad-ink); font-weight: 600; }
+  .warn { color: var(--warn-ink); font-weight: 600; }
+  .muted { color: var(--muted); }
+  ul.why { margin: 0; padding: 0; list-style: none; }
+  ul.why li { display: flex; gap: 10px; align-items: baseline; margin: 6px 0; }
+  ul.why li .badge { flex: none; }
+  .file { display: block; }
+  .links div { margin: 2px 0; }
+  footer { color: var(--muted); font-size: 12.5px; margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--grid); }
+  footer p { margin: 0 0 6px; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+const DATA = /*__REPORT__*/null;
+
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const isNum = (v) => typeof v === "number" && isFinite(v);
+const num = (v, d = 2) => isNum(v) ? String(Number(v.toFixed(d))) : "n/a";
+const pct = (v) => isNum(v) ? Math.round(v * 100) + "%" : "n/a";
+
+const theme = (location.hash.match(/(light|dark)/) || [])[1];
+if (theme) document.documentElement.setAttribute("data-theme", theme);
+
+const DECISION = { accept: "Accept", needs_review: "Needs review", reject: "Reject" };
+const RESULT = { ok: "Allowed", review: "Review", reject: "Reject" };
+const CHANGE = { added: "added", removed: "removed", modified: "changed" };
+const ACCESS = { editable: "editable", review: "review", protected: "protected" };
+const decisionBadge = (d) => `<span class="badge d-${esc(d)}">${esc(DECISION[d] || d)}</span>`;
+const resultBadge = (r) => `<span class="badge r-${esc(r)}">${esc(RESULT[r] || r)}</span>`;
+
+function sourceText(src) {
+  if (src === "skill_trigger") return "skill trigger rule";
+  if (src === "unmapped") return "no component";
+  if (src.startsWith("rule:")) return "path rule " + src.slice(5);
+  return "component rule";
+}
+
+function componentTable(a) {
+  if (!a.components.length) return `<p class="muted" style="margin:0">No files changed: the adopted harness is identical to the baseline.</p>`;
+  const rows = a.components.map((c) => {
+    const files = c.files.map((f) => `<span class="file"><code>${esc(f.path)}</code> <span class="muted">${esc(CHANGE[f.change])}</span></span>`).join("");
+    const policy = c.files.map((f) => `<span class="file">${esc(ACCESS[f.access])} <span class="muted">by ${esc(sourceText(f.source))}</span></span>`).join("");
+    const lines = `${c.lines_added} added<br>${c.lines_removed} removed`;
+    return `<tr><td><strong>${esc(c.component)}</strong></td><td>${files}</td><td>${lines}</td><td>${policy}</td><td>${resultBadge(c.result)}</td></tr>`;
+  }).join("");
+  return `<table><thead><tr><th>Component</th><th>What changed</th><th>Lines</th><th>Access</th><th>Policy result</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function regressionPanel(a) {
+  const r = a.regression;
+  if (!r.ran) return `<p class="muted" style="margin:0">Not run: nothing changed, so there was nothing to check.</p>`;
+  const result = r.error ? `<span class="fail">Could not run</span>` : r.passed ? `<span class="pass">Passed</span>` : `<span class="fail">Failed</span>`;
+  const over = (v, t) => isNum(v) && v > t;
+  const ev = a.evaluator ? `${a.evaluator.name} (${a.evaluator.mode})` : "n/a";
+  return `<div class="kpis">
+      <div class="kpi"><div class="v">${result}</div><div class="l">regression check</div></div>
+      <div class="kpi"><div class="v ${over(r.regression, r.regression_threshold) ? "fail" : ""}">${num(r.regression)}</div><div class="l">regression score, limit ${num(r.regression_threshold)} (1 means none)</div></div>
+      <div class="kpi"><div class="v ${over(r.constraint_removal, r.constraint_removal_threshold) ? "fail" : ""}">${pct(r.constraint_removal)}</div><div class="l">chance a stated rule was removed, limit ${pct(r.constraint_removal_threshold)}</div></div>
+      <div class="kpi"><div class="v" style="font-size:15px;padding-top:6px">${esc(ev)}</div><div class="l">evaluator</div></div>
+    </div>
+    <p class="muted" style="font-size:13px;margin:6px 0 0">${r.used_outputs ? "Judged on the harness diff and the task outputs of the baseline and adopted runs." : "Judged on the harness diff only: the run directory had no task outputs."}${r.error ? " Error: " + esc(r.error) + "." : ""}</p>`;
+}
+
+function triggerPanel(a) {
+  const mode = `<span class="muted">skill_trigger_lines is <strong>${esc(a.trigger_mode)}</strong>.</span>`;
+  if (!a.triggers.length) {
+    const note = a.trigger_note ? ` The trigger file changed, but ${esc(a.trigger_note.split(": ").slice(1).join(": "))}.` : "";
+    return `<p style="margin:0">No skill trigger lines to link.${note} ${mode}</p>`;
+  }
+  const yes = (v) => v === true ? `<span class="pass">yes</span>` : v === false ? `<span class="fail">no</span>` : `<span class="muted">n/a</span>`;
+  const rows = a.triggers.map((t) => `<tr><td><code>${esc(t.line)}</code></td><td>${t.skill_file ? `<code>${esc(t.skill_file)}</code>` : `<span class="muted">none</span>`}</td>
+      <td>${yes(t.skill_added)}</td><td>${yes(t.skill_policy_ok)}</td><td>${yes(t.regression_passed)}</td><td>${t.accepted ? `<span class="pass">linked</span>` : `<span class="fail">not accepted</span>`}<div class="muted" style="font-size:12.5px">${esc(t.reason)}</div></td></tr>`).join("");
+  return `<table><thead><tr><th>Added trigger line</th><th>Skill file</th><th>Skill added</th><th>Skill allowed</th><th>Regression passed</th><th>Link</th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="muted" style="font-size:13px;margin:8px 0 0">${mode}</p>`;
+}
+
+function whyPanel(a) {
+  if (!a.explanations.length) return `<p style="margin:0">${esc(a.summary || "Allowed by the policy.")}</p>`;
+  return `<ul class="why">${a.explanations.map((e) => `<li>${resultBadge(e.severity)}<span>${esc(e.text)}</span></li>`).join("")}</ul>`;
+}
+
+function lessonPanel(a) {
+  const l = a.links;
+  const item = (label, v) => `<div><span class="muted">${label}:</span> ${v ? `<code>${esc(v)}</code>` : `<span class="muted">none</span>`}</div>`;
+  const lesson = a.lesson && (a.lesson.cue || a.lesson.lesson)
+    ? `<p style="margin:0 0 8px">${a.lesson.cue ? `<strong>${esc(a.lesson.cue)}.</strong> ` : ""}${esc(a.lesson.lesson || "")}</p>` : "";
+  return `${lesson}<div class="links">${item("Reflection note", l.reflection_note)}${item("Lesson", l.lesson)}${item("Selection", l.selection)}</div>`;
+}
+
+function adoptionSection(a) {
+  return `<section class="panel">
+    <div class="head"><div><h2>${esc(a.task_id)}</h2><div class="meta">mode ${esc(a.mode)} · adopted candidate ${esc(a.label)} · ${esc(a.namespace)}</div></div>${decisionBadge(a.decision)}</div>
+    <h3>${a.explanations.length ? "Why" : "Result"}</h3>${whyPanel(a)}
+    <h3>What changed, per component</h3>${componentTable(a)}
+    <h3>Regression check</h3>${regressionPanel(a)}
+    <h3>Skill trigger lines</h3>${triggerPanel(a)}
+    <h3>Motivating lesson</h3>${lessonPanel(a)}
+  </section>`;
+}
+
+function render() {
+  const d = DATA, c = d.counts, total = c.accept + c.needs_review + c.reject;
+  const ev = d.evaluator ? `${d.evaluator.name} · ${d.evaluator.mode}` : "no evaluator call";
+  let html = `<p class="eyebrow">Paved Gate · Harness² edit adoption gate · ${esc(d.generated)}</p>
+    <h1>${esc(d.title)}</h1>${d.subtitle ? `<p class="lede">${esc(d.subtitle)}</p>` : ""}
+    <div class="badges">${d.synthetic ? '<span class="badge d-needs_review">synthetic fixture</span>' : '<span class="badge b-plain">Harness² run output</span>'}
+      ${d.policy.map((p) => `<span class="badge b-plain">policy ${esc(p)}</span>`).join("")}
+      <span class="badge b-plain">${esc(ev)}</span><span class="badge b-plain">run ${esc(d.source)}</span></div>`;
+  if (d.synthetic) html += `<div class="banner"><strong>Synthetic fixture.</strong> Every harness edit in this report was written by hand to exercise the gate. None of it was produced by Harness².</div>`;
+  const tile = (v, l, cls) => `<div class="tile ${cls}"><div class="v">${v}</div><div class="l">${esc(l)}</div></div>`;
+  html += `<div class="tiles">${tile(esc(DECISION[d.overall] || "n/a"), "overall decision", "t-" + d.overall)}${tile(total, (total === 1 ? "adoption" : "adoptions") + " checked", "")}${tile(c.accept, "accepted", "t-accept")}${tile(c.needs_review, "need review", "t-needs_review")}${tile(c.reject, "rejected", "t-reject")}</div>`;
+  html += `<p class="sub" style="margin-top:12px">The overall decision is the most severe one in this run. Reject means the edit may not be adopted; needs review means a person decides; accept means the policy and the regression check both allow it.</p>`;
+  html += d.adoptions.map(adoptionSection).join("");
+  if (d.skipped.length) {
+    html += `<section class="panel"><h2>Skipped</h2><ul>${d.skipped.map((s) => `<li><code>${esc(s.selection)}</code>: ${esc(s.reason)}</li>`).join("")}</ul></section>`;
+  }
+  html += `<footer>
+    <p><strong>Unofficial integration.</strong> Harness² is a Google Research project and is not a Google supported product. This report is not affiliated with or endorsed by Google.</p>
+    <p>Built by Paved Gate from its JSON audit records. The page makes no network requests. Paths are relative to the run directory. File and output contents are not included, apart from added trigger lines and the lesson Harness² recorded.</p>
+  </footer>`;
+  document.getElementById("app").innerHTML = html;
+}
+
+render();
+</script>
+</body>
+</html>
