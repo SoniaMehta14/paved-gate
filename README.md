@@ -64,7 +64,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync --all-extras                 # install with FastAPI, Anthropic, and OpenAI extras
-uv run pytest                        # 156 tests
+uv run pytest                        # 163 tests
 uv run python examples/server.py     # demo server on :8000, Jev in mock mode, no keys needed
 ```
 
@@ -668,14 +668,14 @@ uv run python -m paved_gate.integrations.harness2 ../harness2/runs/demo --policy
 ```
 
 ```
-Harness² adoption gate: policy harness2-adoption-default, evaluator heuristic, run ../harness2/runs/demo
+Harness² adoption gate: policy harness2_adoption_default, evaluator heuristic, run ../harness2/runs/demo
   REJECT  ledger-1 [agg] agg1: scripts/summarize.py: scripts is protected
   REJECT  ledger-2 [agg] agg2: scripts/summarize.py: scripts is protected
   REJECT  ledger-1 [seq] c1: scripts/summarize.py: scripts is protected
   REJECT  ledger-2 [seq] c2: scripts/summarize.py: scripts is protected
 0 accepted, 4 rejected, 0 need review, 0 skipped. Audit records: logs/harness2
 
-Harness² adoption gate: policy harness2-adoption-demo, evaluator heuristic, run ../harness2/runs/demo
+Harness² adoption gate: policy harness2_adoption_demo, evaluator heuristic, run ../harness2/runs/demo
   ACCEPT  ledger-1 [agg] agg1: 1 file(s) changed, all allowed by policy; regression check passed
   ...
 4 accepted, 0 rejected, 0 need review, 0 skipped. Audit records: logs/harness2
@@ -685,6 +685,36 @@ The demo runs two tasks in both recursion modes, so there are four adoptions. In
 positive only filter from `scripts/summarize.py`. The exit code is 0 only when every adoption is accepted. Use
 `--evaluator jev --mode mock` to run the regression check through the Jev mock, or `--mode live` with
 `TYPESAFE_API_KEY` set. A live run sends the harness diff and task outputs to Jev.
+
+### Reports
+
+One command builds three reports into `results/harness2/`. Each is a single HTML file with inline CSS, JS and data;
+it makes no network requests and opens straight from disk, ready to screenshot.
+
+```bash
+examples/harness2/reports.sh             # or: examples/harness2/reports.sh path/to/harness2/runs/demo
+```
+
+* `default_policy.html`: the Harness² demo output under the default policy (four rejects).
+* `example_policy.html`: the same demo output under the example policy (four accepts).
+* `synthetic_fixture.html`: a synthetic guardrail fixture under the default policy, labelled synthetic on the page.
+  [`examples/harness2/synthetic_run.py`](examples/harness2/synthetic_run.py) writes it by hand in the Harness² output
+  layout. It holds five edits, one per task: a reworded system prompt (accept), a new subagent and a new skill with
+  its trigger line (needs review), a weakened guardrail rule and a trigger line carrying an extra instruction (reject).
+  None of it comes from Harness².
+
+For each adoption a report shows the decision, the plain English reason for every rejection or review flag, a per
+component table of what changed with the access and policy result, the regression scores against their limits, the
+trigger line to skill links, and the reflection note and lesson that motivated the edit. Add `#light` or `#dark` to
+the file URL to fix the theme for a screenshot. To report on any run, or on audit records you already have:
+
+```bash
+uv run python -m paved_gate.integrations.harness2.report ../harness2/runs/demo --html results/harness2/run.html
+uv run python -m paved_gate.integrations.harness2.report --from-records logs/harness2 --html results/harness2/r.html
+```
+
+Pages show paths relative to the run directory and name the run directory by its last path component only. They
+include no file or task output contents apart from added trigger lines and the lesson Harness² recorded.
 
 ### The adoption policy
 
@@ -807,10 +837,12 @@ docs/openshell/                   friction log, feedback drafts, results (JSON, 
 src/paved_gate/integrations/harness2/    Harness² edit adoption gate: run reader, diff, policy check, regression check, CLI
 policy/harness2_adoption.policy.yaml     default adoption policy for Harness² harness edits
 examples/harness2/demo.policy.yaml       example policy for the Harness² demo
+examples/harness2/synthetic_run.py       writes the synthetic guardrail fixture (hand written, not from Harness²)
+examples/harness2/reports.sh             builds the three adoption gate reports into results/harness2/
 scripts/baselines.py              assumed values for --simulate-missing (never a measurement)
 docs/benchmark/                   committed sample: dashboard.png, sample-results.json, sample-dashboard.html
 package.json                      npm task aliases (benchmark, benchmark:dashboard, dashboard, eval:estimate, eval:dashboard, test)
-tests/                            156 tests: decision branches, Jev contract, masking, handlers, middleware, latency, benchmark report, classification eval, OpenShell middleware and benchmark helpers, Harness² adoption gate
+tests/                            163 tests: decision branches, Jev contract, masking, handlers, middleware, latency, benchmark report, classification eval, OpenShell middleware and benchmark helpers, Harness² adoption gate
 ```
 
 Development: `uv run pytest`, `uv run mypy src tests examples`, `uv run ruff check .` (mypy `--strict`).
