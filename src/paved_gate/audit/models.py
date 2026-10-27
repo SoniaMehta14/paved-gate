@@ -104,4 +104,83 @@ class EgressDecisionEntry(BaseModel):
     error: str | None = None
 
 
-AuditRecord = GateDecisionEntry | SensitiveDataEvent | EgressDecisionEntry
+class AdoptionComponentChange(BaseModel):
+    component: str
+    added: list[str]
+    removed: list[str]
+    modified: list[str]
+    lines_added: int
+    lines_removed: int
+
+
+class AdoptionFileResult(BaseModel):
+    path: str
+    component: str | None
+    change: Literal["added", "removed", "modified"]
+    access: Literal["editable", "review", "protected"]
+    source: str
+    result: Literal["ok", "review", "reject"]
+    reason: str
+
+
+class AdoptionTriggerLink(BaseModel):
+    """A line added to the trigger file and the skill it names."""
+
+    line: str
+    skill: str | None
+    skill_file: str | None
+    skill_added: bool
+    skill_policy_ok: bool
+    regression_passed: bool | None
+    accepted: bool
+    reason: str
+
+
+class AdoptionRegression(BaseModel):
+    ran: bool
+    passed: bool | None
+    regression: float | None
+    regression_threshold: float
+    constraint_removal: float | None
+    constraint_removal_threshold: float
+    used_outputs: bool
+    raw_evaluator_response: dict[str, JsonValue] | None
+    error: str | None
+
+
+class HarnessAdoptionEntry(BaseModel):
+    """One Harness² adoption decision: may this composed harness replace its baseline?
+
+    Stores no file or task output bodies: paths, line counts, policy results, scores and hashes, plus
+    the added skill trigger lines and the lesson fields Harness² recorded for the adoption.
+    Paths are relative to the Harness² output directory the gate was run over.
+    """
+
+    event: Literal["harness2_adoption"] = "harness2_adoption"
+    ts: str = Field(default_factory=_now)
+    task_id: str
+    mode: str
+    k: int
+    namespace: str
+    adopted_label: str
+    adopted_is_base: bool
+    policy_name: str
+    policy_hash: str
+    decision: Literal["accept", "reject", "needs_review"]
+    reasons: list[str]
+    components: list[AdoptionComponentChange]
+    files: list[AdoptionFileResult]
+    skill_trigger_lines: Literal["allow", "review", "deny"]
+    skill_triggers: list[AdoptionTriggerLink]
+    regression: AdoptionRegression
+    evaluator: EvaluatorInfo | None
+    latency: LatencyInfo
+    baseline_sha256: str
+    adopted_sha256: str
+    selection: str
+    reflection_note: str | None
+    lesson: str | None
+    experience: dict[str, str] | None
+
+
+AuditRecord = GateDecisionEntry | SensitiveDataEvent | EgressDecisionEntry | HarnessAdoptionEntry
