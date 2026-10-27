@@ -48,11 +48,13 @@ def _clip(text: str, limit: int) -> str:
 
 
 def _by_run(outputs: Tree, limit: int) -> dict[str, JsonValue]:
-    """{run label: that run's output files as one text}, from `label/path` keys."""
+    """{run label: that run's non empty output files as one text}, from `label/path` keys."""
     runs: dict[str, list[str]] = {}
     for key, text in sorted(outputs.items()):
         label, _, path = key.partition("/")
-        runs.setdefault(label, []).append(f"### {path}\n{text}")
+        parts = runs.setdefault(label, [])
+        if text.strip():
+            parts.append(f"### {path}\n{text}")
     return {label: _clip("\n".join(parts), limit) for label, parts in runs.items()}
 
 
@@ -60,7 +62,8 @@ def build_state(
     cfg: RegressionConfig, changes: list[FileChange], baseline_outputs: Tree, adopted_outputs: Tree
 ) -> dict[str, JsonValue]:
     state: dict[str, JsonValue] = {"diff": _clip("".join(c.unified for c in changes), cfg.max_diff_chars)}
-    if baseline_outputs and adopted_outputs:
+    # With baseline outputs on record, an adopted run that produced nothing is itself evidence.
+    if baseline_outputs:
         state["baseline_outputs"] = _by_run(baseline_outputs, cfg.max_output_chars)
         state["adopted_outputs"] = _by_run(adopted_outputs, cfg.max_output_chars)
     return state
@@ -74,7 +77,7 @@ async def run_regression(
     adopted_outputs: Tree,
 ) -> RegressionOutcome:
     state = build_state(cfg, changes, baseline_outputs, adopted_outputs)
-    used_outputs = "adopted_outputs" in state
+    used_outputs = "baseline_outputs" in state
     started = time.perf_counter()
     try:
         evaluation = await evaluator.evaluate(state, build_questions(cfg))
