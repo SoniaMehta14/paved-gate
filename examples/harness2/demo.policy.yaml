@@ -6,7 +6,7 @@
 # Everything else under scripts/ stays protected.
 
 version: 1
-name: harness2-adoption-demo
+name: harness2_adoption_demo
 
 components:
   system_prompt: {access: editable,  paths: ["systemprompt.md"]}

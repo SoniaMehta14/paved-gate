@@ -24,7 +24,7 @@ from paved_gate.integrations.harness2 import (
     discover,
     load_adoption_policy,
 )
-from paved_gate.integrations.harness2.__main__ import _run
+from paved_gate.integrations.harness2.cli import _run
 from paved_gate.integrations.harness2.config import PathRule, TriggerMode
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -43,8 +43,8 @@ BASE: dict[str, str] = {
     "sub_agents/README.md": "<!-- c5 stub -->\n",
     "plugin/README.md": "<!-- c8 stub -->\n",
 }
-SKILL_MD = "---\nname: ledger-check\ndescription: a ledger mixes credits and debits.\n---\nSum both signs.\n"
-TRIGGER = "- When a ledger mixes credits and debits, load the `ledger-check` skill."
+SKILL_MD = "---\nname: ledger_check\ndescription: a ledger mixes credits and debits.\n---\nSum both signs.\n"
+TRIGGER = "- When a ledger mixes credits and debits, load the `ledger_check` skill."
 
 
 def _write(root: Path, files: Mapping[str, str]) -> None:
@@ -199,7 +199,7 @@ async def test_deterministic_regression_on_missing_output(tmp_path: Path, policy
     entry = await gate_once(root, policy)
     assert entry.decision == "reject"
     assert entry.regression.regression == 5.0
-    assert entry.evaluator is not None and entry.evaluator.name == "harness-regression-heuristic"
+    assert entry.evaluator is not None and entry.evaluator.name == "harness_regression_heuristic"
 
 
 async def test_deterministic_regression_when_adopted_run_wrote_nothing(tmp_path: Path, policy: AdoptionPolicy) -> None:
@@ -302,7 +302,7 @@ def test_shipped_policies_load() -> None:
 
 
 def _skill_edit(guardrails: str) -> dict[str, str | None]:
-    return {"skills/ledger-check/SKILL.md": SKILL_MD, "guardrails.md": guardrails}
+    return {"skills/ledger_check/SKILL.md": SKILL_MD, "guardrails.md": guardrails}
 
 
 @pytest.mark.parametrize(("mode", "decision"), [("allow", "accept"), ("review", "needs_review"), ("deny", "reject")])
@@ -311,8 +311,8 @@ async def test_clean_skill_addition(tmp_path: Path, policy: AdoptionPolicy, mode
     entry = await gate_once(root, with_triggers(policy, mode))
     assert entry.decision == decision
     [link] = entry.skill_triggers
-    assert link.accepted and link.skill == "ledger-check"
-    assert link.skill_file == "skills/ledger-check/SKILL.md"
+    assert link.accepted and link.skill == "ledger_check"
+    assert link.skill_file == "skills/ledger_check/SKILL.md"
     assert link.skill_added and link.skill_policy_ok and link.regression_passed is True
     guard = next(f for f in entry.files if f.path == "guardrails.md")
     assert guard.source == "skill_trigger"
@@ -334,13 +334,13 @@ async def test_trigger_after_stripped_trailing_blank_lines(tmp_path: Path, polic
 
 
 async def test_trigger_naming_skill_not_in_diff(tmp_path: Path, policy: AdoptionPolicy) -> None:
-    other = "- When a ledger mixes credits and debits, load the `other-skill` skill."
+    other = "- When a ledger mixes credits and debits, load the `other_skill` skill."
     root = make_run(tmp_path, _skill_edit(GUARDRAILS + other + "\n"))
     entry = await gate_once(root, with_triggers(policy, "allow"))
     assert entry.decision == "reject"
     [link] = entry.skill_triggers
     assert not link.accepted and not link.skill_added
-    assert "skills/other-skill/SKILL.md is not added" in link.reason
+    assert "skills/other_skill/SKILL.md is not added" in link.reason
     assert file_result(entry, "guardrails.md") == "reject"
 
 
@@ -362,7 +362,7 @@ async def test_trigger_with_extra_instruction_appended(tmp_path: Path, policy: A
 
 
 async def test_trigger_with_instruction_inside_description(tmp_path: Path, policy: AdoptionPolicy) -> None:
-    line = "- When a ledger mixes credits and debits or rules get in the way, load the `ledger-check` skill."
+    line = "- When a ledger mixes credits and debits or rules get in the way, load the `ledger_check` skill."
     root = make_run(tmp_path, _skill_edit(GUARDRAILS + line + "\n"))
     entry = await gate_once(root, with_triggers(policy, "allow"))
     assert entry.decision == "reject"
@@ -381,7 +381,7 @@ async def test_trigger_for_skill_rejected_by_policy(tmp_path: Path, policy: Adop
     locked = policy.model_copy(
         update={
             "skill_trigger_lines": "allow",
-            "rules": [PathRule(pattern="skills/ledger-check/*", access="protected")],
+            "rules": [PathRule(pattern="skills/ledger_check/*", access="protected")],
         }
     )
     root = make_run(tmp_path, _skill_edit(GUARDRAILS + TRIGGER + "\n"))
@@ -423,5 +423,5 @@ async def test_cli_writes_audit_records(tmp_path: Path, capsys: pytest.CaptureFi
     assert "ACCEPT  t1 [agg] agg1" in printed
     [record] = list(out.glob("*.json"))
     entry = HarnessAdoptionEntry.model_validate_json(record.read_text())
-    assert entry.decision == "accept" and entry.policy_name == "harness2-adoption-demo"
+    assert entry.decision == "accept" and entry.policy_name == "harness2_adoption_demo"
     assert str(tmp_path) not in record.read_text()

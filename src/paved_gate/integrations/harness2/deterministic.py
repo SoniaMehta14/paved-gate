@@ -77,7 +77,7 @@ def removed_constraints(diff: str) -> list[str]:
 
 
 class HarnessRegressionHeuristic:
-    name = "harness-regression-heuristic"
+    name = "harness_regression_heuristic"
 
     def _answer(self, state: Mapping[str, JsonValue], q: Question) -> Answer:
         if isinstance(q, ScoreQuestion):
@@ -99,7 +99,7 @@ class HarnessRegressionHeuristic:
         answers = {qid: self._answer(st, q) for qid, q in questions.items()}
         return EvaluationResult(
             evaluator=self.name,
-            model="rules-v1",
+            model="rules_v1",
             mode="local",
             answers=answers,
             raw={qid: a.model_dump(mode="json") for qid, a in answers.items()},

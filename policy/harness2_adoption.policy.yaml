@@ -14,7 +14,7 @@
 # When a file matches several components, the first one listed here wins.
 
 version: 1
-name: harness2-adoption-default
+name: harness2_adoption_default
 
 components:
   system_prompt: {access: editable,  paths: ["systemprompt.md"]}
