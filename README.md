@@ -64,7 +64,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync --all-extras                 # install with FastAPI, Anthropic, and OpenAI extras
-uv run pytest                        # 106 tests
+uv run pytest                        # 156 tests
 uv run python examples/server.py     # demo server on :8000, Jev in mock mode, no keys needed
 ```
 
@@ -810,7 +810,7 @@ examples/harness2/demo.policy.yaml       example policy for the Harness² demo
 scripts/baselines.py              assumed values for --simulate-missing (never a measurement)
 docs/benchmark/                   committed sample: dashboard.png, sample-results.json, sample-dashboard.html
 package.json                      npm task aliases (benchmark, benchmark:dashboard, dashboard, eval:estimate, eval:dashboard, test)
-tests/                            113 tests: decision branches, Jev contract, masking, handlers, middleware, latency, benchmark report, classification eval, OpenShell middleware and benchmark helpers
+tests/                            156 tests: decision branches, Jev contract, masking, handlers, middleware, latency, benchmark report, classification eval, OpenShell middleware and benchmark helpers, Harness² adoption gate
 ```
 
 Development: `uv run pytest`, `uv run mypy src tests examples`, `uv run ruff check .` (mypy `--strict`).
