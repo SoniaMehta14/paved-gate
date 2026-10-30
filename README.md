@@ -53,9 +53,9 @@ The latest published runs are hosted with GitHub Pages at **https://soniamehta14
 
 - [Latency and cost benchmark](https://soniamehta14.github.io/paved-gate/benchmark/): four live arms, 60 requests each (September 27, 2026).
 - [Support ticket classification eval](https://soniamehta14.github.io/paved-gate/eval/): three live arms, 1,080 labelled tickets each (October 1, 2026). The raw [results](docs/eval/results.json) and per-ticket [predictions](docs/eval/predictions.jsonl) are published alongside it.
-- [Harness² adoption gate, synthetic fixture](https://soniamehta14.github.io/paved-gate/harness2/synthetic_fixture.html): five hand written harness edits that show every decision: 1 accepted, 2 need review, 2 rejected (October 29, 2026). Synthetic: none of it comes from Harness².
-- [Harness² demo, default policy](https://soniamehta14.github.io/paved-gate/harness2/default_policy.html): the default policy rejects the demo edit in all four adoptions, because scripts are protected (October 29, 2026).
-- [Harness² demo, example policy](https://soniamehta14.github.io/paved-gate/harness2/example_policy.html): the example policy accepts the same demo edit in all four adoptions (October 29, 2026).
+- [Harness² adoption gate, synthetic fixture](https://soniamehta14.github.io/paved-gate/harness2/synthetic_fixture.html): five hand written harness edits that show every decision: 1 accepted, 2 need review, 2 rejected (October 30, 2026). Synthetic: none of it comes from Harness².
+- [Harness² demo, default policy](https://soniamehta14.github.io/paved-gate/harness2/default_policy.html): the default policy rejects the demo edit in all four adoptions, because scripts are protected (October 30, 2026).
+- [Harness² demo, example policy](https://soniamehta14.github.io/paved-gate/harness2/example_policy.html): the example policy accepts the same demo edit in all four adoptions (October 30, 2026).
 
 These are static copies of dashboards generated locally. The site is served from the `docs/` folder on `main`, and nothing is built on GitHub. To publish a new run, copy its HTML file from `results/` to `docs/benchmark/index.html` or `docs/eval/index.html` (or the reports from `results/harness2/` to `docs/harness2/`), update the numbers on `docs/index.html`, and push.
 
@@ -703,6 +703,25 @@ examples/harness2/reports.sh             # or: examples/harness2/reports.sh path
   layout. It holds five edits, one per task: a reworded system prompt (accept), a new subagent and a new skill with
   its trigger line (needs review), a weakened guardrail rule and a trigger line carrying an extra instruction (reject).
   None of it comes from Harness².
+
+Published copies are in [`docs/harness2/`](docs/harness2/) and on the [dashboards page](https://soniamehta14.github.io/paved-gate/).
+The screenshots below are cropped to the decision tiles, the plain English reasons and the per component tables.
+
+![Synthetic fixture report: one accept, two need review, two reject](docs/harness2/1_synthetic_fixture.png)
+
+*Synthetic fixture, default policy. Every edit is hand written and none comes from Harness². A weakened guardrail and a
+trigger line with an extra instruction are rejected, a new skill and a new subagent need review, and a reworded system
+prompt is accepted.*
+
+![Harness² demo under the default policy: all four adoptions rejected](docs/harness2/2_default_policy_rejected.png)
+
+*Harness² demo, default policy. The default policy rejects the demo edit to `scripts/summarize.py` in all four
+adoptions, because scripts are protected.*
+
+![Harness² demo under the example policy: all four adoptions accepted](docs/harness2/3_example_policy_accepted.png)
+
+*Harness² demo, example policy. A path rule makes `scripts/summarize.py` editable, so the example policy accepts the
+same demo edit in all four adoptions.*
 
 For each adoption a report shows the decision, the plain English reason for every rejection or review flag, a per
 component table of what changed with the access and policy result, the regression scores against their limits, the
