@@ -87,6 +87,8 @@ const num = (v, d = 2) => isNum(v) ? String(Number(v.toFixed(d))) : "n/a";
 const pct = (v) => isNum(v) ? Math.round(v * 100) + "%" : "n/a";
 
 const theme = (location.hash.match(/(light|dark)/) || [])[1];
+// #shot: only the decision tiles, the reasons and the component tables, for a screenshot of fixed height
+const shot = /shot/.test(location.hash);
 if (theme) document.documentElement.setAttribute("data-theme", theme);
 
 const DECISION = { accept: "Accept", needs_review: "Needs review", reject: "Reject" };
@@ -160,9 +162,9 @@ function adoptionSection(a) {
     <div class="head"><div><h2>${esc(a.task_id)}</h2><div class="meta">mode ${esc(a.mode)} · adopted candidate ${esc(a.label)} · ${esc(a.namespace)}</div></div>${decisionBadge(a.decision)}</div>
     <h3>${a.explanations.length ? "Why" : "Result"}</h3>${whyPanel(a)}
     <h3>What changed, per component</h3>${componentTable(a)}
-    <h3>Regression check</h3>${regressionPanel(a)}
+    ${shot ? "" : `<h3>Regression check</h3>${regressionPanel(a)}
     <h3>Skill trigger lines</h3>${triggerPanel(a)}
-    <h3>Motivating lesson</h3>${lessonPanel(a)}
+    <h3>Motivating lesson</h3>${lessonPanel(a)}`}
   </section>`;
 }
 
@@ -177,8 +179,13 @@ function render() {
   if (d.synthetic) html += `<div class="banner"><strong>Synthetic fixture.</strong> Every harness edit in this report was written by hand to exercise the gate. None of it was produced by Harness².</div>`;
   const tile = (v, l, cls) => `<div class="tile ${cls}"><div class="v">${v}</div><div class="l">${esc(l)}</div></div>`;
   html += `<div class="tiles">${tile(esc(DECISION[d.overall] || "n/a"), "overall decision", "t-" + d.overall)}${tile(total, (total === 1 ? "adoption" : "adoptions") + " checked", "")}${tile(c.accept, "accepted", "t-accept")}${tile(c.needs_review, "need review", "t-needs_review")}${tile(c.reject, "rejected", "t-reject")}</div>`;
-  html += `<p class="sub" style="margin-top:12px">The overall decision is the most severe one in this run. Reject means the edit may not be adopted; needs review means a person decides; accept means the policy and the regression check both allow it.</p>`;
+  if (!shot) html += `<p class="sub" style="margin-top:12px">The overall decision is the most severe one in this run. Reject means the edit may not be adopted; needs review means a person decides; accept means the policy and the regression check both allow it.</p>`;
   html += d.adoptions.map(adoptionSection).join("");
+  if (shot) {
+    document.getElementById("app").innerHTML = html;
+    document.body.dataset.height = String(Math.ceil(document.documentElement.scrollHeight));
+    return;
+  }
   if (d.skipped.length) {
     html += `<section class="panel"><h2>Skipped</h2><ul>${d.skipped.map((s) => `<li><code>${esc(s.selection)}</code>: ${esc(s.reason)}</li>`).join("")}</ul></section>`;
   }

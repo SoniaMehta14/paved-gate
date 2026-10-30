@@ -10,21 +10,21 @@
     color-scheme: light;
     --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
     --grid: #e1e0d9; --border: rgba(11, 11, 11, 0.10); --link: #256abf;
-    --badge-live-bg: #e6f4e6; --badge-live-ink: #006300;
+    --badge-live-bg: #e6f4e6; --badge-live-ink: #006300; --badge-synth-bg: #fdf0d8; --badge-synth-ink: #7a4b00;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       color-scheme: dark;
       --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
       --grid: #2c2c2a; --border: rgba(255, 255, 255, 0.10); --link: #86b6ef;
-      --badge-live-bg: #11301a; --badge-live-ink: #7fd67f;
+      --badge-live-bg: #11301a; --badge-live-ink: #7fd67f; --badge-synth-bg: #3a2a0c; --badge-synth-ink: #f3c46b;
     }
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
     --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
     --grid: #2c2c2a; --border: rgba(255, 255, 255, 0.10); --link: #86b6ef;
-    --badge-live-bg: #11301a; --badge-live-ink: #7fd67f;
+    --badge-live-bg: #11301a; --badge-live-ink: #7fd67f; --badge-synth-bg: #3a2a0c; --badge-synth-ink: #f3c46b;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
@@ -43,6 +43,8 @@
   .card .when { color: var(--ink-2); font-size: 13px; margin: 0 0 12px; }
   .badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 650;
     letter-spacing: 0.04em; text-transform: uppercase; background: var(--badge-live-bg); color: var(--badge-live-ink); align-self: flex-start; margin-bottom: 12px; }
+  .badge.synthetic { background: var(--badge-synth-bg); color: var(--badge-synth-ink); }
+  .badge.plain { background: var(--page); color: var(--ink-2); border: 1px solid var(--border); }
   .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
   .card p.desc { margin: 0 0 14px; color: var(--ink-2); font-size: 14px; }
   .kpis { display: flex; gap: 24px; margin: 0 0 14px; }
@@ -58,7 +60,7 @@
 <div class="wrap">
   <p class="eyebrow">Paved Gate · Dashboards</p>
   <h1>A fast System 1 gate in front of AI agents</h1>
-  <p class="lede">Published snapshots of live runs of the Paved Gate fast evaluator (Jev): latency and cost against frontier models, classification accuracy on labelled support tickets (a 1,080-ticket eval and the full Bitext benchmark), and Paved Gate as supervisor middleware in NVIDIA OpenShell sandboxes.</p>
+  <p class="lede">Published snapshots of live runs of the Paved Gate fast evaluator (Jev): latency and cost against frontier models, classification accuracy on labelled support tickets (a 1,080-ticket eval and the full Bitext benchmark), and Paved Gate as supervisor middleware in NVIDIA OpenShell sandboxes. Also adoption gate reports for Harness² harness edits.</p>
 
   <div class="cards">
     <a class="card" href="./benchmark/">
@@ -104,9 +106,44 @@
       </div>
       <span class="open">Open dashboard →</span>
     </a>
+
+    <a class="card" href="./harness2/synthetic_fixture.html">
+      <h2>Harness² adoption gate: synthetic fixture</h2>
+      <p class="when">October 30, 2026 · 5 hand written harness edits · default policy</p>
+      <span class="badge synthetic">Synthetic fixture</span>
+      <p class="desc">Edits written by hand in the Harness² output layout to show every decision, with the plain English reason for each. None of it comes from Harness².</p>
+      <div class="kpis">
+        <div class="kpi"><div class="v">1</div><div class="l">accepted</div></div>
+        <div class="kpi"><div class="v">2</div><div class="l">need review</div></div>
+        <div class="kpi"><div class="v">2</div><div class="l">rejected</div></div>
+      </div>
+      <span class="open">Open report →</span>
+    </a>
+
+    <a class="card" href="./harness2/default_policy.html">
+      <h2>Harness² demo: default policy</h2>
+      <p class="when">October 30, 2026 · Harness² demo output · 4 adoptions</p>
+      <span class="badge plain">Demo output</span>
+      <p class="desc">The demo editor changes scripts/summarize.py. Scripts are protected by the default policy, so the gate rejects the demo edit in every adoption.</p>
+      <div class="kpis">
+        <div class="kpi"><div class="v">4 of 4</div><div class="l">rejected</div></div>
+      </div>
+      <span class="open">Open report →</span>
+    </a>
+
+    <a class="card" href="./harness2/example_policy.html">
+      <h2>Harness² demo: example policy</h2>
+      <p class="when">October 30, 2026 · Harness² demo output · 4 adoptions</p>
+      <span class="badge plain">Demo output</span>
+      <p class="desc">A path rule makes scripts/summarize.py editable, so the example policy accepts the same demo edit, and the regression check passes.</p>
+      <div class="kpis">
+        <div class="kpi"><div class="v">4 of 4</div><div class="l">accepted</div></div>
+      </div>
+      <span class="open">Open report →</span>
+    </a>
   </div>
 
-  <p class="note">In the October 1 support ticket classification eval (1,080 tickets), the accuracy differences are not statistically significant at that sample size (paired McNemar test on the <a href="./eval/predictions.jsonl">published per-ticket predictions</a>: p = 0.33 vs GPT-4o, p = 0.12 vs GPT-4o mini). This does not apply to the Bitext full benchmark, which has its own paired tests. Every run is one machine's snapshot, with list prices verified on the run date; see each dashboard's caveats before quoting a figure.</p>
+  <p class="note">In the October 1 support ticket classification eval (1,080 tickets), the accuracy differences are not statistically significant at that sample size (paired McNemar test on the <a href="./eval/predictions.jsonl">published per-ticket predictions</a>: p = 0.33 vs GPT-4o, p = 0.12 vs GPT-4o mini). This does not apply to the Bitext full benchmark, which has its own paired tests. Every run is one machine's snapshot, with list prices verified on the run date; see each dashboard's caveats before quoting a figure. The Harness² reports come from an unofficial integration; Harness² is not a Google supported product.</p>
 
   <footer>
     Static copies of dashboards generated by <a href="https://github.com/SoniaMehta14/paved-gate">paved-gate</a> (Apache-2.0). Eval data: Bitext customer support dataset, © Bitext Innovations 2024, CDLA-Sharing-1.0.
