@@ -40,7 +40,7 @@ request ─▶│ detect PII ─▶ mask ─▶ FastEvaluator: 1 request, 3 type
 - [Benchmark](#benchmark)
 - [Classification eval](#classification-eval)
 - [NVIDIA OpenShell integration](#nvidia-openshell-integration)
-- [Harness² edit adoption gate](#harness2-edit-adoption-gate)
+- [Harness² edit adoption gate](#harness-edit-adoption-gate)
 - [Project layout](#project-layout)
 - [Limitations](#limitations)
 - [Troubleshooting](#troubleshooting)
@@ -623,8 +623,6 @@ that removes the need for host networking is in review
   you're done.
 
 ---
-
-<a id="harness2-edit-adoption-gate"></a>
 
 ## Harness² edit adoption gate
 
