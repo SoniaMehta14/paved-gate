@@ -53,8 +53,11 @@ The latest published runs are hosted with GitHub Pages at **https://soniamehta14
 
 - [Latency and cost benchmark](https://soniamehta14.github.io/paved-gate/benchmark/): four live arms, 60 requests each (September 27, 2026).
 - [Support ticket classification eval](https://soniamehta14.github.io/paved-gate/eval/): three live arms, 1,080 labelled tickets each (October 1, 2026). The raw [results](docs/eval/results.json) and per-ticket [predictions](docs/eval/predictions.jsonl) are published alongside it.
+- [Harness² adoption gate, synthetic fixture](https://soniamehta14.github.io/paved-gate/harness2/synthetic_fixture.html): five hand written harness edits that show every decision: 1 accepted, 2 need review, 2 rejected (October 29, 2026). Synthetic: none of it comes from Harness².
+- [Harness² demo, default policy](https://soniamehta14.github.io/paved-gate/harness2/default_policy.html): the default policy rejects the demo edit in all four adoptions, because scripts are protected (October 29, 2026).
+- [Harness² demo, example policy](https://soniamehta14.github.io/paved-gate/harness2/example_policy.html): the example policy accepts the same demo edit in all four adoptions (October 29, 2026).
 
-These are static copies of dashboards generated locally. The site is served from the `docs/` folder on `main`, and nothing is built on GitHub. To publish a new run, copy its HTML file from `results/` to `docs/benchmark/index.html` or `docs/eval/index.html`, update the numbers on `docs/index.html`, and push.
+These are static copies of dashboards generated locally. The site is served from the `docs/` folder on `main`, and nothing is built on GitHub. To publish a new run, copy its HTML file from `results/` to `docs/benchmark/index.html` or `docs/eval/index.html` (or the reports from `results/harness2/` to `docs/harness2/`), update the numbers on `docs/index.html`, and push.
 
 ---
 
