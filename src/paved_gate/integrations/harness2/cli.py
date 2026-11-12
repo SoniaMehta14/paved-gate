@@ -5,7 +5,7 @@
 
 Writes one JSON audit record per adoption to --out and prints one line per adoption.
 Exit code 0 when every adoption is accepted, 1 otherwise.
-API keys (TYPESAFE_API_KEY for a live Jev evaluator) are read from the environment.
+API keys (TYPESAFE_API_KEY for live Jev, GEMINI_API_KEY for live Gemini Decision) are read from the environment.
 """
 
 from __future__ import annotations
@@ -19,7 +19,9 @@ from paved_gate.audit.models import HarnessAdoptionEntry
 from paved_gate.integrations.harness2.config import AdoptionPolicy, load_adoption_policy
 from paved_gate.integrations.harness2.gate import run_gate
 from paved_gate.integrations.harness2.run_dir import RunDirError, Skipped
+from paved_gate.policy.models import Provider
 
+EVALUATORS = ["heuristic", "jev", "gemini_decision"]
 LABELS = {"accept": "ACCEPT", "reject": "REJECT", "needs_review": "REVIEW"}
 
 
@@ -27,11 +29,11 @@ def _record_name(entry: HarnessAdoptionEntry) -> str:
     return f"{entry.namespace}__{entry.task_id.replace('/', '__')}__{entry.adopted_label}.json"
 
 
-def with_evaluator(policy: AdoptionPolicy, provider: str | None, mode: str | None) -> AdoptionPolicy:
-    update = {k: v for k, v in (("provider", provider), ("mode", mode)) if v}
-    if not update:
-        return policy
-    return policy.model_copy(update={"evaluator": policy.evaluator.model_copy(update=update)})
+def with_evaluator(policy: AdoptionPolicy, provider: Provider | None, mode: str | None) -> AdoptionPolicy:
+    evaluator = policy.evaluator.with_provider(provider) if provider else policy.evaluator
+    if mode:
+        evaluator = evaluator.model_copy(update={"mode": mode})
+    return policy.model_copy(update={"evaluator": evaluator})
 
 
 def write_records(entries: list[HarnessAdoptionEntry], out: Path) -> None:
@@ -54,7 +56,7 @@ def print_summary(entries: list[HarnessAdoptionEntry], skipped: list[Skipped], r
     )
 
 
-async def _run(root: Path, policy_path: str, out: Path, provider: str | None, mode: str | None) -> int:
+async def _run(root: Path, policy_path: str, out: Path, provider: Provider | None, mode: str | None) -> int:
     policy = with_evaluator(load_adoption_policy(policy_path), provider, mode)
     print(f"Harness² adoption gate: policy {policy.name}, evaluator {policy.evaluator.provider}, run {root}")
     try:
@@ -72,7 +74,7 @@ def main() -> int:
     ap.add_argument("run_dir", type=Path, help="Harness² output directory, e.g. ../harness2/runs/demo")
     ap.add_argument("--policy", default="policy/harness2_adoption.policy.yaml")
     ap.add_argument("--out", type=Path, default=Path("logs/harness2"), help="directory for the JSON audit records")
-    ap.add_argument("--evaluator", choices=["heuristic", "jev"], help="override the policy's evaluator provider")
-    ap.add_argument("--mode", choices=["mock", "live"], help="override the policy's evaluator mode (jev only)")
+    ap.add_argument("--evaluator", choices=EVALUATORS, help="override the policy's evaluator provider")
+    ap.add_argument("--mode", choices=["mock", "live"], help="override the evaluator mode (jev, gemini_decision)")
     args = ap.parse_args()
     return asyncio.run(_run(args.run_dir, args.policy, args.out, args.evaluator, args.mode))

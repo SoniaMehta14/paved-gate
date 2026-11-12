@@ -20,7 +20,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from paved_gate.audit.models import AdoptionFileResult, HarnessAdoptionEntry
-from paved_gate.integrations.harness2.cli import print_summary, with_evaluator, write_records
+from paved_gate.integrations.harness2.cli import EVALUATORS, print_summary, with_evaluator, write_records
 from paved_gate.integrations.harness2.config import load_adoption_policy
 from paved_gate.integrations.harness2.gate import run_gate
 from paved_gate.integrations.harness2.run_dir import RunDirError, Skipped
@@ -220,8 +220,8 @@ def main() -> int:
     ap.add_argument("--html", type=Path, required=True, help="where to write the report")
     ap.add_argument("--policy", default="policy/harness2_adoption.policy.yaml")
     ap.add_argument("--records", type=Path, default=Path("logs/harness2"), help="where to write the audit records")
-    ap.add_argument("--evaluator", choices=["heuristic", "jev"], help="override the policy's evaluator provider")
-    ap.add_argument("--mode", choices=["mock", "live"], help="override the policy's evaluator mode (jev only)")
+    ap.add_argument("--evaluator", choices=EVALUATORS, help="override the policy's evaluator provider")
+    ap.add_argument("--mode", choices=["mock", "live"], help="override the evaluator mode (jev, gemini_decision)")
     ap.add_argument("--title", default="Harness² adoption gate report")
     ap.add_argument("--subtitle", default="")
     ap.add_argument("--synthetic", action="store_true", help="label the report as built from a synthetic fixture")
