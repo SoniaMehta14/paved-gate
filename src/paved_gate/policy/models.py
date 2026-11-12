@@ -14,8 +14,23 @@ class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
+Provider = Literal["jev", "heuristic", "gemini_decision"]
+
+# Defaults for providers other than Jev, applied only to fields a policy leaves out, so every existing
+# Jev or heuristic policy validates and hashes exactly as before.
+_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
+    "gemini_decision": {
+        "model": "gemini-decision-1",
+        "api_key_env": "GEMINI_API_KEY",
+        "timeout_ms": 3000,
+        "max_retries": 2,
+    },
+}
+_PROVIDER_FIELDS = ("model", "base_url", "api_key_env", "timeout_ms", "max_retries")
+
+
 class EvaluatorConfig(_Strict):
-    provider: Literal["jev", "heuristic"] = "jev"
+    provider: Provider = "jev"
     mode: Literal["mock", "live"] = "mock"
     model: str = "jev-latest"
     base_url: str = "https://api.typesafe.ai/v1"
@@ -23,6 +38,20 @@ class EvaluatorConfig(_Strict):
     timeout_ms: int = Field(default=400, gt=0)
     max_retries: int = Field(default=1, ge=0)
     fail_mode: Literal["closed", "open"] = "closed"
+
+    @model_validator(mode="before")
+    @classmethod
+    def _provider_defaults(cls, data: object) -> object:
+        if isinstance(data, dict) and isinstance(data.get("provider"), str):
+            return {**_PROVIDER_DEFAULTS.get(data["provider"], {}), **data}
+        return data
+
+    def with_provider(self, provider: Provider) -> EvaluatorConfig:
+        """Switch provider, dropping provider specific settings so the new provider's defaults apply."""
+        if provider == self.provider:
+            return self
+        kept = self.model_dump(exclude=set(_PROVIDER_FIELDS))
+        return EvaluatorConfig.model_validate({**kept, "provider": provider})
 
 
 class IntentQuestionConfig(_Strict):
