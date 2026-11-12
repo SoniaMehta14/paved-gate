@@ -5,7 +5,7 @@ without a key; they are not Gemini judgments. `confidence` follows the SDK's doc
 probability of the winning outcome). Latency is simulated as one round trip; usage reports input tokens
 only, since output is not billed.
 
-The response shape is schema based (google-genai 3.2.0 types and Google's guide), not observed live.
+The response shape matches a live response recorded on 2026-11-11; the answers are not Gemini's.
 """
 
 from __future__ import annotations

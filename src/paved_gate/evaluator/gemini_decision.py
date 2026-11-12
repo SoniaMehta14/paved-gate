@@ -15,7 +15,8 @@ waited. A 429 that outlasts the retries raises RateLimitedError.
 Request and response shapes follow the google-genai 3.2.0 types and Google's Decisions API guide
 (ai.google.dev/gemini-api/docs/decisions-api, read 2026-11-11): model ID `gemini-decision-1` on the v1beta
 Developer API, `confidence` equal to the top outcome's probability (`max(noul, 1 - noul)` for yes or no),
-safety blocks returned as HTTP 400. They have not yet been checked against a live response.
+safety blocks returned as HTTP 400. A live call on 2026-11-11 (synthetic input) confirmed the model ID, the
+response shape and the meaning of `confidence`; tests replay that recorded response.
 """
 
 from __future__ import annotations

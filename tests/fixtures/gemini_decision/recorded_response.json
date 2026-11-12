@@ -1,0 +1,138 @@
+{
+  "_provenance": "RECORDED LIVE on 2026-11-11 from the Gemini Decisions API (v1beta, google-genai 3.2.0) for the synthetic request below. Answers and usage only; no headers or keys.",
+  "request": {
+    "model": "gemini-decision-1",
+    "input": "Policy: agents must never delete files without asking first.\nCustomer message: Hi, I forgot my password and cannot log in to my account. Can you help me reset it?",
+    "questions": {
+      "noul_with_criteria": {
+        "type": "noul",
+        "instructions": "Does the customer ask to reset or recover a password?",
+        "criteria": {
+          "true_description": "The message asks for a password reset or recovery",
+          "false_description": "The message is about something else"
+        }
+      },
+      "noul_plain": {
+        "type": "noul",
+        "instructions": "Does the text contain personal data such as an email address or a phone number?"
+      },
+      "choice_intent": {
+        "type": "choice",
+        "instructions": "Which intent does the customer message express?",
+        "criteria": {
+          "recover_password": "Forgot their password or wants to reset it",
+          "track_order": "Wants to know where an order is",
+          "cancel_order": "Wants to cancel an order"
+        }
+      },
+      "choice_risk": {
+        "type": "choice",
+        "instructions": "How risky is it for an automated agent to handle this message?",
+        "criteria": {
+          "low": "Routine request",
+          "medium": "Needs care",
+          "high": "Needs a human"
+        }
+      },
+      "score_urgency": {
+        "type": "score",
+        "instructions": "How urgent is the customer message?",
+        "criteria": [
+          "Not urgent",
+          "Somewhat urgent",
+          "Very urgent"
+        ]
+      },
+      "score_policy_strength": {
+        "type": "score",
+        "instructions": "How strict is the stated policy about deleting files?",
+        "criteria": [
+          "No rule",
+          "Weak suggestion",
+          "Clear rule",
+          "Strict rule",
+          "Absolute prohibition"
+        ]
+      }
+    }
+  },
+  "response": {
+    "answers": {
+      "noul_plain": {
+        "confidence": 0.99,
+        "noul": 0.01,
+        "type": "noul"
+      },
+      "score_policy_strength": {
+        "confidence": 0.634792988573153,
+        "legend": {
+          "3": "Strict rule",
+          "4": "Absolute prohibition",
+          "0": "No rule",
+          "1": "Weak suggestion",
+          "2": "Clear rule"
+        },
+        "probabilities": {
+          "3": 0.26462916301229095,
+          "0": 0.002187349250871379,
+          "2": 0.09207877104636182,
+          "1": 0.006311728117322827,
+          "4": 0.634792988573153
+        },
+        "score": 3.5235287135395312,
+        "type": "score"
+      },
+      "choice_intent": {
+        "choice": "recover_password",
+        "confidence": 0.999737974702704,
+        "probabilities": {
+          "recover_password": 0.999737974702704,
+          "track_order": 0.00013027648989390102,
+          "cancel_order": 0.00013174880740210497
+        },
+        "type": "choice"
+      },
+      "noul_with_criteria": {
+        "confidence": 0.96517917019115,
+        "noul": 0.96517917019115,
+        "type": "noul"
+      },
+      "choice_risk": {
+        "choice": "low",
+        "confidence": 0.8195483382313578,
+        "probabilities": {
+          "medium": 0.11121969601743525,
+          "high": 0.06923196575120702,
+          "low": 0.8195483382313578
+        },
+        "type": "choice"
+      },
+      "score_urgency": {
+        "confidence": 0.5293149937647194,
+        "legend": {
+          "1": "Somewhat urgent",
+          "0": "Not urgent",
+          "2": "Very urgent"
+        },
+        "probabilities": {
+          "1": 0.5293149937647194,
+          "2": 0.3672567746117289,
+          "0": 0.10342823162355164
+        },
+        "score": 1.2638285429881773,
+        "type": "score"
+      }
+    },
+    "usage": {
+      "input_tokens_by_modality": [
+        {
+          "modality": "text",
+          "tokens": 486
+        }
+      ],
+      "total_input_tokens": 486,
+      "total_output_tokens": 0,
+      "total_tokens": 486
+    }
+  }
+}

@@ -1,8 +1,8 @@
 """Gemini Decisions API response shapes (pydantic), as `decisions.create` returns them.
 
 Written from the google-genai 3.2.0 types under google/genai/_gaos/types/decisions and the response
-reference in Google's Decisions API guide. Not yet checked against a live response: the model was not
-available to the key used on 2026-11-11.
+reference in Google's Decisions API guide, and checked against a live response recorded on 2026-11-11
+(tests/fixtures/gemini_decision/recorded_response.json).
 """
 
 from __future__ import annotations

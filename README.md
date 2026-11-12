@@ -369,9 +369,10 @@ In live mode the adapter:
 Decisions API response shape with answers from the same keyword heuristics as the Jev mock, so it is a pipeline check,
 not a Gemini judgment, and **not a safety control**.
 
-**Status.** Request and response shapes come from the google-genai 3.2.0 types and Google's guide, and the test
-fixture is labelled schema based. They have not yet been checked against a live response: on release day the model
-was not available to the key used for development.
+**Status.** Request and response shapes come from the google-genai 3.2.0 types and Google's guide, and were
+confirmed by one live call on November 11, 2026 with a synthetic input: the model ID is `gemini-decision-1` on the
+v1beta API, and `confidence` equals the top outcome's probability. The tests replay that recorded response
+([recorded_response.json](tests/fixtures/gemini_decision/recorded_response.json)) offline.
 
 **Data.** On the free tier, Google may use the content you send to improve its products
 ([pricing](https://ai.google.dev/gemini-api/docs/pricing#gemini-decision)). Live runs in this repository send only

@@ -1,7 +1,7 @@
 """Gemini Decision 1 adapter: request and answer mapping, errors, retries, config, and the gate's fail_mode.
 
-No network and no credentials: live mode runs against an injected fake `decisions` API, and the response
-fixture is schema based (see its `_provenance`), not a recorded live response.
+No network and no credentials: live mode runs against an injected fake `decisions` API that replays a
+response recorded from the real API on 2026-11-11 for a synthetic request (see the fixture's `_provenance`).
 """
 
 from __future__ import annotations
@@ -46,25 +46,22 @@ from paved_gate.policy.models import EvaluatorConfig
 from tests.conftest import make_gate
 
 ROOT = Path(__file__).resolve().parent.parent
-FIXTURE = json.loads(
-    (Path(__file__).parent / "fixtures" / "gemini_decision" / "schema_based_response.json").read_text()
-)
+RECORDED = json.loads((Path(__file__).parent / "fixtures" / "gemini_decision" / "recorded_response.json").read_text())
+REQUEST, FIXTURE = RECORDED["request"], RECORDED["response"]
+SYNTHETIC_INPUT: str = REQUEST["input"]
 
-QUESTIONS: dict[str, Question] = {
-    "has_pii": TruthQuestion(instructions="Does the text contain personal data such as an email address?"),
-    "intent": ChoiceQuestion(
-        instructions="Which intent does the customer message express?",
-        criteria={
-            "recover_password": "Forgot their password",
-            "track_order": "Wants to know where an order is",
-            "cancel_order": "Wants to cancel an order",
-        },
-    ),
-    "urgency": ScoreQuestion(
-        instructions="How urgent is the message?", criteria=["Not urgent", "Somewhat urgent", "Very urgent"]
-    ),
-}
-SYNTHETIC_INPUT = "I forgot my password and cannot log in."
+
+def _from_wire(q: dict[str, JsonValue]) -> Question:
+    instructions = str(q["instructions"])
+    if q["type"] == "choice":
+        return ChoiceQuestion(instructions=instructions, criteria=q["criteria"])  # type: ignore[arg-type]
+    if q["type"] == "score":
+        return ScoreQuestion(instructions=instructions, criteria=q["criteria"])  # type: ignore[arg-type]
+    return TruthQuestion(instructions=instructions)
+
+
+# The same six questions the recorded response answers.
+QUESTIONS: dict[str, Question] = {qid: _from_wire(q) for qid, q in REQUEST["questions"].items()}
 
 
 class FakeAPIError(Exception):
@@ -117,21 +114,12 @@ def response(**answers: JsonValue) -> dict[str, JsonValue]:
 # Request mapping
 
 
-def test_question_mapping() -> None:
-    assert to_gemini_question(QUESTIONS["has_pii"]) == {
-        "type": "noul",
-        "instructions": "Does the text contain personal data such as an email address?",
-    }
-    assert to_gemini_question(QUESTIONS["intent"])["criteria"] == {
-        "recover_password": "Forgot their password",
-        "track_order": "Wants to know where an order is",
-        "cancel_order": "Wants to cancel an order",
-    }
-    assert to_gemini_question(QUESTIONS["urgency"]) == {
-        "type": "score",
-        "instructions": "How urgent is the message?",
-        "criteria": ["Not urgent", "Somewhat urgent", "Very urgent"],
-    }
+def test_question_mapping_matches_the_recorded_request() -> None:
+    for qid in ("noul_plain", "choice_intent", "choice_risk", "score_urgency", "score_policy_strength"):
+        assert to_gemini_question(QUESTIONS[qid]) == REQUEST["questions"][qid]
+    # TruthQuestion has no criteria, so the adapter sends none; the API treats noul criteria as optional.
+    sent = to_gemini_question(QUESTIONS["noul_with_criteria"])
+    assert sent == {k: v for k, v in REQUEST["questions"]["noul_with_criteria"].items() if k != "criteria"}
     assert state_text({"b": 1, "a": "x"}) == '{"a": "x", "b": 1}'
 
 
@@ -149,23 +137,26 @@ async def test_live_request_is_one_call_with_documented_fields() -> None:
 async def test_answers_map_to_paved_gate_types() -> None:
     ev, _ = live(FIXTURE)
     result = await ev.evaluate(SYNTHETIC_INPUT, QUESTIONS)
-    pii, intent, urgency = result.answers["has_pii"], result.answers["intent"], result.answers["urgency"]
-    assert isinstance(pii, TruthAnswer) and pii.probability == 0.03
-    assert isinstance(intent, ChoiceAnswer) and intent.choice == "recover_password" and intent.confidence == 0.97
-    assert isinstance(urgency, ScoreAnswer) and urgency.score == 1.12  # 0 based, as the gates expect
+    pii, intent = result.answers["noul_plain"], result.answers["choice_intent"]
+    urgency = result.answers["score_urgency"]
+    assert isinstance(pii, TruthAnswer) and pii.probability == FIXTURE["answers"]["noul_plain"]["noul"]
+    assert isinstance(intent, ChoiceAnswer) and intent.choice == "recover_password"
+    assert intent.confidence == max(intent.probabilities.values())  # observed live: confidence is p_max
+    expected_score = FIXTURE["answers"]["score_urgency"]["score"]
+    assert isinstance(urgency, ScoreAnswer) and urgency.score == expected_score  # 0 based, as the gates expect
     assert (result.evaluator, result.model, result.mode) == ("gemini_decision", "gemini-decision-1", "live")
-    assert (result.input_tokens, result.output_tokens) == (142, 0)
+    assert (result.input_tokens, result.output_tokens) == (486, 0)
     assert (result.retries, result.retry_wait_ms) == (0, 0.0)
 
 
 @pytest.mark.parametrize(
     ("answers", "message"),
     [
-        ({"urgency": {**FIXTURE["answers"]["urgency"], "score": 2.5}}, r"outside \[0, 2\]"),
-        ({"intent": {**FIXTURE["answers"]["intent"], "choice": "refund"}}, "not one of the offered options"),
-        ({"has_pii": {"type": "UNKNOWN", "raw": {}}}, "unknown answer type"),
-        ({"has_pii": FIXTURE["answers"]["intent"]}, "does not match question kind"),
-        ({"has_pii": {"type": "noul", "noul": 1.5, "confidence": 0.9}}, "did not match the expected schema"),
+        ({"score_urgency": {**FIXTURE["answers"]["score_urgency"], "score": 2.5}}, r"outside \[0, 2\]"),
+        ({"choice_intent": {**FIXTURE["answers"]["choice_intent"], "choice": "refund"}}, "not one of the offered"),
+        ({"noul_plain": {"type": "UNKNOWN", "raw": {}}}, "unknown answer type"),
+        ({"noul_plain": FIXTURE["answers"]["choice_intent"]}, "does not match question kind"),
+        ({"noul_plain": {"type": "noul", "noul": 1.5, "confidence": 0.9}}, "did not match the expected schema"),
     ],
 )
 async def test_bad_answers_raise(answers: dict[str, JsonValue], message: str) -> None:
@@ -176,8 +167,8 @@ async def test_bad_answers_raise(answers: dict[str, JsonValue], message: str) ->
 
 async def test_missing_answer_and_blocked_input_raise() -> None:
     partial = copy.deepcopy(FIXTURE)
-    del partial["answers"]["urgency"]
-    with pytest.raises(EvaluatorError, match="missing answers for \\['urgency'\\]"):
+    del partial["answers"]["score_urgency"]
+    with pytest.raises(EvaluatorError, match="missing answers for \\['score_urgency'\\]"):
         await live(partial)[0].evaluate(SYNTHETIC_INPUT, QUESTIONS)
     blocked: dict[str, JsonValue] = {
         "prompt_feedback": {"block_reason": "safety", "block_reason_message": "harmful content"}
@@ -225,13 +216,13 @@ async def test_mock_follows_the_documented_shape_and_confidence() -> None:
     assert result.model == "gemini-decision-1-mock" and result.output_tokens == 0
     raw = result.raw["answers"]
     assert isinstance(raw, dict)
-    noul = raw["has_pii"]
+    noul = raw["noul_plain"]
     assert isinstance(noul, dict)
     p, conf = noul["noul"], noul["confidence"]
     assert isinstance(p, float) and isinstance(conf, float) and conf == round(max(p, 1 - p), 3)
-    intent = result.answers["intent"]
+    intent = result.answers["choice_intent"]
     assert isinstance(intent, ChoiceAnswer) and intent.confidence == max(intent.probabilities.values())
-    urgency = raw["urgency"]
+    urgency = raw["score_urgency"]
     assert isinstance(urgency, dict) and urgency["legend"] == {
         "0": "Not urgent",
         "1": "Somewhat urgent",
