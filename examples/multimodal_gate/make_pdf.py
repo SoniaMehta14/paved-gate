@@ -1,6 +1,6 @@
 """Write the synthetic one page PDF used by the multimodal gate tests.
 
-    uv run python examples/multimodal_gate/make_pdf.py            # writes tests/fixtures/multimodal/synthetic_policy.pdf
+    uv run python examples/multimodal_gate/make_pdf.py   # writes tests/fixtures/multimodal/synthetic_policy.pdf
 
 The PDF is assembled by hand: one page of Helvetica text, no Info dictionary and no XMP metadata, so it
 carries no producer, author, creation date or file path. The output is byte for byte reproducible.
