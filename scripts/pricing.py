@@ -20,6 +20,11 @@ class Price:
 PRICES: dict[str, Price] = {
     # TypeSafe list price: input billed, output and cached input free.
     "jev": Price(0.042, 0.0, "TypeSafe list price, verified 2026-09-27 at docs.typesafe.ai/models"),
+    # Google paid tier: input billed once per request (text, image, video, audio, PDF), zero output tokens.
+    # The free tier is free of charge, and Google may use free tier content to improve its products.
+    "gemini-decision-1": Price(
+        0.10, 0.0, "Google paid tier list price, verified 2026-11-11 at ai.google.dev/gemini-api/docs/pricing"
+    ),
     "claude-opus-5": Price(5.00, 25.00, "Anthropic list price, verified 2026-09-27 at claude.com/pricing"),
     "claude-sonnet-5": Price(2.00, 10.00, "Anthropic list price, verified 2026-09-27 at claude.com/pricing"),
     "claude-haiku-4-5": Price(1.00, 5.00, "Anthropic list price, verified 2026-09-27 at claude.com/pricing"),
