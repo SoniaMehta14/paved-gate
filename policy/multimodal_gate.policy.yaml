@@ -1,0 +1,49 @@
+# Paved Gate multimodal gate policy: checks over a published report image or a policy PDF.
+#
+# One evaluator call reads the file and the text sent with it, and answers every check below.
+# A failed check holds the artifact for review or blocks it, as on_fail says.
+# Check names become question keys: letters, digits, underscore or dash, 1 to 64 characters.
+
+version: 1
+name: multimodal_gate_default
+
+evaluator:
+  provider: gemini_decision   # reads images and PDFs; the Jev adapter here sends text only
+  mode: mock                  # mock | live (live needs GEMINI_API_KEY and the gemini extra)
+  timeout_ms: 15000           # media calls take longer than text calls
+  fail_mode: closed           # closed: block when the evaluator fails; open: hold for review
+
+max_media_bytes: 10485760     # 10 MB, checked before the file is read or encoded
+
+truth:                        # yes or no; passes when the expected answer reaches min_probability
+  synthetic_label:
+    instructions: >-
+      Is the artifact clearly marked as synthetic, invented, or not real data, for example with a
+      badge, banner or heading that says so?
+    expect: "yes"
+    min_probability: 0.7
+    on_fail: review
+
+choice:                       # one option; --expect overall_decision=reject sets the option that must win
+  overall_decision:
+    instructions: >-
+      What overall decision does the artifact state for the harness edits it reports?
+    criteria:
+      accept: "The artifact says the edits are accepted"
+      needs_review: "The artifact says the edits need human review"
+      reject: "The artifact says the edits are rejected"
+    min_confidence: 0.6
+    on_fail: block
+
+score:                        # ordered levels, lowest first; passes at or above min_level (1 based)
+  legibility:
+    instructions: >-
+      How legible is the text in the artifact for a person reading it at normal size?
+    criteria:
+      - "Unreadable"
+      - "Mostly unreadable"
+      - "Readable with effort"
+      - "Readable"
+      - "Clear and easy to read"
+    min_level: 3
+    on_fail: review
