@@ -440,6 +440,8 @@ class Settings:
     workloads: list[str]
     limit: int | None
     fanout_runs: int
+    fanout_sizes: list[int] = field(default_factory=lambda: list(FANOUT_SIZES))
+    harness2_cases: int | None = None  # the first N cases, which alternate between the three categories
 
     def digest(self) -> str:
         return hashlib.sha256(json.dumps(asdict(self), sort_keys=True).encode()).hexdigest()[:16]
@@ -495,7 +497,7 @@ async def run_workloads(
 
     if "harness2" in settings.workloads:
         cfg = load_adoption_policy(ROOT / "policy" / "harness2_adoption.policy.yaml").regression
-        cases = harness2_cases()
+        cases = harness2_cases()[: settings.harness2_cases]
         per_arm = {}
         for arm in ready:
             recs = []
@@ -547,7 +549,7 @@ async def run_workloads(
         state = fanout_state()
         cells: dict[str, dict[str, object]] = {}
         for arm in ready:
-            for size in FANOUT_SIZES:
+            for size in settings.fanout_sizes:
                 qs = fanout_questions(size)
                 cap = CAPS[arm.name]["questions_per_call"]
                 est_tokens = (len(state) + sum(len(json.dumps(q.model_dump())) for q in qs.values())) // 4
@@ -562,8 +564,8 @@ async def run_workloads(
                         ckpt.add(rec)
                     recs.append(rec)
                 cells[f"{arm.name}:{size}"] = summarize_fanout(arm.name, size, recs, live)
-            log(f"  fanout: {ARM_LABEL[arm.name]} {len(FANOUT_SIZES)} sizes x {settings.fanout_runs} runs")
-        out["fanout"] = {"sizes": list(FANOUT_SIZES), "cells": cells}
+            log(f"  fanout: {ARM_LABEL[arm.name]} {len(settings.fanout_sizes)} sizes x {settings.fanout_runs} runs")
+        out["fanout"] = {"sizes": list(settings.fanout_sizes), "cells": cells}
     return out
 
 
@@ -649,11 +651,11 @@ def estimate(settings: Settings, tickets: list[Ticket]) -> list[dict[str, object
             calls += len(tickets)
             tokens += sum(len(t.text) + q_chars for t in tickets) // 4
         if "harness2" in settings.workloads:
-            n = len(harness2_cases())
+            n = len(harness2_cases()[: settings.harness2_cases])
             calls += n
             tokens += n * 900
         if "fanout" in settings.workloads:
-            for size in FANOUT_SIZES:
+            for size in settings.fanout_sizes:
                 per = (
                     len(fanout_state()) + sum(len(json.dumps(q.model_dump())) for q in fanout_questions(size).values())
                 ) // 4
@@ -842,7 +844,9 @@ def build_report(
 
 async def run(args: argparse.Namespace) -> int:
     load_dotenv(ROOT / ".env")  # keys from .env; real environment variables take precedence
-    settings = Settings(args.mode, list(args.workloads), args.limit, args.fanout_runs)
+    settings = Settings(
+        args.mode, list(args.workloads), args.limit, args.fanout_runs, list(args.fanout_sizes), args.harness2_cases
+    )
     tickets: list[Ticket] = []
     if "tickets" in settings.workloads:
         tickets, _ = load_sample(DEFAULT_SAMPLE)
@@ -894,6 +898,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     ap.add_argument("--workloads", nargs="+", choices=WORKLOADS, default=list(WORKLOADS))
     ap.add_argument("--limit", type=int, help="use only the first N tickets")
     ap.add_argument("--fanout-runs", type=int, default=20, help="runs per fanout cell (default 20)")
+    ap.add_argument("--fanout-sizes", type=int, nargs="+", default=list(FANOUT_SIZES), help="questions per fanout call")
+    ap.add_argument("--harness2-cases", type=int, help="use only the first N Harness² cases (categories alternate)")
     ap.add_argument("--checkpoint", type=Path, default=CHECKPOINT, help="live run checkpoint (resumed if present)")
     ap.add_argument("--fresh", action="store_true", help="ignore an existing checkpoint and start over")
     return asyncio.run(run(ap.parse_args(argv)))

@@ -34,13 +34,43 @@ def test_mock_run_is_a_labelled_pipeline_check(offline: Path) -> None:
     report, md = _outputs(offline)
     assert report["kind"] == "pipeline check (mock), not results" and report["mode"] == "mock"
     assert report["models"] == {"jev": "jev-mock", "gemini_decision": "gemini-decision-1-mock"}
-    assert report["settings"] == {"mode": "mock", "workloads": list(be.WORKLOADS), "limit": 6, "fanout_runs": 1}
+    assert report["settings"] == {
+        "mode": "mock",
+        "workloads": list(be.WORKLOADS),
+        "limit": 6,
+        "fanout_runs": 1,
+        "fanout_sizes": list(be.FANOUT_SIZES),
+        "harness2_cases": None,
+    }
     assert report["timing_method"] == be.TIMING_METHOD and report["calibration_definition"] == be.CALIBRATION
     retry = report["retry_policies"]
     assert "date" in report and "sdk_versions" in report and isinstance(retry, dict) and set(retry) == set(be.ARMS)
     assert "**pipeline check (mock), not results**" in md and "results (live)" not in md
     assert md.count(be.MOCK_CELL) > 20 and "| Jev | 6 | 0 |" in md
     assert "Decision agreement between arms: not measured (mock)." in md
+
+
+def test_rehearsal_flags_limit_fanout_sizes_and_harness2_cases(offline: Path) -> None:
+    args = ["--mode", "mock", "--limit", "2", "--fanout-runs", "2", "--fanout-sizes", "1", "10"]
+    assert be.main([*args, "--harness2-cases", "6"]) == 0
+    report, _ = _outputs(offline)
+    workloads = report["workloads"]
+    assert isinstance(workloads, dict)
+    assert workloads["fanout"]["sizes"] == [1, 10] and set(workloads["fanout"]["cells"]) == {
+        "jev:1",
+        "jev:10",
+        "gemini_decision:1",
+        "gemini_decision:10",
+    }
+    cats = workloads["harness2"]["arms"]["jev"]["categories"]
+    assert {c: x["n"] for c, x in cats.items()} == {
+        "guardrail_weakening": 2,
+        "benign_prompt_edit": 2,
+        "empty_output": 2,
+    }
+    tickets, _ = be.load_sample(be.DEFAULT_SAMPLE)
+    rows = be.estimate(be.Settings("live", list(be.WORKLOADS), 2, 2, [1, 10], 6), tickets[:2])
+    assert rows[0]["calls"] == be.WARMUP_CALLS + 2 + 6 + 2 * 2
 
 
 def test_live_without_keys_marks_arms_not_run_and_calls_nothing(offline: Path) -> None:
