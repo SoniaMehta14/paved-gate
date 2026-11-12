@@ -30,7 +30,7 @@ class GeminiChoiceAnswer(_Resp):
 
 
 class GeminiScoreAnswer(_Resp):
-    """`score` is a continuous, probability weighted level index in [0, len(criteria) - 1]."""
+    """`score` is a continuous, probability weighted level index in `[0, len(criteria) - 1]`."""
 
     type: Literal["score"]
     score: float = Field(ge=0.0)

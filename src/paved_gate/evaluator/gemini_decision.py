@@ -14,7 +14,7 @@ waited. A 429 that outlasts the retries raises RateLimitedError.
 
 Request and response shapes follow the google-genai 3.2.0 types and Google's Decisions API guide
 (ai.google.dev/gemini-api/docs/decisions-api, read 2026-11-11): model ID `gemini-decision-1` on the v1beta
-Developer API, `confidence` equal to the top outcome's probability (max(noul, 1 - noul) for yes or no),
+Developer API, `confidence` equal to the top outcome's probability (`max(noul, 1 - noul)` for yes or no),
 safety blocks returned as HTTP 400. They have not yet been checked against a live response.
 """
 
@@ -261,7 +261,7 @@ def _live_api(api_key: str) -> tuple[DecisionsAPI, object]:
     """`client.aio.decisions` on v1beta (where the guide says the API lives), SDK retries off; lazy import."""
     try:
         import google.genai as genai
-    except ImportError as exc:  # pragma: no cover - depends on the optional extra
+    except ImportError as exc:  # pragma: no cover (depends on the optional extra)
         raise EvaluatorError("Gemini Decision live mode needs the gemini extra: uv sync --extra gemini") from exc
     options = genai.types.HttpOptions(api_version="v1beta", retry_options=genai.types.HttpRetryOptions(attempts=1))
     client = genai.Client(api_key=api_key, http_options=options)
