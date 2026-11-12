@@ -162,7 +162,7 @@ class GeminiDecisionEvaluator:
     def retry_policy(self) -> str:
         return (
             f"up to {self.max_retries} retries on 429 and 5xx, exponential backoff "
-            f"{self.backoff_base_s:g} s doubling to a {self.backoff_cap_s:g} s cap, plus up to 10% jitter; "
+            f"{self.backoff_base_s:g} s doubling up to {self.backoff_cap_s:g} s, plus up to 10% jitter; "
             "SDK retries off"
         )
 
