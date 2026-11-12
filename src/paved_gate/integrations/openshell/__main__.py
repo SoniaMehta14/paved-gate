@@ -11,7 +11,7 @@ Register it in OpenShell's gateway.toml (local development, plaintext):
     max_payload_bytes = 1048576
     timeout = "1500ms"
 
-API keys (TYPESAFE_API_KEY for a live Jev evaluator) are read from the environment.
+API keys (TYPESAFE_API_KEY for live Jev, GEMINI_API_KEY for live Gemini Decision) are read from the environment.
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ import sys
 
 from paved_gate.integrations.openshell.config import EgressPolicy, load_egress_policy
 from paved_gate.integrations.openshell.server import build_inspector, build_server
+from paved_gate.policy.models import Provider
 
 
 def _evaluator_label(policy: EgressPolicy) -> str:
@@ -31,10 +32,23 @@ def _evaluator_label(policy: EgressPolicy) -> str:
     return f"{policy.evaluator.provider}/{policy.evaluator.mode}"
 
 
-async def _run(policy_path: str, bind: str, mode: str | None, audit_path: str | None, no_evaluator: bool) -> int:
+async def _run(
+    policy_path: str,
+    bind: str,
+    mode: str | None,
+    audit_path: str | None,
+    no_evaluator: bool,
+    provider: Provider | None = None,
+) -> int:
     policy = load_egress_policy(policy_path)
     if no_evaluator:
         policy = policy.model_copy(update={"evaluator_enabled": False})
+    if provider:
+        # Keep the policy's timeout: it must stay below the middleware timeout in OpenShell's gateway.toml.
+        evaluator = policy.evaluator.with_provider(provider).model_copy(
+            update={"timeout_ms": policy.evaluator.timeout_ms}
+        )
+        policy = policy.model_copy(update={"evaluator": evaluator})
     if mode:
         policy = policy.model_copy(update={"evaluator": policy.evaluator.model_copy(update={"mode": mode})})
     if audit_path:
@@ -64,11 +78,14 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--policy", default="policy/openshell_egress.policy.yaml")
     ap.add_argument("--bind", default="127.0.0.1:50051")
+    ap.add_argument(
+        "--evaluator", choices=["jev", "heuristic", "gemini_decision"], help="override the policy's evaluator provider"
+    )
     ap.add_argument("--mode", choices=["mock", "live"], help="override the policy's evaluator mode")
     ap.add_argument("--audit", help="override the policy's audit log path")
     ap.add_argument("--no-evaluator", action="store_true", help="local detectors only: never call the evaluator")
     args = ap.parse_args()
-    return asyncio.run(_run(args.policy, args.bind, args.mode, args.audit, args.no_evaluator))
+    return asyncio.run(_run(args.policy, args.bind, args.mode, args.audit, args.no_evaluator, args.evaluator))
 
 
 if __name__ == "__main__":

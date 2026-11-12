@@ -78,6 +78,9 @@ class EvaluationResult(_Frozen):
     latency_ms: float
     input_tokens: int | None = None
     output_tokens: int | None = None
+    # Retries the adapter made inside this call and the total backoff it waited; None when not tracked.
+    retries: int | None = None
+    retry_wait_ms: float | None = None
 
 
 class EvaluatorError(RuntimeError):

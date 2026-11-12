@@ -299,6 +299,10 @@ class PavedGate:
 def evaluator_from_config(cfg: EvaluatorConfig) -> FastEvaluator:
     if cfg.provider == "heuristic":
         return HeuristicEvaluator()
+    if cfg.provider == "gemini_decision":
+        from paved_gate.evaluator.gemini_decision import GeminiDecisionEvaluator
+
+        return GeminiDecisionEvaluator.from_config(cfg)
     return JevEvaluator.from_config(cfg)
 
 

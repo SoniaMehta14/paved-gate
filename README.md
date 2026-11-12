@@ -34,6 +34,7 @@ request ─▶│ detect PII ─▶ mask ─▶ FastEvaluator: 1 request, 3 type
 - [Policy as code: the config file](#policy-as-code-the-config-file)
 - [The FastEvaluator interface](#the-fastevaluator-interface)
 - [Jev adapter: mock and live](#jev-adapter-mock-and-live)
+- [Gemini Decision 1 adapter: mock and live](#gemini-decision-1-adapter-mock-and-live)
 - [The masking tension](#the-masking-tension)
 - [Audit log](#audit-log)
 - [FastAPI / Starlette middleware](#fastapi--starlette-middleware)
@@ -66,8 +67,8 @@ These are static copies of dashboards generated locally. The site is served from
 Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-uv sync --all-extras                 # install with FastAPI, Anthropic, and OpenAI extras
-uv run pytest                        # 163 tests
+uv sync --all-extras                 # install with FastAPI, Anthropic, OpenAI, and Gemini extras
+uv run pytest                        # 186 tests
 uv run python examples/server.py     # demo server on :8000, Jev in mock mode, no keys needed
 ```
 
@@ -104,6 +105,7 @@ cp .env.example .env    # then uncomment and fill in the keys you have
 | `TYPESAFE_API_KEY` | Jev live mode: `benchmark.py --live-jev`, or `evaluator.mode: live` in the policy |
 | `OPENAI_API_KEY` | GPT-4o zero-shot benchmark arm |
 | `ANTHROPIC_API_KEY` | Claude zero-shot benchmark arm and the demo server's frontier handler |
+| `GEMINI_API_KEY` | Gemini Decision 1 live mode: `provider: gemini_decision` with `mode: live`, or `--evaluator gemini_decision --mode live` |
 
 `scripts/benchmark.py` and `examples/server.py` load `.env` automatically. Variables already set in your shell take precedence. The library itself only reads the process environment; it never loads files.
 
@@ -318,6 +320,64 @@ The adapter matches answers on their required fields rather than the `type` tag,
 TypeSafe also publishes a Python SDK (`typesafe-sdk`, which includes `AsyncTypeSafeClient`). The adapter calls REST directly with `httpx` to avoid depending on a pre-1.0 SDK surface. Swapping it in only changes `JevEvaluator._post`.
 
 ---
+
+## Gemini Decision 1 adapter: mock and live
+
+[evaluator/gemini_decision.py](src/paved_gate/evaluator/gemini_decision.py) adds Google's **Gemini Decision 1**
+(`gemini-decision-1`, the [Decisions API](https://ai.google.dev/gemini-api/docs/decisions-api), released
+November 11, 2026) as a second `FastEvaluator` next to Jev. It reads the input once in a single prefill pass and
+answers every question from it, with no output tokens billed. Paved Gate's question types map one to one:
+
+* `TruthQuestion` to `noul` (probability of yes)
+* `ChoiceQuestion` to `choice` (one option, with probabilities)
+* `ScoreQuestion` to `score` (0 based level index, the same scale the gates already add 1 to, so thresholds carry over)
+
+**Setup.** The SDK is an optional extra, imported only in live mode:
+
+```bash
+uv sync --extra gemini                 # google-genai 3.2 or later
+# then add GEMINI_API_KEY=... to .env (see .env.example)
+```
+
+**Selecting it.** In a policy:
+
+```yaml
+evaluator:
+  provider: gemini_decision
+  mode: live                           # or mock: no SDK, no key, no network
+```
+
+Fields you leave out take Gemini defaults: model `gemini-decision-1`, key variable `GEMINI_API_KEY`, timeout
+3,000 ms, 2 retries. Policies that do not name this provider validate and hash exactly as before. On the command line,
+`--evaluator gemini_decision` works on the Harness² gate and report and on the OpenShell middleware; the OpenShell
+flag keeps the policy's timeout, because it must stay below the middleware timeout in `gateway.toml`.
+
+```bash
+uv run python -m paved_gate.integrations.harness2 ../harness2/runs/demo --evaluator gemini_decision --mode live
+```
+
+In live mode the adapter:
+
+* sends every question in one `client.aio.decisions.create` call on the v1beta Developer API;
+* turns the SDK's own retries off and retries `429` and `5xx` itself, with exponential backoff (0.5 s doubling, capped
+  at 8 s, plus jitter), recording the retry count and the total wait on each result;
+* stops with a clear `RateLimitedError` when a `429` outlasts the retries, since that means a quota or rate limit;
+* rejects unknown answer types, missing answers, choices outside the offered options, scores outside the scale, and
+  blocked input. The gate treats any of those as an evaluator failure, so `fail_mode` applies.
+
+**Mock mode** ([evaluator/gemini_decision_mock.py](src/paved_gate/evaluator/gemini_decision_mock.py)) returns the
+Decisions API response shape with answers from the same keyword heuristics as the Jev mock, so it is a pipeline check,
+not a Gemini judgment, and **not a safety control**.
+
+**Status.** Request and response shapes come from the google-genai 3.2.0 types and Google's guide, and were
+confirmed by one live call on November 11, 2026 with a synthetic input: the model ID is `gemini-decision-1` on the
+v1beta API, and `confidence` equals the top outcome's probability. The tests replay that recorded response
+([recorded_response.json](tests/fixtures/gemini_decision/recorded_response.json)) offline.
+
+**Data.** On the free tier, Google may use the content you send to improve its products
+([pricing](https://ai.google.dev/gemini-api/docs/pricing#gemini-decision)). Live runs in this repository send only
+the public Bitext sample and synthetic payloads. The paid tier lists input at 0.10 USD per million tokens with no
+output tokens (verified November 11, 2026; see [scripts/pricing.py](scripts/pricing.py)).
 
 ## The masking tension
 
@@ -833,6 +893,7 @@ src/paved_gate/
   evaluator/jev_models.py         Jev REST contract (pydantic)
   evaluator/jev_mock.py           contract-exact mock backend
   evaluator/heuristic.py          vendor-free evaluator (asyncio.gather fan-out)
+  evaluator/gemini_decision.py    Gemini Decision 1 adapter (mock | live), with its response models and mock
   evaluator/signals.py            keyword heuristics used by the mock and heuristic evaluators
   policy/                         policy schema, loader, sha256 policy hash
   privacy/                        local PII/PHI detectors and masking
@@ -862,7 +923,7 @@ examples/harness2/reports.sh             builds the three adoption gate reports 
 scripts/baselines.py              assumed values for --simulate-missing (never a measurement)
 docs/benchmark/                   committed sample: dashboard.png, sample-results.json, sample-dashboard.html
 package.json                      npm task aliases (benchmark, benchmark:dashboard, dashboard, eval:estimate, eval:dashboard, test)
-tests/                            163 tests: decision branches, Jev contract, masking, handlers, middleware, latency, benchmark report, classification eval, OpenShell middleware and benchmark helpers, Harness² adoption gate
+tests/                            186 tests: decision branches, Jev contract, Gemini Decision adapter, masking, handlers, middleware, latency, benchmark report, classification eval, OpenShell middleware and benchmark helpers, Harness² adoption gate
 ```
 
 Development: `uv run pytest`, `uv run mypy src tests examples`, `uv run ruff check .` (mypy `--strict`).
