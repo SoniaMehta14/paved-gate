@@ -69,7 +69,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync --all-extras                 # install with FastAPI, Anthropic, OpenAI, and Gemini extras
-uv run pytest                        # 207 tests
+uv run pytest                        # 215 tests
 uv run python examples/server.py     # demo server on :8000, Jev in mock mode, no keys needed
 ```
 
@@ -1002,7 +1002,7 @@ examples/multimodal_gate/make_pdf.py     writes the synthetic test PDF (no metad
 scripts/baselines.py              assumed values for --simulate-missing (never a measurement)
 docs/benchmark/                   committed sample: dashboard.png, sample-results.json, sample-dashboard.html
 package.json                      npm task aliases (benchmark, benchmark:dashboard, dashboard, eval:estimate, eval:dashboard, test)
-tests/                            207 tests: decision branches, Jev contract, Gemini Decision adapter and benchmark, multimodal gate, masking, handlers, middleware, latency, benchmark report, classification eval, OpenShell middleware and benchmark helpers, Harness² adoption gate
+tests/                            215 tests: decision branches, Jev contract, Gemini Decision adapter and benchmark, multimodal gate, masking, handlers, middleware, latency, benchmark report, classification eval, OpenShell middleware and benchmark helpers, Harness² adoption gate
 ```
 
 Development: `uv run pytest`, `uv run mypy src tests examples`, `uv run ruff check .` (mypy `--strict`).
