@@ -26,7 +26,8 @@ import math
 import os
 import sys
 import time
-from collections.abc import Callable, Sequence
+from collections import deque
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -125,12 +126,66 @@ class QuotaHit(Exception):
         self.arm, self.completed = arm, completed
 
 
+class CallTooLarge(Exception):
+    """One call alone would cross the pacing limit, so it can never be sent within it."""
+
+
+class TokenPacer:
+    """Keeps reported input tokens under a per minute limit, over a sliding 60 second window.
+
+    `wait` runs before a call and sleeps until the window has room for the call's expected tokens;
+    `record` adds the tokens the API reported once the call returns. Expected tokens come from the last
+    call of the same kind, or from a character estimate before the first one.
+    """
+
+    WINDOW_S = 60.0
+
+    def __init__(
+        self,
+        limit: int,
+        *,
+        clock: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    ) -> None:
+        self.limit, self.clock, self.sleep = limit, clock, sleep
+        self.window: deque[tuple[float, int]] = deque()
+        self.last: dict[str, int] = {}
+        self.waited_s = 0.0
+
+    def used(self) -> int:
+        now = self.clock()
+        while self.window and self.window[0][0] <= now - self.WINDOW_S:
+            self.window.popleft()
+        return sum(tokens for _, tokens in self.window)
+
+    def expected(self, kind: str, fallback: int) -> int:
+        return self.last.get(kind, fallback)
+
+    async def wait(self, expected: int) -> float:
+        if expected > self.limit:
+            raise CallTooLarge(
+                f"one call needs about {expected:,} input tokens, over the {self.limit:,} per minute limit"
+            )
+        waited = 0.0
+        while self.used() + expected > self.limit:
+            delay = max(self.window[0][0] + self.WINDOW_S - self.clock(), 0.001)
+            await self.sleep(delay)
+            waited += delay
+        self.waited_s += waited
+        return waited
+
+    def record(self, kind: str, tokens: int) -> None:
+        self.window.append((self.clock(), tokens))
+        self.last[kind] = tokens
+
+
 class Checkpoint:
     """Append only JSONL of finished calls, so an interrupted live run resumes without repeating them."""
 
     def __init__(self, path: Path | None, settings_hash: str, fresh: bool) -> None:
         self.path = path
         self.done: dict[tuple[str, str, str], CallRecord] = {}
+        self.restored = 0
         if path is None:
             return
         if path.exists() and not fresh:
@@ -143,6 +198,7 @@ class Checkpoint:
             for line in lines[1:]:
                 rec = CallRecord(**json.loads(line))
                 self.done[rec.key] = rec
+            self.restored = len(self.done)
         else:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps({"settings_hash": settings_hash}) + "\n", encoding="utf-8")
@@ -177,6 +233,7 @@ class Arm:
     client: httpx.AsyncClient | None = None
     retry_policy: str = ""
     models_seen: set[str] = field(default_factory=set)
+    pacer: TokenPacer | None = None
 
     async def close(self) -> None:
         if self.evaluator is not None:
@@ -185,7 +242,7 @@ class Arm:
             await self.client.aclose()
 
 
-def build_arm(name: str, mode: str) -> Arm:
+def build_arm(name: str, mode: str, gemini_tpm: int = 0) -> Arm:
     key = os.environ.get(KEY_ENV[name])
     if mode == "live" and not key:
         return Arm(name, None, "not_run", f"{KEY_ENV[name]} not set")
@@ -215,6 +272,7 @@ def build_arm(name: str, mode: str) -> Arm:
         "ok",
         "real Gemini Decisions API" if mode == "live" else "Gemini mock",
         retry_policy=gem.retry_policy(),
+        pacer=TokenPacer(gemini_tpm) if mode == "live" and gemini_tpm > 0 else None,
     )
 
 
@@ -449,9 +507,13 @@ class Settings:
     fanout_runs: int
     fanout_sizes: list[int] = field(default_factory=lambda: list(FANOUT_SIZES))
     harness2_cases: int | None = None  # the first N cases, which alternate between the three categories
+    gemini_tpm: int = 45_000  # pacing limit on Gemini input tokens per minute; 0 turns pacing off
+    gemini_tier: str | None = None  # as stated on the command line; the API does not report it
 
     def digest(self) -> str:
-        return hashlib.sha256(json.dumps(asdict(self), sort_keys=True).encode()).hexdigest()[:16]
+        """Hash of what is measured; pacing and the stated tier only space calls out, so a resume ignores them."""
+        measured = {k: v for k, v in asdict(self).items() if k not in ("gemini_tpm", "gemini_tier")}
+        return hashlib.sha256(json.dumps(measured, sort_keys=True).encode()).hexdigest()[:16]
 
 
 async def run_workloads(
@@ -459,36 +521,55 @@ async def run_workloads(
 ) -> dict[str, object]:
     live = settings.mode == "live"
     ready = [a for a in arms.values() if a.status == "ok"]
+
+    async def pace(arm: Arm, kind: str, fallback: int) -> int:
+        """Wait, outside any timed section, until the arm's pacing window has room; returns expected tokens."""
+        if arm.pacer is None:
+            return fallback
+        expected = arm.pacer.expected(kind, fallback)
+        await arm.pacer.wait(expected)
+        return expected
+
+    def settle(arm: Arm, kind: str, reported: int | None, expected: int) -> None:
+        if arm.pacer is not None:
+            arm.pacer.record(kind, reported if reported is not None else expected)
+
     for arm in ready:
         for i in range(WARMUP_CALLS):
-            await call(
+            expected = await pace(arm, "warmup", 60)
+            rec, _ = await call(
                 arm,
                 "warmup",
                 str(i),
                 "Warmup call with synthetic text.",
                 {"w": TruthQuestion(instructions="Is this text about a warmup?")},
             )
+            settle(arm, "warmup", rec.input_tokens, expected)
 
     async def tracked(
-        arm: Arm, workload: str, item: str, state: str, qs: dict[str, Question]
+        arm: Arm, workload: str, item: str, state: str, qs: dict[str, Question], kind: str, fallback: int
     ) -> tuple[CallRecord, object]:
         if (workload, arm.name, item) in ckpt.done:
             return ckpt.done[(workload, arm.name, item)], None
+        expected = await pace(arm, kind, fallback)
         try:
             rec, result = await call(arm, workload, item, state, qs)
         except QuotaHit as hit:
             raise QuotaHit(hit.arm, sum(1 for k in ckpt.done if k[1] == arm.name)) from hit
+        settle(arm, kind, rec.input_tokens, expected)
         return rec, result
 
     out: dict[str, object] = {}
     if "tickets" in settings.workloads:
         q = ticket_question()
+        q_chars = len(json.dumps(q.model_dump()))
         per_arm: dict[str, list[CallRecord]] = {}
         for arm in ready:
             recs = []
             for t in tickets:
                 resumed = ("tickets", arm.name, t.id) in ckpt.done
-                rec, result = await tracked(arm, "tickets", t.id, t.text, {"intent": q})
+                fallback = (len(t.text) + q_chars) // 4
+                rec, result = await tracked(arm, "tickets", t.id, t.text, {"intent": q}, "tickets", fallback)
                 if not resumed:
                     rec.data = {"true": t.intent}
                     ans = getattr(result, "answers", {}).get("intent")
@@ -514,6 +595,7 @@ async def run_workloads(
                     recs.append(ckpt.done[key])
                     continue
                 assert arm.evaluator is not None
+                expected = await pace(arm, "harness2", 900)
                 before = arm.counter.n if arm.counter else 0
                 outcome = await run_regression(
                     arm.evaluator,
@@ -523,6 +605,7 @@ async def run_workloads(
                     {"agg1/answer.txt": adopted_out},
                 )
                 ev = outcome.evaluation
+                settle(arm, "harness2", ev.input_tokens if ev else None, expected)
                 if outcome.error and ("429" in outcome.error or "RateLimited" in outcome.error):
                     raise QuotaHit(arm.name, sum(1 for k in ckpt.done if k[1] == arm.name))
                 retries = (
@@ -564,12 +647,16 @@ async def run_workloads(
                     cells[f"{arm.name}:{size}"] = {"supported": False}
                     continue
                 recs = []
-                for run in range(settings.fanout_runs):
-                    resumed = ("fanout", arm.name, f"{size}:{run}") in ckpt.done
-                    rec, _ = await tracked(arm, "fanout", f"{size}:{run}", state, qs)
-                    if not resumed:
-                        ckpt.add(rec)
-                    recs.append(rec)
+                try:
+                    for run in range(settings.fanout_runs):
+                        resumed = ("fanout", arm.name, f"{size}:{run}") in ckpt.done
+                        rec, _ = await tracked(arm, "fanout", f"{size}:{run}", state, qs, f"fanout:{size}", est_tokens)
+                        if not resumed:
+                            ckpt.add(rec)
+                        recs.append(rec)
+                except CallTooLarge as exc:
+                    cells[f"{arm.name}:{size}"] = {"supported": False, "reason": f"pacing: {exc}"}
+                    continue
                 cells[f"{arm.name}:{size}"] = summarize_fanout(arm.name, size, recs, live)
             log(f"  fanout: {ARM_LABEL[arm.name]} {len(settings.fanout_sizes)} sizes x {settings.fanout_runs} runs")
         out["fanout"] = {"sizes": list(settings.fanout_sizes), "cells": cells}
@@ -798,7 +885,7 @@ def render_markdown(report: dict[str, object]) -> str:
 
 
 def build_report(
-    settings: Settings, arms: dict[str, Arm], workloads: dict[str, object], started: datetime
+    settings: Settings, arms: dict[str, Arm], workloads: dict[str, object], started: datetime, restored: int = 0
 ) -> dict[str, object]:
     live = settings.mode == "live"
     try:
@@ -823,6 +910,24 @@ def build_report(
         "Costs use the list prices in scripts/pricing.py and the input tokens each API reports. Jev also "
         "reports output tokens, but TypeSafe bills input only, so they are not priced; Gemini reports 0 output tokens.",
     ]
+    gem = arms.get("gemini_decision")
+    if live and gem is not None and gem.pacer is not None:
+        notes.append(
+            f"Gemini calls were paced to {settings.gemini_tpm:,} input tokens per minute over a sliding 60 second "
+            "window of the tokens each response reported. Waits happen before a call, outside the timed section; "
+            f"they totalled {gem.pacer.waited_s:.0f} s. Jev calls were not paced."
+        )
+    if live:
+        tier = settings.gemini_tier or "not stated"
+        notes.append(
+            f"Gemini usage tier: {tier}. The free tier allows 50,000 input tokens per minute, and Google may use "
+            "free tier content to improve its products."
+        )
+    if restored:
+        notes.append(
+            f"Resumed from a checkpoint: {restored} calls came from an earlier session with the same settings and "
+            "were not repeated, so latency for those calls was measured in that session."
+        )
     if not live:
         notes.insert(
             0,
@@ -838,7 +943,7 @@ def build_report(
             a: (", ".join(sorted(arms[a].models_seen)) or MODEL[a]) if live else MOCK_MODEL_NAME[a] for a in ARMS
         },
         "sdk_versions": {"google-genai": genai_version, "paved-gate": importlib.metadata.version("paved-gate")},
-        "settings": asdict(settings),
+        "settings": {**asdict(settings), "resumed_from_checkpoint": restored > 0, "calls_restored": restored},
         "timing_method": TIMING_METHOD,
         "calibration_definition": CALIBRATION,
         "retry_policies": {a: arm.retry_policy or None for a, arm in arms.items()},
@@ -852,7 +957,14 @@ def build_report(
 async def run(args: argparse.Namespace) -> int:
     load_dotenv(ROOT / ".env")  # keys from .env; real environment variables take precedence
     settings = Settings(
-        args.mode, list(args.workloads), args.limit, args.fanout_runs, list(args.fanout_sizes), args.harness2_cases
+        args.mode,
+        list(args.workloads),
+        args.limit,
+        args.fanout_runs,
+        list(args.fanout_sizes),
+        args.harness2_cases,
+        args.gemini_tpm,
+        args.gemini_tier,
     )
     tickets: list[Ticket] = []
     if "tickets" in settings.workloads:
@@ -871,7 +983,7 @@ async def run(args: argparse.Namespace) -> int:
         return 2
 
     started = datetime.now(UTC)
-    arms = {name: build_arm(name, settings.mode) for name in ARMS}
+    arms = {name: build_arm(name, settings.mode, settings.gemini_tpm) for name in ARMS}
     ckpt = Checkpoint(args.checkpoint if settings.mode == "live" else None, settings.digest(), args.fresh)
     print(f"Benchmark ({settings.mode}): " + ", ".join(f"{ARM_LABEL[a]} {x.status}" for a, x in arms.items()))
     try:
@@ -886,7 +998,7 @@ async def run(args: argparse.Namespace) -> int:
         for arm in arms.values():
             await arm.close()
 
-    report = build_report(settings, arms, workloads, started)
+    report = build_report(settings, arms, workloads, started, ckpt.restored)
     RESULTS.mkdir(parents=True, exist_ok=True)
     stem = RESULTS / f"evaluators-{settings.mode}-{started.strftime('%Y%m%dT%H%M%SZ')}"
     stem.with_suffix(".json").write_text(json.dumps(report, indent=2, default=str) + "\n", encoding="utf-8")
@@ -907,6 +1019,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     ap.add_argument("--fanout-runs", type=int, default=20, help="runs per fanout cell (default 20)")
     ap.add_argument("--fanout-sizes", type=int, nargs="+", default=list(FANOUT_SIZES), help="questions per fanout call")
     ap.add_argument("--harness2-cases", type=int, help="use only the first N Harness² cases (categories alternate)")
+    ap.add_argument(
+        "--gemini-tpm", type=int, default=45_000, help="pace Gemini input tokens per minute (default 45000; 0 is off)"
+    )
+    ap.add_argument("--gemini-tier", choices=["free", "tier1", "tier2", "tier3"], help="stamp the Gemini usage tier")
     ap.add_argument("--checkpoint", type=Path, default=CHECKPOINT, help="live run checkpoint (resumed if present)")
     ap.add_argument("--fresh", action="store_true", help="ignore an existing checkpoint and start over")
     return asyncio.run(run(ap.parse_args(argv)))

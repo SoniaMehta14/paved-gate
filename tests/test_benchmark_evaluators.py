@@ -7,11 +7,14 @@ from __future__ import annotations
 
 import json
 import random
+from collections.abc import Mapping
 from pathlib import Path
 
 import benchmark_evaluators as be
 import pytest
 
+from paved_gate import EvaluationResult
+from paved_gate.evaluator.base import EvaluatorState, Question
 from paved_gate.evaluator.gemini_decision import GeminiDecisionEvaluator
 
 
@@ -21,6 +24,7 @@ def offline(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     for env in be.KEY_ENV.values():
         monkeypatch.delenv(env, raising=False)
     monkeypatch.setattr(be, "RESULTS", tmp_path)
+    monkeypatch.setattr(be, "CHECKPOINT", tmp_path / "evaluators-checkpoint.jsonl")  # never the real one
     return tmp_path
 
 
@@ -41,6 +45,10 @@ def test_mock_run_is_a_labelled_pipeline_check(offline: Path) -> None:
         "fanout_runs": 1,
         "fanout_sizes": list(be.FANOUT_SIZES),
         "harness2_cases": None,
+        "gemini_tpm": 45000,
+        "gemini_tier": None,
+        "resumed_from_checkpoint": False,
+        "calls_restored": 0,
     }
     assert report["timing_method"] == be.TIMING_METHOD and report["calibration_definition"] == be.CALIBRATION
     retry = report["retry_policies"]
@@ -164,3 +172,71 @@ def test_limit_spreads_tickets_across_intents() -> None:
     picked = be.spread(tickets, 27)
     assert len(picked) == 27 and len({t.intent for t in picked}) == 27
     assert be.spread(tickets, None) == tickets and be.spread(tickets, 5000) == tickets
+
+
+class FakeClock:
+    """A clock that only moves when the pacer sleeps, so waits are exact and nothing really sleeps."""
+
+    def __init__(self) -> None:
+        self.t = 0.0
+        self.sleeps: list[float] = []
+
+    def __call__(self) -> float:
+        return self.t
+
+    async def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.t += seconds
+
+
+async def test_pacer_waits_for_the_sliding_window() -> None:
+    clock = FakeClock()
+    pacer = be.TokenPacer(1000, clock=clock, sleep=clock.sleep)
+    assert await pacer.wait(400) == 0.0
+    pacer.record("tickets", 400)  # t=0
+    clock.t = 10.0
+    assert await pacer.wait(pacer.expected("tickets", 50)) == 0.0  # 800 of 1000 after this one
+    pacer.record("tickets", 400)  # t=10
+    clock.t = 20.0
+    # 800 used; another 400 would cross 1000, so wait until the t=0 entry leaves the window at t=60
+    assert await pacer.wait(400) == 40.0
+    assert clock.t == 60.0 and pacer.used() == 400
+    assert pacer.waited_s == 40.0 and clock.sleeps == [40.0]
+
+
+async def test_pacer_refuses_a_call_larger_than_the_limit() -> None:
+    clock = FakeClock()
+    pacer = be.TokenPacer(1000, clock=clock, sleep=clock.sleep)
+    assert pacer.expected("fanout:50", 1200) == 1200
+    with pytest.raises(be.CallTooLarge, match="over the 1,000 per minute limit"):
+        await pacer.wait(1200)
+    assert clock.sleeps == []
+
+
+async def test_oversized_fanout_cell_is_not_supported_and_not_sent() -> None:
+    sent: list[int] = []
+
+    class Counting(GeminiDecisionEvaluator):
+        async def evaluate(self, state: EvaluatorState, questions: Mapping[str, Question]) -> EvaluationResult:
+            sent.append(len(questions))
+            return await super().evaluate(state, questions)
+
+    clock = FakeClock()
+    pacer = be.TokenPacer(1500, clock=clock, sleep=clock.sleep)
+    gem = Counting(mode="mock", mock_latency_ms=(0, 0), rng=random.Random(0))
+    arms = {"gemini_decision": be.Arm("gemini_decision", gem, "ok", "fake", pacer=pacer)}
+    settings = be.Settings("mock", ["fanout"], None, 2, [1, 50])
+    out = await be.run_workloads(settings, arms, [], be.Checkpoint(None, "x", fresh=False), lambda _: None)
+    cells = out["fanout"]["cells"]
+    assert cells["gemini_decision:1"]["supported"] is True
+    assert cells["gemini_decision:50"]["supported"] is False
+    assert cells["gemini_decision:50"]["reason"].startswith("pacing: one call needs about")
+    assert 50 not in sent
+
+
+def test_pacing_and_tier_do_not_change_the_resume_hash() -> None:
+    base = be.Settings("live", list(be.WORKLOADS), None, 20, list(be.FANOUT_SIZES), None)
+    # the hash in the header of the checkpoint the interrupted full run wrote on 2026-11-16
+    assert base.digest() == "57b626b84b604451"
+    paced = be.Settings("live", list(be.WORKLOADS), None, 20, list(be.FANOUT_SIZES), None, 30_000, "free")
+    assert paced.digest() == base.digest()
