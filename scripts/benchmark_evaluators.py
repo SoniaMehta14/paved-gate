@@ -24,9 +24,10 @@ import importlib.metadata
 import json
 import math
 import os
+import random
 import sys
 import time
-from collections import deque
+from collections import defaultdict, deque
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
@@ -40,6 +41,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from build_sample import DEFAULT_SAMPLE, Ticket, load_sample  # noqa: E402
 from dotenv import load_dotenv  # noqa: E402
+from full_bench import mcnemar  # noqa: E402  (exact McNemar, shared with the Bitext benchmark)
 from intents import INTENTS, INVALID, labels  # noqa: E402
 from pricing import PRICES, cost_usd  # noqa: E402
 
@@ -94,6 +96,27 @@ CALIBRATION = (
     "probability| times bin share. Computed the same way for both arms. Each API's own confidence field "
     "is reported separately and is not comparable: Jev normalizes choice confidence as "
     "(p_max minus 1/n) / (1 minus 1/n), Gemini reports p_max."
+)
+COST_NOTE = (
+    "Costs use the list prices in scripts/pricing.py and the input tokens each API reports. Jev also reports "
+    "output tokens, but TypeSafe bills input only, so they are not priced; Gemini reports 0 output tokens."
+)
+
+
+def gemini_cost_note(tier: str | None) -> str:
+    """Plain statement of what the cost column means for Gemini, given the tier the run was stamped with."""
+    price = "the paid tier list price (0.10 USD per million input tokens)"
+    if tier == "free":
+        return f"This run used the Gemini free tier, so its Gemini calls cost nothing. The cost column uses {price}."
+    return f"The cost column prices Gemini at {price}; the usage tier was {tier or 'not stated'}."
+
+
+BOOTSTRAP_RESAMPLES = 2000
+BOOTSTRAP_SEED = 0
+STATS_NOTE = (
+    f"Statistics: accuracy and ECE intervals are percentile bootstrap 95% intervals over {BOOTSTRAP_RESAMPLES:,} "
+    f"resamples of tickets with replacement (seed {BOOTSTRAP_SEED}). The paired accuracy comparison is an exact two "
+    "sided McNemar test on the tickets both arms answered; only the discordant pairs enter the p value."
 )
 TICKET_INSTRUCTIONS = "Which intent does this customer support message express? Choose exactly one."
 
@@ -474,15 +497,28 @@ def percentile(values: Sequence[float], p: float) -> float | None:
 def ece(top_probs: Sequence[float], correct: Sequence[bool], bins: int = 10) -> float | None:
     if not top_probs:
         return None
-    total, n = 0.0, len(top_probs)
-    for b in range(bins):
-        lo, hi = b / bins, (b + 1) / bins
-        idx = [i for i, p in enumerate(top_probs) if (lo <= p < hi) or (b == bins - 1 and p == 1.0)]
-        if idx:
-            acc = sum(correct[i] for i in idx) / len(idx)
-            conf = sum(top_probs[i] for i in idx) / len(idx)
-            total += abs(acc - conf) * len(idx) / n
-    return round(total, 4)
+    count, hits, mass = [0] * bins, [0] * bins, [0.0] * bins
+    for p, ok in zip(top_probs, correct, strict=True):
+        b = min(int(p * bins), bins - 1)  # p == 1.0 belongs to the last bin
+        count[b] += 1
+        hits[b] += ok
+        mass[b] += p
+    n = len(top_probs)
+    return round(sum(abs(hits[b] - mass[b]) / n for b in range(bins) if count[b]), 4)
+
+
+def bootstrap_ci(
+    n: int, stat: Callable[[list[int]], float | None], resamples: int = BOOTSTRAP_RESAMPLES, seed: int = BOOTSTRAP_SEED
+) -> list[float] | None:
+    """Percentile 95% interval of `stat` over `resamples` resamples (with replacement) of n paired items."""
+    if n == 0:
+        return None
+    rng = random.Random(seed)
+    values = sorted(v for _ in range(resamples) if (v := stat([rng.randrange(n) for _ in range(n)])) is not None)
+    return [
+        round(values[int(0.025 * len(values))], 4),
+        round(values[min(len(values) - 1, int(0.975 * len(values)))], 4),
+    ]
 
 
 def latency(records: Sequence[CallRecord]) -> dict[str, object]:
@@ -663,11 +699,20 @@ async def run_workloads(
     return out
 
 
+def accuracy_stat(correct: list[bool]) -> Callable[[list[int]], float | None]:
+    return lambda idx: sum(correct[i] for i in idx) / len(idx)
+
+
+def ece_stat(top: list[float], correct: list[bool]) -> Callable[[list[int]], float | None]:
+    return lambda idx: ece([top[i] for i in idx], [correct[i] for i in idx])
+
+
 def summarize_tickets(per_arm: dict[str, list[CallRecord]], live: bool) -> dict[str, object]:
     from metrics import compute_metrics  # needs the eval extra (`scikit-learn`), so it is imported only here
 
     arms: dict[str, object] = {}
     preds: dict[str, dict[str, str]] = {}
+    right: dict[str, dict[str, bool]] = {}
     for name, recs in per_arm.items():
         answered = [r for r in recs if r.ok and "pred" in r.data]
         preds[name] = {r.item: str(r.data["pred"]) for r in answered}
@@ -677,20 +722,39 @@ def summarize_tickets(per_arm: dict[str, list[CallRecord]], live: bool) -> dict[
             y_pred = [str(r.data["pred"]) if r.data["pred"] in INTENTS else INVALID for r in answered]
             m = compute_metrics(y_true, y_pred, labels(), INVALID)
             correct = [t == p for t, p in zip(y_true, y_pred, strict=True)]
+            top = [float(r.data["top_p"]) for r in answered]  # type: ignore[arg-type]
+            right[name] = {r.item: ok for r, ok in zip(answered, correct, strict=True)}
             row.update(
                 accuracy=round(m["accuracy"], 4),
+                accuracy_ci95=bootstrap_ci(len(correct), accuracy_stat(correct)),
                 macro_f1=round(m["macro"]["f1"], 4),
-                ece_top_probability=ece([float(r.data["top_p"]) for r in answered], correct),  # type: ignore[arg-type]
+                ece_top_probability=ece(top, correct),
+                ece_top_probability_ci95=bootstrap_ci(len(correct), ece_stat(top, correct)),
                 ece_confidence_field=ece([float(r.data["confidence_field"]) for r in answered], correct),  # type: ignore[arg-type]
                 latency=latency(recs),
             )
         arms[name] = row
     agreement: object = None
+    paired: object = None
     if live and len(preds) == 2:
         a, b = preds.values()
-        both = set(a) & set(b)
-        agreement = {"rate": round(sum(a[i] == b[i] for i in both) / len(both), 4) if both else None, "n": len(both)}
-    return {"arms": arms, "agreement": agreement}
+        both = sorted(set(a) & set(b))
+        agree = sum(a[i] == b[i] for i in both)
+        agreement = {"agree": agree, "n": len(both), "rate": round(agree / len(both), 4) if both else None}
+    if live and len(right) == 2:
+        (first, ra), (second, rb) = right.items()
+        both = sorted(set(ra) & set(rb))
+        test = mcnemar([ra[i] for i in both], [rb[i] for i in both])
+        paired = {
+            "test": "exact two sided McNemar on tickets answered by both arms",
+            "n": len(both),
+            "both_correct": sum(ra[i] and rb[i] for i in both),
+            "both_wrong": sum(not ra[i] and not rb[i] for i in both),
+            f"only_{first}_correct": test["a_only"],
+            f"only_{second}_correct": test["b_only"],
+            "p_value": test["p_value"],
+        }
+    return {"arms": arms, "agreement": agreement, "paired_accuracy": paired}
 
 
 def summarize_harness2(per_arm: dict[str, list[CallRecord]], live: bool) -> dict[str, object]:
@@ -711,7 +775,8 @@ def summarize_harness2(per_arm: dict[str, list[CallRecord]], live: bool) -> dict
     if live and len(flags) == 2:
         a, b = flags.values()
         both = set(a) & set(b)
-        agreement = {"rate": round(sum(a[i] == b[i] for i in both) / len(both), 4) if both else None, "n": len(both)}
+        agree = sum(a[i] == b[i] for i in both)
+        agreement = {"agree": agree, "n": len(both), "rate": round(agree / len(both), 4) if both else None}
     return {"arms": arms, "agreement": agreement, "expected_flag": EXPECT_FLAG}
 
 
@@ -767,6 +832,11 @@ def estimate(settings: Settings, tickets: list[Ticket]) -> list[dict[str, object
     return rows
 
 
+def ci(v: object) -> str | None:
+    """A [low, high] interval as text, or None when there is none."""
+    return f"{v[0]:g} to {v[1]:g}" if isinstance(v, list) and len(v) == 2 else None
+
+
 def fmt(v: object, suffix: str = "") -> str:
     if v is None:
         return NA
@@ -812,6 +882,13 @@ def render_markdown(report: dict[str, object]) -> str:
         f"* Date (UTC): {report['date']}",
         "* Models: " + ", ".join(f"{ARM_LABEL[a]} `{v}`" for a, v in models.items()),
         f"* Settings: {json.dumps(report['settings'])}",
+    ]
+    rebuilt = report.get("rebuilt")
+    if isinstance(rebuilt, dict):
+        lines.append(
+            f"* Rebuilt: {rebuilt['at']} from {rebuilt['from']} ({rebuilt['calls_read']} recorded calls, no API calls)"
+        )
+    lines += [
         "",
     ]
     lines += table(["Arm", "Status", "Note"], [[ARM_LABEL[a], s["status"], s["reason"]] for a, s in arms.items()], 3)
@@ -820,15 +897,33 @@ def render_markdown(report: dict[str, object]) -> str:
         t = w["tickets"]
         rows = []
         for a, r in t["arms"].items():
-            ece_cells = [m(r.get("ece_top_probability")), m(r.get("ece_confidence_field"))]
-            quality = [m(r.get("accuracy")), m(r.get("macro_f1")), *ece_cells]
+            quality = [m(r.get("accuracy")), m(ci(r.get("accuracy_ci95"))), m(r.get("macro_f1"))]
+            quality += [m(r.get("ece_top_probability")), m(ci(r.get("ece_top_probability_ci95")))]
+            quality += [m(r.get("ece_confidence_field"))]
             rows.append([ARM_LABEL[a], r["calls"], r["errors"], *quality, *lat_cells(r.get("latency") or {})])
-        header = ["Arm", "Calls", "Errors", "Accuracy", "Macro F1", "ECE (top class probability)"]
-        header += ["ECE (own confidence field)", *LATENCY_HEADER]
+        header = ["Arm", "Calls", "Errors", "Accuracy", "Accuracy 95% CI", "Macro F1", "ECE (top class probability)"]
+        header += ["ECE 95% CI", "ECE (own confidence field)", *LATENCY_HEADER]
         lines += ["", "## Support ticket classification", "", *table(header, rows)]
         ag = t.get("agreement") or {}
-        agreed = f"{fmt(ag.get('rate'))} over {fmt(ag.get('n'))} tickets answered by both" if live else MOCK_CELL
-        lines.append(f"\nDecision agreement between arms: {agreed}.")
+        agreed = f"{ag.get('agree')} of {ag.get('n')} tickets answered by both ({fmt(ag.get('rate'))})"
+        lines.append(f"\nDecision agreement between arms: {agreed if live else MOCK_CELL}.")
+        pa = t.get("paired_accuracy")
+        if live and isinstance(pa, dict):
+            only = {k[len("only_") : -len("_correct")]: v for k, v in pa.items() if k.startswith("only_")}
+            lines += [
+                "",
+                f"Paired accuracy, exact two sided McNemar test over {pa['n']} tickets answered by both arms:",
+                "",
+                *table(
+                    ["Outcome", "Tickets"],
+                    [
+                        ["Both correct", pa["both_correct"]],
+                        *([f"Only {ARM_LABEL[arm]} correct", v] for arm, v in only.items()),
+                        ["Both wrong", pa["both_wrong"]],
+                        ["p value (discordant pairs only)", fmt(pa["p_value"])],
+                    ],
+                ),
+            ]
 
     if "harness2" in w:
         h = w["harness2"]
@@ -845,7 +940,7 @@ def render_markdown(report: dict[str, object]) -> str:
         lines += ["", "## Harness² edit adoption (synthetic, labelled by construction)", ""]
         lines += table([*header, *LATENCY_HEADER], rows)
         ag = h.get("agreement") or {}
-        agreed = f"{fmt(ag.get('rate'))} over {fmt(ag.get('n'))} cases" if live else MOCK_CELL
+        agreed = f"{ag.get('agree')} of {ag.get('n')} cases" if live else MOCK_CELL
         lines.append(f"\nAgreement on flag or no flag: {agreed}.")
 
     if "fanout" in w:
@@ -907,10 +1002,12 @@ def build_report(
         "they are not a basis for ranking the evaluators.",
         "Live runs send only the public Bitext sample (CDLA Sharing 1.0) and synthetic payloads. "
         "Gemini free tier content may be used by Google to improve its products.",
-        "Costs use the list prices in scripts/pricing.py and the input tokens each API reports. Jev also "
-        "reports output tokens, but TypeSafe bills input only, so they are not priced; Gemini reports 0 output tokens.",
+        COST_NOTE,
+        STATS_NOTE,
     ]
     gem = arms.get("gemini_decision")
+    if live and gem is not None and gem.status == "ok":
+        notes.append(gemini_cost_note(settings.gemini_tier))
     if live and gem is not None and gem.pacer is not None:
         notes.append(
             f"Gemini calls were paced to {settings.gemini_tpm:,} input tokens per minute over a sliding 60 second "
@@ -954,7 +1051,58 @@ def build_report(
     }
 
 
+REPLACED_NOTES = ("Costs use ", "The cost column ", "This run used the Gemini free tier", "Statistics: ")
+
+
+def rebuild(json_path: Path) -> tuple[Path, Path]:
+    """Recompute every summary from `<stem>.calls.jsonl` and the original run's stamps. No API calls."""
+    original = json.loads(json_path.read_text(encoding="utf-8"))
+    calls_path = json_path.with_name(json_path.name.removesuffix(".json") + ".calls.jsonl")
+    records = [CallRecord(**json.loads(line)) for line in calls_path.read_text(encoding="utf-8").splitlines()[1:]]
+    live = original["mode"] == "live"
+    grouped: dict[tuple[str, str], list[CallRecord]] = defaultdict(list)
+    for rec in records:
+        grouped[(rec.workload, rec.arm)].append(rec)
+    arms_run = [a for a in ARMS if original["arms"][a]["status"] == "ok"]
+    workloads: dict[str, object] = {}
+    old = original["workloads"]
+    if "tickets" in old:
+        workloads["tickets"] = summarize_tickets({a: grouped[("tickets", a)] for a in arms_run}, live)
+    if "harness2" in old:
+        workloads["harness2"] = summarize_harness2({a: grouped[("harness2", a)] for a in arms_run}, live)
+    if "fanout" in old:
+        cells: dict[str, object] = {}
+        for key, cell in old["fanout"]["cells"].items():
+            arm, size = key.split(":")
+            recs = [r for r in grouped[("fanout", arm)] if r.item.split(":")[0] == size]
+            cells[key] = summarize_fanout(arm, int(size), recs, live) if cell.get("supported") else cell
+        workloads["fanout"] = {"sizes": old["fanout"]["sizes"], "cells": cells}
+    notes = [n for n in original["notes"] if not n.startswith(REPLACED_NOTES)]
+    notes += [COST_NOTE, STATS_NOTE]
+    if live and "gemini_decision" in arms_run:
+        notes.append(gemini_cost_note(original["settings"].get("gemini_tier")))
+    report = {
+        **original,
+        "workloads": workloads,
+        "notes": notes,
+        "rebuilt": {
+            "at": datetime.now(UTC).isoformat(timespec="seconds"),
+            "from": calls_path.name,
+            "calls_read": len(records),
+            "api_calls": 0,
+        },
+    }
+    json_path.write_text(json.dumps(report, indent=2, default=str) + "\n", encoding="utf-8")
+    md_path = json_path.with_name(json_path.name.removesuffix(".json") + ".md")
+    md_path.write_text(render_markdown(report), encoding="utf-8")
+    return json_path, md_path
+
+
 async def run(args: argparse.Namespace) -> int:
+    if args.rebuild:
+        json_path, md_path = rebuild(args.rebuild)
+        print(f"Rebuilt {json_path.name} and {md_path.name} from the recorded calls; no API calls were made.")
+        return 0
     load_dotenv(ROOT / ".env")  # keys from .env; real environment variables take precedence
     settings = Settings(
         args.mode,
@@ -1023,6 +1171,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--gemini-tpm", type=int, default=45_000, help="pace Gemini input tokens per minute (default 45000; 0 is off)"
     )
     ap.add_argument("--gemini-tier", choices=["free", "tier1", "tier2", "tier3"], help="stamp the Gemini usage tier")
+    ap.add_argument(
+        "--rebuild", type=Path, metavar="RESULT_JSON", help="recompute a finished run's report from its calls file"
+    )
     ap.add_argument("--checkpoint", type=Path, default=CHECKPOINT, help="live run checkpoint (resumed if present)")
     ap.add_argument("--fresh", action="store_true", help="ignore an existing checkpoint and start over")
     return asyncio.run(run(ap.parse_args(argv)))

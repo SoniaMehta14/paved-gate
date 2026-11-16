@@ -240,3 +240,76 @@ def test_pacing_and_tier_do_not_change_the_resume_hash() -> None:
     assert base.digest() == "57b626b84b604451"
     paced = be.Settings("live", list(be.WORKLOADS), None, 20, list(be.FANOUT_SIZES), None, 30_000, "free")
     assert paced.digest() == base.digest()
+
+
+def test_bootstrap_interval_is_reproducible_and_brackets_the_estimate() -> None:
+    correct = [True] * 90 + [False] * 10
+    first = be.bootstrap_ci(len(correct), be.accuracy_stat(correct))
+    assert first == be.bootstrap_ci(len(correct), be.accuracy_stat(correct))  # fixed seed
+    assert first is not None and first[0] < 0.9 < first[1] and first[0] > 0.8 and first[1] <= 1.0
+    assert be.bootstrap_ci(0, be.accuracy_stat([])) is None
+
+
+def _record(workload: str, arm: str, item: str, **data: object) -> dict[str, object]:
+    rec = be.CallRecord(workload, arm, item, True, latency_ms=10.0, retries=0, input_tokens=100, output_tokens=0)
+    rec.data = dict(data)
+    out: dict[str, object] = be.asdict(rec)
+    return out
+
+
+def test_rebuild_recomputes_from_the_calls_file_without_api_calls(tmp_path: Path) -> None:
+    # Jev right on t0 to t4, Gemini right on t2 to t5: both right 3, only Jev 2, only Gemini 1, both wrong 0.
+    jev_right, gem_right = {0, 1, 2, 3, 4}, {2, 3, 4, 5}
+    calls: list[dict[str, object]] = [{"settings_hash": "x"}]
+    for arm, right in (("jev", jev_right), ("gemini_decision", gem_right)):
+        for i in range(6):
+            pred = "cancel_order" if i in right else "track_order"
+            calls.append(
+                _record("tickets", arm, f"t{i}", true="cancel_order", pred=pred, top_p=0.9, confidence_field=0.9)
+            )
+        for i, cat in enumerate(("guardrail_weakening", "benign_prompt_edit", "empty_output")):
+            calls.append(_record("harness2", arm, f"h{i}", category=cat, flagged=cat != "benign_prompt_edit"))
+        calls += [_record("fanout", arm, f"1:{r}") for r in range(2)]
+    stem = tmp_path / "evaluators-live-x"
+    Path(f"{stem}.calls.jsonl").write_text("\n".join(json.dumps(c) for c in calls) + "\n")
+    original = {
+        "title": "T",
+        "kind": "results (live)",
+        "mode": "live",
+        "date": "d",
+        "models": {"jev": "jev-1.14.0", "gemini_decision": "gemini-decision-1"},
+        "sdk_versions": {},
+        "settings": {},
+        "retry_policies": {},
+        "caps": {},
+        "arms": {a: {"status": "ok", "reason": "real"} for a in be.ARMS},
+        "workloads": {
+            "tickets": {},
+            "harness2": {},
+            "fanout": {"sizes": [1], "cells": {"jev:1": {"supported": True}, "gemini_decision:1": {"supported": True}}},
+        },
+        "notes": ["Timing method: kept", "Costs use an old wording"],
+    }
+    Path(f"{stem}.json").write_text(json.dumps(original))
+
+    assert be.main(["--rebuild", f"{stem}.json"]) == 0
+    report = json.loads(Path(f"{stem}.json").read_text())
+    md = Path(f"{stem}.md").read_text()
+    paired = report["workloads"]["tickets"]["paired_accuracy"]
+    assert (paired["both_correct"], paired["only_jev_correct"], paired["only_gemini_decision_correct"]) == (3, 2, 1)
+    assert paired["both_wrong"] == 0 and paired["p_value"] == 1.0
+    jev = report["workloads"]["tickets"]["arms"]["jev"]
+    assert (
+        jev["accuracy"] == round(5 / 6, 4)
+        and len(jev["accuracy_ci95"]) == 2
+        and len(jev["ece_top_probability_ci95"]) == 2
+    )
+    assert report["workloads"]["harness2"]["agreement"] == {"agree": 3, "n": 3, "rate": 1.0}
+    assert report["rebuilt"]["api_calls"] == 0 and report["rebuilt"]["calls_read"] == 22
+    assert "Agreement on flag or no flag: 3 of 3 cases." in md
+    assert "| Only Jev correct | 2 |" in md and "| Only Gemini Decision 1 correct | 1 |" in md
+    assert "Timing method: kept" in report["notes"] and "Costs use an old wording" not in report["notes"]
+    assert be.gemini_cost_note(None) in report["notes"] and be.STATS_NOTE in report["notes"]
+    assert be.gemini_cost_note("free").startswith(
+        "This run used the Gemini free tier, so its Gemini calls cost nothing."
+    )
