@@ -571,7 +571,8 @@ uv run python scripts/benchmark_evaluators.py --mode live --yes   # needs TYPESA
 ```
 
 It writes `results/evaluators-<mode>-<timestamp>.json` and `.md`, stamped with the mode, date, model IDs, SDK versions
-and run settings. An arm without its key is marked `not_run`. Useful flags: `--workloads`, `--limit`,
+and run settings. An arm without its key is marked `not_run`. Useful flags: `--workloads`, `--limit` (tickets spread
+evenly over the sample), `--fanout-sizes`, `--harness2-cases`,
 `--fanout-runs`, `--fresh`.
 
 * **Mock runs are pipeline checks, not results.** Both mocks are keyword heuristics, so accuracy, agreement,

@@ -395,6 +395,13 @@ def fanout_state() -> str:
     return f"{FANOUT_POLICY}\n\nCandidate diff:\n{FANOUT_DIFF}"
 
 
+def spread(tickets: list[Ticket], limit: int | None) -> list[Ticket]:
+    """N tickets at even intervals: the sample is sorted by intent, so the first N would all share one intent."""
+    if not limit or limit >= len(tickets):
+        return tickets
+    return [tickets[i * len(tickets) // limit] for i in range(limit)]
+
+
 # Statistics
 
 
@@ -813,8 +820,8 @@ def build_report(
         "they are not a basis for ranking the evaluators.",
         "Live runs send only the public Bitext sample (CDLA Sharing 1.0) and synthetic payloads. "
         "Gemini free tier content may be used by Google to improve its products.",
-        "Costs use the list prices in scripts/pricing.py and the input tokens each API reports; "
-        "output tokens are not billed by either.",
+        "Costs use the list prices in scripts/pricing.py and the input tokens each API reports. Jev also "
+        "reports output tokens, but TypeSafe bills input only, so they are not priced; Gemini reports 0 output tokens.",
     ]
     if not live:
         notes.insert(
@@ -850,7 +857,7 @@ async def run(args: argparse.Namespace) -> int:
     tickets: list[Ticket] = []
     if "tickets" in settings.workloads:
         tickets, _ = load_sample(DEFAULT_SAMPLE)
-        tickets = tickets[: settings.limit] if settings.limit else tickets
+        tickets = spread(tickets, settings.limit)
 
     if args.estimate:
         print(f"{'Arm':<20} {'Calls':>7} {'Est. input tokens':>18} {'Est. cost (USD)':>16}")
@@ -896,7 +903,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     ap.add_argument("--yes", action="store_true", help="confirm a live run (real API calls, costs money)")
     ap.add_argument("--estimate", action="store_true", help="print call counts and estimated cost per arm, no calls")
     ap.add_argument("--workloads", nargs="+", choices=WORKLOADS, default=list(WORKLOADS))
-    ap.add_argument("--limit", type=int, help="use only the first N tickets")
+    ap.add_argument("--limit", type=int, help="use N tickets spread evenly over the sample (it is sorted by intent)")
     ap.add_argument("--fanout-runs", type=int, default=20, help="runs per fanout cell (default 20)")
     ap.add_argument("--fanout-sizes", type=int, nargs="+", default=list(FANOUT_SIZES), help="questions per fanout call")
     ap.add_argument("--harness2-cases", type=int, help="use only the first N Harness² cases (categories alternate)")

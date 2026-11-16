@@ -157,3 +157,10 @@ async def test_quota_hit_stops_cleanly_and_keeps_progress(tmp_path: Path) -> Non
     tickets, _ = be.load_sample(be.DEFAULT_SAMPLE)
     with pytest.raises(be.QuotaHit, match="Gemini Decision 1 hit a quota or rate limit"):
         await be.run_workloads(settings, arms, tickets[:2], ckpt, print)
+
+
+def test_limit_spreads_tickets_across_intents() -> None:
+    tickets, _ = be.load_sample(be.DEFAULT_SAMPLE)
+    picked = be.spread(tickets, 27)
+    assert len(picked) == 27 and len({t.intent for t in picked}) == 27
+    assert be.spread(tickets, None) == tickets and be.spread(tickets, 5000) == tickets
