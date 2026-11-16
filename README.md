@@ -68,7 +68,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync --all-extras                 # install with FastAPI, Anthropic, OpenAI, and Gemini extras
-uv run pytest                        # 186 tests
+uv run pytest                        # 195 tests
 uv run python examples/server.py     # demo server on :8000, Jev in mock mode, no keys needed
 ```
 
@@ -551,6 +551,45 @@ Each arm card shows the **actual cost of that run**, calculated from the tokens 
 
 ---
 
+### Jev vs Gemini Decision 1
+
+[scripts/benchmark_evaluators.py](scripts/benchmark_evaluators.py) runs both evaluators side by side on three
+governance workloads:
+
+* **tickets:** the committed 1,080 ticket Bitext sample, one Choice question over 27 intents (accuracy, macro F1,
+  calibration, latency, agreement between the two evaluators);
+* **harness2:** 30 synthetic Harness² edits labelled by construction (guardrail weakening, benign prompt edits, empty
+  output regressions) through the adoption gate's regression check, reported as raw counts such as "caught 9 of 10";
+* **fanout:** 1, 10, 25 and 50 independent questions in one call over a synthetic dense policy and diff (latency per
+  call and per decision, tokens, cost per 1,000 decisions).
+
+```bash
+uv sync --extra gemini --extra eval
+uv run python scripts/benchmark_evaluators.py --estimate          # call counts and cost per arm, no API calls
+uv run python scripts/benchmark_evaluators.py --mode mock         # pipeline check, no API calls
+uv run python scripts/benchmark_evaluators.py --mode live --yes   # needs TYPESAFE_API_KEY and GEMINI_API_KEY
+```
+
+It writes `results/evaluators-<mode>-<timestamp>.json` and `.md`, stamped with the mode, date, model IDs, SDK versions
+and run settings. An arm without its key is marked `not_run`. Useful flags: `--workloads`, `--limit` (tickets spread
+evenly over the sample), `--fanout-sizes`, `--harness2-cases`,
+`--fanout-runs`, `--fresh`.
+
+* **Mock runs are pipeline checks, not results.** Both mocks are keyword heuristics, so accuracy, agreement,
+  calibration and latency read "not measured (mock)".
+* **Timing** is fixed and printed in every artifact: 3 warmup calls per arm, sequential requests, wall clock around
+  the adapter call (client overhead included), p50 and p95 with their run count. Calls that needed a retry are left
+  out of the percentiles, and the number left out is shown.
+* **Calibration** uses one definition for both arms: ECE over the top class probability in 10 equal bins. Each API's
+  own confidence field is reported separately, because they differ (Jev normalizes choice confidence; Gemini reports
+  the top probability).
+* **Limits** come from each provider's documentation and are shown in the notes: Jev has no question cap but a 64k
+  token request limit, Gemini allows 1,000 questions per call, and both allow 255 options per choice. A size an arm
+  cannot run reads "not supported at this size"; nothing is split into smaller calls.
+* **Live runs** keep a checkpoint in `results/` and resume without repeating completed calls. A quota or rate limit
+  stops the run cleanly with the number of completed calls. They send only the public Bitext sample and synthetic
+  payloads.
+
 ## Classification eval
 
 The benchmark above measures speed and cost. This eval measures **whether the answers are right**: it classifies real customer-support tickets into their intent and compares every prediction with the known label.
@@ -904,6 +943,7 @@ src/paved_gate/
   middleware/fastapi.py           ASGI middleware
 examples/server.py                runnable FastAPI demo
 scripts/benchmark.py              latency / cost benchmark (illustrative); writes results/*.json + *.html
+scripts/benchmark_evaluators.py   Jev vs Gemini Decision 1 on tickets, Harness² edits and high fanout; JSON + Markdown
 scripts/dashboard.py              renders a benchmark JSON into the self-contained HTML dashboard
 scripts/dashboard_template.html   dashboard template (inline SVG charts, no dependencies)
 scripts/pricing.py                dated price snapshot
@@ -923,7 +963,7 @@ examples/harness2/reports.sh             builds the three adoption gate reports 
 scripts/baselines.py              assumed values for --simulate-missing (never a measurement)
 docs/benchmark/                   committed sample: dashboard.png, sample-results.json, sample-dashboard.html
 package.json                      npm task aliases (benchmark, benchmark:dashboard, dashboard, eval:estimate, eval:dashboard, test)
-tests/                            186 tests: decision branches, Jev contract, Gemini Decision adapter, masking, handlers, middleware, latency, benchmark report, classification eval, OpenShell middleware and benchmark helpers, Harness² adoption gate
+tests/                            195 tests: decision branches, Jev contract, Gemini Decision adapter and benchmark, masking, handlers, middleware, latency, benchmark report, classification eval, OpenShell middleware and benchmark helpers, Harness² adoption gate
 ```
 
 Development: `uv run pytest`, `uv run mypy src tests examples`, `uv run ruff check .` (mypy `--strict`).

@@ -1,0 +1,335 @@
+{
+  "title": "Jev vs Gemini Decision 1 on governance workloads",
+  "kind": "results (live)",
+  "mode": "live",
+  "date": "2026-11-16T19:23:56+00:00",
+  "models": {
+    "jev": "jev-1.14.0",
+    "gemini_decision": "gemini-decision-1"
+  },
+  "sdk_versions": {
+    "google-genai": "3.2.0",
+    "paved-gate": "0.1.0"
+  },
+  "settings": {
+    "mode": "live",
+    "workloads": [
+      "tickets",
+      "harness2",
+      "fanout"
+    ],
+    "limit": null,
+    "fanout_runs": 20,
+    "fanout_sizes": [
+      1,
+      10,
+      25,
+      50
+    ],
+    "harness2_cases": null,
+    "gemini_tpm": 45000,
+    "gemini_tier": "free",
+    "resumed_from_checkpoint": true,
+    "calls_restored": 1180
+  },
+  "timing_method": "3 warmup calls per arm, not counted; requests sent sequentially, one at a time; 1 run per item for tickets and harness2, --fanout-runs runs per cell for fanout; wall clock time around the adapter's evaluate call, so client overhead (serialization, TLS, response parsing) is included; 10 s timeout for both arms. Calls that needed a retry are excluded from p50 and p95 (they still count for accuracy, F1, ECE and agreement), and the excluded count is shown.",
+  "calibration_definition": "ECE over the top class probability (the largest value in the answer's probabilities), 10 equal width bins on [0, 1], weighted by the share of answers in each bin: sum of |accuracy minus mean top probability| times bin share. Computed the same way for both arms. Each API's own confidence field is reported separately and is not comparable: Jev normalizes choice confidence as (p_max minus 1/n) / (1 minus 1/n), Gemini reports p_max.",
+  "retry_policies": {
+    "jev": "up to 1 retry on HTTP 429 and 529, jittered backoff capped at a quarter of the timeout",
+    "gemini_decision": "up to 2 retries on 429 and 5xx, exponential backoff 0.5 s doubling up to 8 s, plus up to 10% jitter; SDK retries off"
+  },
+  "caps": {
+    "jev": {
+      "questions_per_call": null,
+      "options_per_choice": 255,
+      "note": "no question cap; the request must fit 64k tokens per request and 32k per question"
+    },
+    "gemini_decision": {
+      "questions_per_call": 1000,
+      "options_per_choice": 255,
+      "note": "1 to 1,000 questions; 262,144 tokens across input and all questions"
+    }
+  },
+  "arms": {
+    "jev": {
+      "status": "ok",
+      "reason": "real Jev API"
+    },
+    "gemini_decision": {
+      "status": "ok",
+      "reason": "real Gemini Decisions API"
+    }
+  },
+  "workloads": {
+    "tickets": {
+      "arms": {
+        "jev": {
+          "calls": 1080,
+          "answered": 1080,
+          "errors": 0,
+          "accuracy": 0.9222,
+          "accuracy_ci95": [
+            0.9065,
+            0.938
+          ],
+          "macro_f1": 0.922,
+          "ece_top_probability": 0.019,
+          "ece_top_probability_ci95": [
+            0.0124,
+            0.0357
+          ],
+          "ece_confidence_field": 0.0196,
+          "latency": {
+            "p50_ms": 89.24,
+            "p95_ms": 183.47,
+            "runs": 1080,
+            "excluded_retried": 0
+          }
+        },
+        "gemini_decision": {
+          "calls": 1080,
+          "answered": 1080,
+          "errors": 0,
+          "accuracy": 0.9398,
+          "accuracy_ci95": [
+            0.925,
+            0.9537
+          ],
+          "macro_f1": 0.9389,
+          "ece_top_probability": 0.0267,
+          "ece_top_probability_ci95": [
+            0.0188,
+            0.0411
+          ],
+          "ece_confidence_field": 0.0267,
+          "latency": {
+            "p50_ms": 256.79,
+            "p95_ms": 371.37,
+            "runs": 1080,
+            "excluded_retried": 0
+          }
+        }
+      },
+      "agreement": {
+        "agree": 1007,
+        "n": 1080,
+        "rate": 0.9324
+      },
+      "paired_accuracy": {
+        "test": "exact two sided McNemar on tickets answered by both arms",
+        "n": 1080,
+        "both_correct": 970,
+        "both_wrong": 39,
+        "only_jev_correct": 26,
+        "only_gemini_decision_correct": 45,
+        "p_value": 0.031927
+      }
+    },
+    "harness2": {
+      "arms": {
+        "jev": {
+          "categories": {
+            "guardrail_weakening": {
+              "n": 10,
+              "flagged": 10,
+              "errors": 0
+            },
+            "benign_prompt_edit": {
+              "n": 10,
+              "flagged": 0,
+              "errors": 0
+            },
+            "empty_output": {
+              "n": 10,
+              "flagged": 10,
+              "errors": 0
+            }
+          },
+          "latency": {
+            "p50_ms": 79.46,
+            "p95_ms": 141.05,
+            "runs": 30,
+            "excluded_retried": 0
+          }
+        },
+        "gemini_decision": {
+          "categories": {
+            "guardrail_weakening": {
+              "n": 10,
+              "flagged": 10,
+              "errors": 0
+            },
+            "benign_prompt_edit": {
+              "n": 10,
+              "flagged": 0,
+              "errors": 0
+            },
+            "empty_output": {
+              "n": 10,
+              "flagged": 10,
+              "errors": 0
+            }
+          },
+          "latency": {
+            "p50_ms": 249.53,
+            "p95_ms": 336.91,
+            "runs": 30,
+            "excluded_retried": 0
+          }
+        }
+      },
+      "agreement": {
+        "agree": 30,
+        "n": 30,
+        "rate": 1.0
+      },
+      "expected_flag": {
+        "guardrail_weakening": true,
+        "benign_prompt_edit": false,
+        "empty_output": true
+      }
+    },
+    "fanout": {
+      "sizes": [
+        1,
+        10,
+        25,
+        50
+      ],
+      "cells": {
+        "jev:1": {
+          "supported": true,
+          "calls": 20,
+          "errors": 0,
+          "latency": {
+            "p50_ms": 75.54,
+            "p95_ms": 142.66,
+            "runs": 20,
+            "excluded_retried": 0
+          },
+          "per_decision_p50_ms": 75.54,
+          "median_input_tokens": 591,
+          "cost_per_1000_decisions_usd": 0.024822
+        },
+        "jev:10": {
+          "supported": true,
+          "calls": 20,
+          "errors": 0,
+          "latency": {
+            "p50_ms": 88.34,
+            "p95_ms": 177.96,
+            "runs": 20,
+            "excluded_retried": 0
+          },
+          "per_decision_p50_ms": 8.83,
+          "median_input_tokens": 1087,
+          "cost_per_1000_decisions_usd": 0.004565
+        },
+        "jev:25": {
+          "supported": true,
+          "calls": 20,
+          "errors": 0,
+          "latency": {
+            "p50_ms": 95.01,
+            "p95_ms": 162.01,
+            "runs": 20,
+            "excluded_retried": 0
+          },
+          "per_decision_p50_ms": 3.8,
+          "median_input_tokens": 2037,
+          "cost_per_1000_decisions_usd": 0.003422
+        },
+        "jev:50": {
+          "supported": true,
+          "calls": 20,
+          "errors": 0,
+          "latency": {
+            "p50_ms": 102.91,
+            "p95_ms": 184.48,
+            "runs": 20,
+            "excluded_retried": 0
+          },
+          "per_decision_p50_ms": 2.06,
+          "median_input_tokens": 3645,
+          "cost_per_1000_decisions_usd": 0.003062
+        },
+        "gemini_decision:1": {
+          "supported": true,
+          "calls": 20,
+          "errors": 0,
+          "latency": {
+            "p50_ms": 254.19,
+            "p95_ms": 290.25,
+            "runs": 20,
+            "excluded_retried": 0
+          },
+          "per_decision_p50_ms": 254.19,
+          "median_input_tokens": 452,
+          "cost_per_1000_decisions_usd": 0.0452
+        },
+        "gemini_decision:10": {
+          "supported": true,
+          "calls": 20,
+          "errors": 0,
+          "latency": {
+            "p50_ms": 275.87,
+            "p95_ms": 307.01,
+            "runs": 20,
+            "excluded_retried": 0
+          },
+          "per_decision_p50_ms": 27.59,
+          "median_input_tokens": 1044,
+          "cost_per_1000_decisions_usd": 0.01044
+        },
+        "gemini_decision:25": {
+          "supported": true,
+          "calls": 20,
+          "errors": 0,
+          "latency": {
+            "p50_ms": 317.47,
+            "p95_ms": 425.82,
+            "runs": 20,
+            "excluded_retried": 0
+          },
+          "per_decision_p50_ms": 12.7,
+          "median_input_tokens": 2124,
+          "cost_per_1000_decisions_usd": 0.008496
+        },
+        "gemini_decision:50": {
+          "supported": true,
+          "calls": 20,
+          "errors": 0,
+          "latency": {
+            "p50_ms": 420.88,
+            "p95_ms": 597.96,
+            "runs": 20,
+            "excluded_retried": 0
+          },
+          "per_decision_p50_ms": 8.42,
+          "median_input_tokens": 3927,
+          "cost_per_1000_decisions_usd": 0.007854
+        }
+      }
+    }
+  },
+  "notes": [
+    "Timing method: 3 warmup calls per arm, not counted; requests sent sequentially, one at a time; 1 run per item for tickets and harness2, --fanout-runs runs per cell for fanout; wall clock time around the adapter's evaluate call, so client overhead (serialization, TLS, response parsing) is included; 10 s timeout for both arms. Calls that needed a retry are excluded from p50 and p95 (they still count for accuracy, F1, ECE and agreement), and the excluded count is shown.",
+    "Calibration: ECE over the top class probability (the largest value in the answer's probabilities), 10 equal width bins on [0, 1], weighted by the share of answers in each bin: sum of |accuracy minus mean top probability| times bin share. Computed the same way for both arms. Each API's own confidence field is reported separately and is not comparable: Jev normalizes choice confidence as (p_max minus 1/n) / (1 minus 1/n), Gemini reports p_max.",
+    "Retry policies differ: Jev: up to 1 retry on HTTP 429 and 529, jittered backoff capped at a quarter of the timeout; Gemini Decision 1: up to 2 retries on 429 and 5xx, exponential backoff 0.5 s doubling up to 8 s, plus up to 10% jitter; SDK retries off.",
+    "Documented limits: Jev: no question cap; the request must fit 64k tokens per request and 32k per question, up to 255 options per choice; Gemini Decision 1: 1 to 1,000 questions; 262,144 tokens across input and all questions, up to 255 options per choice.",
+    "Harness\u00b2 cases are 30 small synthetic edits labelled by construction. Read them as counts; they are not a basis for ranking the evaluators.",
+    "Live runs send only the public Bitext sample (CDLA Sharing 1.0) and synthetic payloads. Gemini free tier content may be used by Google to improve its products.",
+    "Gemini calls were paced to 45,000 input tokens per minute over a sliding 60 second window of the tokens each response reported. Waits happen before a call, outside the timed section; they totalled 672 s. Jev calls were not paced.",
+    "Gemini usage tier: free. The free tier allows 50,000 input tokens per minute, and Google may use free tier content to improve its products.",
+    "Resumed from a checkpoint: 1180 calls came from an earlier session with the same settings and were not repeated, so latency for those calls was measured in that session.",
+    "Costs use the list prices in scripts/pricing.py and the input tokens each API reports. Jev also reports output tokens, but TypeSafe bills input only, so they are not priced; Gemini reports 0 output tokens.",
+    "Statistics: accuracy and ECE intervals are percentile bootstrap 95% intervals over 2,000 resamples of tickets with replacement (seed 0). The paired accuracy comparison is an exact two sided McNemar test on the tickets both arms answered; only the discordant pairs enter the p value.",
+    "This run used the Gemini free tier, so its Gemini calls cost nothing. The cost column uses the paid tier list price (0.10 USD per million input tokens)."
+  ],
+  "rebuilt": {
+    "at": "2026-11-16T20:01:35+00:00",
+    "from": "evaluators-live-20261116T192356Z.calls.jsonl",
+    "calls_read": 2380,
+    "api_calls": 0
+  }
+}
