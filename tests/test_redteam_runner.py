@@ -212,3 +212,21 @@ def test_rebuild_matches_the_written_summary(tmp_path: Path) -> None:
     written = json.loads(out.read_text())
     rebuilt = json.loads(json.dumps(redteam.rebuild(out.with_suffix(".calls.jsonl")), default=str))
     assert {k: written[k] for k in rebuilt} == rebuilt
+
+
+def test_stop_after_pauses_then_resumes_and_raw_log_has_every_call(tmp_path: Path) -> None:
+    args = ["--mode", "mock", "--limit", "16", "--experiments", "baseline", "--arms", "shipped,jev"]
+    assert redteam.main([*args, "--stop-after", "3"]) == 6
+    results = tmp_path / "results"
+    raw = [json.loads(line) for line in (results / "raw-mock.jsonl").read_text().splitlines()]
+    ckpt = (results / "checkpoint-mock.jsonl").read_text().splitlines()[1:]
+    assert len(ckpt) == 6  # 3 new items for each of two arms
+    assert len(raw) == sum(json.loads(line)["data"]["calls"] for line in ckpt)
+    assert {"experiment", "key", "arm", "usd", "answers", "raw", "state_sha256"} <= set(raw[0])
+
+    assert redteam.main(args) == 0
+    calls = next(results.glob("redteam-mock-*.calls.jsonl")).read_text().splitlines()[1:]
+    keys = [(json.loads(c)["arm"], json.loads(c)["item"]) for c in calls]
+    assert len(keys) == len(set(keys)) == 32
+    raw_all = next(results.glob("redteam-mock-*.raw.jsonl")).read_text().splitlines()
+    assert len(raw_all) == sum(json.loads(c)["data"]["calls"] for c in calls)  # no call repeated on resume

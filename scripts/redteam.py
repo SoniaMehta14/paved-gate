@@ -19,6 +19,9 @@ with the shipped policy files. One change: the evaluator timeout is raised to EV
 run measures what each evaluator decides rather than how often it beats a 400 ms budget. The latency of every call
 is recorded, so the effect of the shipped timeouts is reported separately.
 
+Raw responses: every evaluator call is appended to results/redteam/raw-<mode>.jsonl as it returns (answers, raw
+body, tokens, cost) and synced to disk, so a crash cannot lose a paid response.
+
 Spend: every live call is priced at list price (scripts/pricing.py) from the tokens the API reports, including the
 Gemini free tier, and appended to results/redteam/spend.jsonl, which persists across runs. A run refuses to start an
 item that could push the total past BUDGET_USD, and stops once when the total first reaches HALF_USD so a person can
@@ -209,15 +212,61 @@ class CallInfo:
     error: str | None
 
 
+class RawLog:
+    """Append only JSONL of every evaluator call, written and synced as each call returns, so a crash keeps every
+    paid response. One line per call: the tag (experiment, arm, item key), tokens, cost, answers and the raw body."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+    def write(self, line: Mapping[str, object]) -> None:
+        with self.path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(line, default=str, ensure_ascii=False) + "\n")
+            f.flush()
+            os.fsync(f.fileno())
+
+
 class Recording:
     """Wraps an evaluator: records every call, charges the ledger and feeds the pacer. Errors still propagate,
     so the gate under test sees exactly what the evaluator did."""
 
-    def __init__(self, inner: FastEvaluator, arm: str, ledger: Ledger, pacer: TokenPacer | None) -> None:
-        self.inner, self.arm, self.ledger, self.pacer = inner, arm, ledger, pacer
+    def __init__(
+        self,
+        inner: FastEvaluator,
+        arm: str,
+        ledger: Ledger,
+        pacer: TokenPacer | None,
+        raw_log: RawLog | None = None,
+    ) -> None:
+        self.inner, self.arm, self.ledger, self.pacer, self.raw_log = inner, arm, ledger, pacer, raw_log
         self.name = getattr(inner, "name", arm)
         self.calls: list[CallInfo] = []
         self.stop_reason: str | None = None
+        self.tag: dict[str, object] = {}  # experiment and item key of the item in flight, set by the runner
+
+    def _log(self, info: CallInfo, state: EvaluatorState, extra: Mapping[str, object]) -> None:
+        meta = {**self.tag, "arm": self.arm, "call": len(self.calls)}
+        self.ledger.charge(info.usd, meta)
+        if self.raw_log is None:
+            return
+        state_text = state if isinstance(state, str) else json.dumps(state, sort_keys=True, ensure_ascii=False)
+        self.raw_log.write(
+            {
+                "ts": datetime.now(UTC).isoformat(),
+                **meta,
+                "ok": info.error is None,
+                "latency_ms": info.latency_ms,
+                "input_tokens": info.input_tokens,
+                "output_tokens": info.output_tokens,
+                "usd": info.usd,
+                "retries": info.retries,
+                "error": info.error,
+                "state_sha256": hashlib.sha256(state_text.encode()).hexdigest(),
+                "state_chars": len(state_text),
+                **extra,
+            }
+        )
 
     def take(self) -> list[CallInfo]:
         calls, self.calls = self.calls, []
@@ -234,8 +283,9 @@ class Recording:
             out_tok = getattr(exc, "output_tokens", None)
             # A failed call may still be billed; with no usage reported, charge the estimate.
             usd = price(self.arm, in_tok, out_tok or 0) if in_tok is not None else price(self.arm, est_in, 0)
-            self.ledger.charge(usd, {"arm": self.arm, "error": type(exc).__name__})
-            self.calls.append(CallInfo(round(ms, 2), in_tok or 0, out_tok or 0, usd, None, _err(exc)))
+            info = CallInfo(round(ms, 2), in_tok or 0, out_tok or 0, usd, None, _err(exc))
+            self.calls.append(info)
+            self._log(info, state, {"raw": getattr(exc, "raw", None), "usd_estimated": in_tok is None})
             if self._fatal(exc):
                 self.stop_reason = _err(exc)
             raise
@@ -244,10 +294,17 @@ class Recording:
         usage = result.raw.get("usage")
         cached = int(str(usage.get("cached_tokens", 0))) if isinstance(usage, dict) else 0
         usd = price(self.arm, in_tok, out_tok, cached)
-        self.ledger.charge(usd, {"arm": self.arm})
         if self.pacer is not None:
             self.pacer.record("call", in_tok or est_in)
-        self.calls.append(CallInfo(round(ms, 2), in_tok, out_tok, usd, result.retries, None))
+        info = CallInfo(round(ms, 2), in_tok, out_tok, usd, result.retries, None)
+        self.calls.append(info)
+        extra = {
+            "model": result.model,
+            "cached_tokens": cached,
+            "answers": {k: a.model_dump(mode="json") for k, a in result.answers.items()},
+            "raw": result.raw,
+        }
+        self._log(info, state, extra)
         return result
 
     @staticmethod
@@ -288,6 +345,7 @@ class Arm:
     factory: Callable[[str], FastEvaluator] | None = None  # set name -> fresh evaluator
     pacer: TokenPacer | None = None
     stop_reason: str | None = None
+    paused: bool = False  # reached --stop-after in this invocation
 
 
 def build_arm(name: str, mode: str, gemini_tpm: int) -> Arm:
@@ -533,9 +591,27 @@ def record(experiment: str, arm: str, key: str, row: dict[str, object], calls: l
 
 class Runner:
     def __init__(
-        self, settings: Settings, ctx: Context, ledger: Ledger, ckpt: Checkpoint, log: Callable[[str], None]
+        self,
+        settings: Settings,
+        ctx: Context,
+        ledger: Ledger,
+        ckpt: Checkpoint,
+        log: Callable[[str], None],
+        raw_log: RawLog | None = None,
+        stop_after: int | None = None,
     ) -> None:
         self.settings, self.ctx, self.ledger, self.ckpt, self.log = settings, ctx, ledger, ckpt, log
+        self.raw_log, self.stop_after = raw_log, stop_after
+        self.new: dict[str, int] = {}  # items run (not restored) per arm in this invocation
+
+    def _paused(self, arm: Arm) -> bool:
+        if self.stop_after is not None and self.new.get(arm.name, 0) >= self.stop_after:
+            arm.paused = True
+        return arm.paused
+
+    def _recording(self, arm: Arm, set_name: str) -> Recording:
+        assert arm.factory is not None
+        return Recording(arm.factory(set_name), arm.name, self.ledger, arm.pacer, self.raw_log)
 
     async def one(self, arm: Arm, ev: Recording, experiment: str, item: Item, rep: int, key: str) -> CallRecord:
         if (experiment, arm.name, key) in self.ckpt.done:
@@ -543,6 +619,7 @@ class Runner:
         est_in, est_out = estimate_item_tokens(arm.name, self.ctx, item)
         est_usd = price(arm.name, est_in, est_out)
         self.ledger.reserve(est_usd)
+        ev.tag = {"experiment": experiment, "key": key}
         try:
             if arm.pacer is not None:
                 await arm.pacer.wait(est_in)
@@ -564,23 +641,29 @@ class Runner:
             raise ArmStopped(ev.stop_reason)
         rec = record(experiment, arm.name, key, row, calls)
         self.ckpt.add(rec)
+        n = self.new[arm.name] = self.new.get(arm.name, 0) + 1
+        if n % 100 == 0:
+            self.log(f"  {experiment}: {arm.name} {n} new items, live spend ${self.ledger.spent:.4f}")
         return rec
 
     async def run_arm(self, arm: Arm, experiment: str, work: list[tuple[Item, int]]) -> None:
-        assert arm.factory is not None
         evs: dict[str, Recording] = {}
         try:
             if experiment == "adaptive":
-                ev = evs.setdefault("gate", Recording(arm.factory("gate"), arm.name, self.ledger, arm.pacer))
+                ev = evs.setdefault("gate", self._recording(arm, "gate"))
                 for item, _ in work:
+                    if self._paused(arm):
+                        break
                     await self.adaptive(arm, ev, item)
             else:
                 for item, rep in work:
+                    if self._paused(arm):
+                        break
                     s = item["set"]
                     if s not in evs:
-                        evs[s] = Recording(arm.factory(s), arm.name, self.ledger, arm.pacer)
+                        evs[s] = self._recording(arm, s)
                     await self.one(arm, evs[s], experiment, item, rep, f"{item['id']}#{rep}")
-            self.log(f"  {experiment}: {arm.name} done")
+            self.log(f"  {experiment}: {arm.name} {'paused' if arm.paused else 'done'}")
         except ArmStopped as exc:
             arm.stop_reason = str(exc)
             self.log(f"  {experiment}: {arm.name} stopped: {exc}")
@@ -598,6 +681,8 @@ class Runner:
             cand = best if q == 1 else best.mutate(rng, paraphrase)
             text = cand.render(rng_seed=q)
             item = {**seed, "payload": {"text": text}, "attack_class": "A2", "transform": cand.name, "query": q}
+            if q > 1 and self._paused(arm):
+                return
             rec = await self.one(arm, ev, "adaptive", item, 0, f"{seed['seed_id']}#{q}")
             if not rec.data.get("blocked") and not rec.data.get("error"):
                 return
@@ -611,6 +696,8 @@ class Runner:
                 for arm in arms_for(experiment, arms):
                     if arm.stop_reason is None:
                         tg.create_task(self.run_arm(arm, experiment, items))
+            if any(a.paused for a in arms):
+                return
 
 
 def _risk(rec: CallRecord) -> float:
@@ -794,6 +881,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--gemini-tpm", type=int, default=45_000)
     ap.add_argument("--past-half", action="store_true", help="continue after the half budget checkpoint")
     ap.add_argument("--fresh", action="store_true", help="discard the checkpoint and start over")
+    ap.add_argument(
+        "--stop-after", type=int, default=None, help="pause after this many new items per arm; rerun to resume"
+    )
     ap.add_argument("--rebuild", type=Path, help="recompute the summary from a .calls.jsonl file; no API calls")
     args = ap.parse_args(argv)
     if args.rebuild:
@@ -838,7 +928,10 @@ def main(argv: list[str] | None = None) -> int:
     RESULTS.mkdir(parents=True, exist_ok=True)
     ckpt_path = RESULTS / f"checkpoint-{args.mode}.jsonl"
     ckpt = Checkpoint(ckpt_path, settings.digest(), args.fresh)
-    runner = Runner(settings, ctx, ledger, ckpt, print)
+    raw_path = RESULTS / f"raw-{args.mode}.jsonl"
+    if args.fresh and raw_path.exists():
+        raw_path.rename(raw_path.with_suffix(f".discarded-{datetime.now(UTC):%Y%m%dT%H%M%SZ}.jsonl"))
+    runner = Runner(settings, ctx, ledger, ckpt, print, RawLog(raw_path), args.stop_after)
     code = 0
     try:
         asyncio.run(runner.run(work, arms))
@@ -861,10 +954,15 @@ def main(argv: list[str] | None = None) -> int:
     if stopped:
         print(f"\nstopped arms: {[a.name for a in stopped]}; results are partial, rerun to resume")
         return 3
+    if any(a.paused for a in arms):
+        print(f"\npaused after --stop-after {args.stop_after} new items per arm; rerun without it to resume")
+        return 6
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     out = RESULTS / f"redteam-{args.mode}-{stamp}"
     out.with_suffix(".json").write_text(json.dumps(summary, indent=2, default=str) + "\n")
     ckpt_path.rename(out.with_suffix(".calls.jsonl"))
+    if raw_path.exists():
+        raw_path.rename(out.with_suffix(".raw.jsonl"))
     print(f"\nwrote {out.with_suffix('.json')} and the calls file next to it")
     return 0
 
