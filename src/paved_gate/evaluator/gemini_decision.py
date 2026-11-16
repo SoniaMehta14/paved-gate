@@ -27,7 +27,7 @@ import os
 import random
 import time
 from collections.abc import Mapping
-from typing import Literal, Protocol
+from typing import Literal, Protocol, cast
 
 from pydantic import JsonValue, ValidationError
 
@@ -266,4 +266,5 @@ def _live_api(api_key: str) -> tuple[DecisionsAPI, object]:
         raise EvaluatorError("Gemini Decision live mode needs the gemini extra: uv sync --extra gemini") from exc
     options = genai.types.HttpOptions(api_version="v1beta", retry_options=genai.types.HttpRetryOptions(attempts=1))
     client = genai.Client(api_key=api_key, http_options=options)
-    return client.aio.decisions, client.aio
+    # The SDK's create takes its own typed params; the adapter only relies on the DecisionsAPI slice of it.
+    return cast(DecisionsAPI, client.aio.decisions), client.aio
