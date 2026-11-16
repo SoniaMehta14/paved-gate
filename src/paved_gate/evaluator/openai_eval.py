@@ -1,4 +1,4 @@
-"""OpenAI chat-completions adapter for the FastEvaluator protocol (Choice questions).
+"""OpenAI chat-completions adapters for the FastEvaluator protocol.
 
 Used as a baseline next to Jev: the same ChoiceQuestion (instructions plus labelled criteria) becomes a system
 prompt listing the labels, and a strict JSON schema restricts the reply to one of them. Optional few-shot examples
@@ -8,7 +8,8 @@ Retries are done here rather than inside the SDK (`max_retries=0` on the client)
 attempts it took and the latency of the attempt that succeeded. `insufficient_quota` is never retried.
 
 The API key is read by the SDK from `OPENAI_API_KEY` unless passed explicitly; it is never logged or returned.
-The adapter does not estimate confidence: answers carry confidence 1.0 for the chosen label.
+OpenAIEvaluator does not estimate confidence: answers carry confidence 1.0 for the chosen label.
+OpenAIMultiEvaluator answers several typed questions in one call and reports the model's stated confidence.
 """
 
 from __future__ import annotations
@@ -29,6 +30,9 @@ from paved_gate.evaluator.base import (
     EvaluatorError,
     EvaluatorState,
     Question,
+    ScoreAnswer,
+    ScoreQuestion,
+    TruthAnswer,
 )
 
 
@@ -149,30 +153,8 @@ class OpenAIEvaluator:
         response, attempts, attempt_ms = await self._create(request)
         total_ms = (time.perf_counter() - started) * 1000
 
-        choice0 = response.choices[0]
-        message = choice0.message
-        usage = response.usage
-        cached = getattr(getattr(usage, "prompt_tokens_details", None), "cached_tokens", None) if usage else None
-        reasoning = (
-            getattr(getattr(usage, "completion_tokens_details", None), "reasoning_tokens", None) if usage else None
-        )
-        input_tokens = int(usage.prompt_tokens) if usage else 0
-        output_tokens = int(usage.completion_tokens) if usage else 0
-        raw: dict[str, JsonValue] = {
-            "model": response.model,
-            "content": message.content,
-            "refusal": message.refusal,
-            "finish_reason": choice0.finish_reason,
-            "system_fingerprint": getattr(response, "system_fingerprint", None),
-            "usage": {
-                "input_tokens": input_tokens,
-                "cached_tokens": int(cached or 0),
-                "output_tokens": output_tokens,
-                "reasoning_tokens": int(reasoning or 0),
-            },
-            "attempts": attempts,
-            "total_ms": round(total_ms, 2),
-        }
+        message = response.choices[0].message
+        raw, input_tokens, output_tokens = _raw(response, attempts, total_ms)
 
         label = self._parse(message.content, message.refusal, question)
         if label is None:
@@ -245,6 +227,182 @@ class OpenAIEvaluator:
     async def aclose(self) -> None:
         if self._owns_client:
             await self._client.close()
+
+
+def multi_system_prompt(questions: Mapping[str, Question]) -> str:
+    """One system prompt that describes every question and the JSON field that answers it."""
+    parts = ["Answer every question below about the user message. Reply with one JSON object, one field per question."]
+    for qid, q in questions.items():
+        if isinstance(q, ChoiceQuestion):
+            listing = "\n".join(f"- {label}: {desc}" for label, desc in q.criteria.items())
+            fmt = '{"choice": "<label>", "confidence": <0 to 1>}'
+            parts.append(f"## {qid}\n{q.instructions}\nLabels:\n{listing}\nAnswer as {fmt}.")
+        elif isinstance(q, ScoreQuestion):
+            listing = "\n".join(f"{i}. {c}" for i, c in enumerate(q.criteria, 1))
+            fmt = '{"level": <1 to ' + str(len(q.criteria)) + '>, "confidence": <0 to 1>}'
+            parts.append(f"## {qid}\n{q.instructions}\nLevels, low to high:\n{listing}\nAnswer as {fmt}.")
+        else:
+            fmt = '{"probability": <0 to 1>}'
+            parts.append(f"## {qid}\n{q.instructions}\nAnswer with the probability that the answer is yes, as {fmt}.")
+    return "\n\n".join(parts)
+
+
+def multi_response_schema(questions: Mapping[str, Question]) -> dict[str, Any]:
+    props: dict[str, Any] = {}
+    for qid, q in questions.items():
+        if isinstance(q, ChoiceQuestion):
+            fields: dict[str, Any] = {
+                "choice": {"type": "string", "enum": sorted(q.criteria)},
+                "confidence": {"type": "number"},
+            }
+        elif isinstance(q, ScoreQuestion):
+            fields = {
+                "level": {"type": "integer", "enum": list(range(1, len(q.criteria) + 1))},
+                "confidence": {"type": "number"},
+            }
+        else:
+            fields = {"probability": {"type": "number"}}
+        props[qid] = {"type": "object", "properties": fields, "required": sorted(fields), "additionalProperties": False}
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "answers",
+            "strict": True,
+            "schema": {"type": "object", "properties": props, "required": list(props), "additionalProperties": False},
+        },
+    }
+
+
+def _unit(value: object) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, int | float) or not 0.0 <= value <= 1.0:
+        return None
+    return float(value)
+
+
+def parse_multi(
+    content: str | None, refusal: str | None, questions: Mapping[str, Question]
+) -> dict[str, ChoiceAnswer | ScoreAnswer | TruthAnswer] | None:
+    """Typed answers for every question, or None if the reply is a refusal, malformed, or out of range."""
+    if refusal or not content:
+        return None
+    try:
+        doc = json.loads(content)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(doc, dict):
+        return None
+    answers: dict[str, ChoiceAnswer | ScoreAnswer | TruthAnswer] = {}
+    for qid, q in questions.items():
+        a = doc.get(qid)
+        if not isinstance(a, dict):
+            return None
+        if isinstance(q, ChoiceQuestion):
+            choice, conf = a.get("choice"), _unit(a.get("confidence"))
+            if not isinstance(choice, str) or choice not in q.criteria or conf is None:
+                return None
+            answers[qid] = ChoiceAnswer(choice=choice, confidence=conf, probabilities={choice: conf})
+        elif isinstance(q, ScoreQuestion):
+            level, conf = a.get("level"), _unit(a.get("confidence"))
+            if isinstance(level, bool) or not isinstance(level, int) or not 1 <= level <= len(q.criteria):
+                return None
+            if conf is None:
+                return None
+            answers[qid] = ScoreAnswer(score=float(level - 1), confidence=conf, probabilities={str(level): conf})
+        else:
+            prob = _unit(a.get("probability"))
+            if prob is None:
+                return None
+            answers[qid] = TruthAnswer(probability=prob)
+    return answers
+
+
+class OpenAIMultiEvaluator(OpenAIEvaluator):
+    """Answers any mix of choice, score and truth questions in one structured output call.
+
+    Lets an OpenAI model stand in for Jev or Gemini Decision 1 behind the full gate. Like OpenAIEvaluator, the state
+    is sent as the last user message with no delimiters. Unlike it, confidence is the model's own stated value
+    rather than a fixed 1.0, because the gate's min_confidence rule reads it. Few shot examples are not supported.
+    """
+
+    name = "openai_multi"
+
+    def __init__(self, *, model: str, max_output_tokens: int = 200, **kwargs: Any) -> None:
+        if kwargs.get("examples"):
+            raise EvaluatorError("OpenAIMultiEvaluator does not support few shot examples")
+        super().__init__(model=model, max_output_tokens=max_output_tokens, **kwargs)
+
+    def build_multi_request(self, state: EvaluatorState, questions: Mapping[str, Question]) -> dict[str, Any]:
+        request: dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": multi_system_prompt(questions)},
+                {"role": "user", "content": _state_text(state)},
+            ],
+            "response_format": multi_response_schema(questions),
+            "max_completion_tokens": self.max_output_tokens,
+        }
+        if self.temperature is not None:
+            request["temperature"] = self.temperature
+        if self.reasoning_effort is not None:
+            request["reasoning_effort"] = self.reasoning_effort
+        if self.prompt_cache_key is not None:
+            request["prompt_cache_key"] = self.prompt_cache_key
+        return request
+
+    async def evaluate(self, state: EvaluatorState, questions: Mapping[str, Question]) -> EvaluationResult:
+        if not questions:
+            raise EvaluatorError("no questions to answer")
+        request = self.build_multi_request(state, questions)
+        started = time.perf_counter()
+        response, attempts, attempt_ms = await self._create(request)
+        message = response.choices[0].message
+        raw, input_tokens, output_tokens = _raw(response, attempts, (time.perf_counter() - started) * 1000)
+        answers = parse_multi(message.content, message.refusal, questions)
+        if answers is None:
+            raise InvalidChoiceError(
+                "model did not return a valid answer for every question",
+                raw=raw,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+            )
+        return EvaluationResult(
+            evaluator=self.name,
+            model=str(response.model),
+            mode="live",
+            answers=answers,
+            raw=raw,
+            latency_ms=round(attempt_ms, 2),
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            retries=attempts - 1,
+        )
+
+
+def _raw(response: Any, attempts: int, total_ms: float) -> tuple[dict[str, JsonValue], int, int]:
+    """Reply, finish reason and token usage for the audit record, plus (input, output) tokens."""
+    choice0 = response.choices[0]
+    message = choice0.message
+    usage = response.usage
+    cached = getattr(getattr(usage, "prompt_tokens_details", None), "cached_tokens", None) if usage else None
+    reasoning = getattr(getattr(usage, "completion_tokens_details", None), "reasoning_tokens", None) if usage else None
+    input_tokens = int(usage.prompt_tokens) if usage else 0
+    output_tokens = int(usage.completion_tokens) if usage else 0
+    raw: dict[str, JsonValue] = {
+        "model": response.model,
+        "content": message.content,
+        "refusal": message.refusal,
+        "finish_reason": choice0.finish_reason,
+        "system_fingerprint": getattr(response, "system_fingerprint", None),
+        "usage": {
+            "input_tokens": input_tokens,
+            "cached_tokens": int(cached or 0),
+            "output_tokens": output_tokens,
+            "reasoning_tokens": int(reasoning or 0),
+        },
+        "attempts": attempts,
+        "total_ms": round(total_ms, 2),
+    }
+    return raw, input_tokens, output_tokens
 
 
 def _error_code(exc: Exception) -> str | None:
