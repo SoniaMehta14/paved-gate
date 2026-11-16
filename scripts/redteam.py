@@ -535,7 +535,10 @@ def plan(settings: Settings, items: list[Item]) -> dict[str, list[tuple[Item, in
     in_sets = [i for i in items if i["set"] in settings.sets]
     out: dict[str, list[tuple[Item, int]]] = {}
     if "baseline" in settings.experiments:
-        out["baseline"] = [(i, 0) for i in spread(in_sets, settings.limit)]
+        # Seeded shuffle: a paused or interrupted run still leaves a sample across sets, labels and classes.
+        baseline = spread(in_sets, settings.limit)
+        random.Random(SEED).shuffle(baseline)
+        out["baseline"] = [(i, 0) for i in baseline]
     if "drift" in settings.experiments and "gate" in settings.sets:
         subset = drift_subset(items)
         if settings.limit:
