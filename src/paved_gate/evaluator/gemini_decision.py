@@ -22,11 +22,12 @@ response shape and the meaning of `confidence`; tests replay that recorded respo
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import os
 import random
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Literal, Protocol, cast
 
 from pydantic import JsonValue, ValidationError
@@ -38,6 +39,7 @@ from paved_gate.evaluator.base import (
     EvaluationResult,
     EvaluatorError,
     EvaluatorState,
+    MediaPart,
     Question,
     ScoreAnswer,
     ScoreQuestion,
@@ -54,6 +56,16 @@ from paved_gate.evaluator.gemini_decision_models import (
 from paved_gate.policy.models import EvaluatorConfig
 
 DEFAULT_MODEL = "gemini-decision-1"
+# Inline media the adapter sends, from Google's guide: images by type, PDFs as documents. The API accepts
+# up to 100 MB inline per request (50 MB for PDFs); the adapter's own default cap is far lower.
+MEDIA_BLOCKS = {
+    "image/png": "image",
+    "image/jpeg": "image",
+    "image/webp": "image",
+    "application/pdf": "document",
+}
+DEFAULT_MAX_MEDIA_BYTES = 10 * 1024 * 1024
+Input = str | list[dict[str, JsonValue]]
 _RETRYABLE_MIN_SERVER = 500
 _RATE_LIMITED = 429
 
@@ -62,11 +74,15 @@ class RateLimitedError(EvaluatorError):
     """The API kept answering 429 after every retry: a quota or rate limit was hit."""
 
 
+class MediaError(EvaluatorError):
+    """A media part is too large or of a type the adapter does not send."""
+
+
 class DecisionsAPI(Protocol):
     """The slice of `client.aio.decisions` this adapter uses; tests inject a fake."""
 
     async def create(
-        self, *, input: str, model: str, questions: dict[str, dict[str, JsonValue]], timeout: float
+        self, *, input: Input, model: str, questions: dict[str, dict[str, JsonValue]], timeout: float
     ) -> object: ...
 
 
@@ -81,6 +97,27 @@ def to_gemini_question(q: Question) -> dict[str, JsonValue]:
 def state_text(state: EvaluatorState) -> str:
     """The Decisions API takes text (or content blocks); a dict state is sent as canonical JSON."""
     return state if isinstance(state, str) else json.dumps(state, sort_keys=True, ensure_ascii=False)
+
+
+def media_input(state: str, media: Sequence[MediaPart], max_bytes: int) -> list[dict[str, JsonValue]]:
+    """Text first, then each part as an inline base64 block. Sizes are checked before anything is encoded."""
+    total = sum(len(m.data) for m in media)
+    if total > max_bytes:
+        raise MediaError(f"media is {total:,} bytes, over the {max_bytes:,} byte limit; send smaller or fewer files")
+    blocks: list[dict[str, JsonValue]] = [{"type": "text", "text": state + "\n"}] if state else []
+    for m in media:
+        kind = MEDIA_BLOCKS.get(m.mime_type)
+        if kind is None:
+            raise MediaError(f"{m.name or 'media'}: type {m.mime_type!r} is not one of {sorted(MEDIA_BLOCKS)}")
+        if not m.data:
+            raise MediaError(f"{m.name or 'media'} is empty")
+        blocks.append({"type": kind, "mime_type": m.mime_type, "data": base64.b64encode(m.data).decode("ascii")})
+    return blocks
+
+
+def _media_note(media: Sequence[MediaPart]) -> str:
+    """What the mock can see of the media: names, types and sizes, never content."""
+    return "".join(f"\n[{m.mime_type} {m.name} {len(m.data)} bytes]" for m in media)
 
 
 def _to_answer(qid: str, question: Question, raw: object) -> Answer:
@@ -128,6 +165,7 @@ class GeminiDecisionEvaluator:
         api_key: str | None = None,
         timeout_s: float = 3.0,
         max_retries: int = 2,
+        max_media_bytes: int = DEFAULT_MAX_MEDIA_BYTES,
         backoff_base_s: float = 0.5,
         backoff_cap_s: float = 8.0,
         decisions_api: DecisionsAPI | None = None,
@@ -140,6 +178,7 @@ class GeminiDecisionEvaluator:
         self.model = model
         self.timeout_s = timeout_s
         self.max_retries = max_retries
+        self.max_media_bytes = max_media_bytes
         self.backoff_base_s = backoff_base_s
         self.backoff_cap_s = backoff_cap_s
         self.mock_latency_ms = mock_latency_ms
@@ -176,6 +215,22 @@ class GeminiDecisionEvaluator:
             payload = await mock_decisions(text, wire, latency_ms=self.mock_latency_ms, rng=self._rng)
         else:
             payload, retries, wait_ms = await self._create(text, wire)
+        latency_ms = (time.perf_counter() - started) * 1000
+        return self._result(questions, payload, latency_ms, retries, wait_ms)
+
+    async def evaluate_media(
+        self, state: str, media: Sequence[MediaPart], questions: Mapping[str, Question]
+    ) -> EvaluationResult:
+        """Text plus images or PDFs in the same single call."""
+        blocks = media_input(state, media, self.max_media_bytes)
+        wire = {qid: to_gemini_question(q) for qid, q in questions.items()}
+        retries, wait_ms = 0, 0.0
+        started = time.perf_counter()
+        if self.mode == "mock":
+            text = state + _media_note(media)
+            payload = await mock_decisions(text, wire, latency_ms=self.mock_latency_ms, rng=self._rng)
+        else:
+            payload, retries, wait_ms = await self._create(blocks, wire)
         latency_ms = (time.perf_counter() - started) * 1000
         return self._result(questions, payload, latency_ms, retries, wait_ms)
 
@@ -222,7 +277,7 @@ class GeminiDecisionEvaluator:
         )
 
     async def _create(
-        self, text: str, wire: dict[str, dict[str, JsonValue]]
+        self, text: Input, wire: dict[str, dict[str, JsonValue]]
     ) -> tuple[dict[str, JsonValue], int, float]:
         assert self._api is not None
         attempt, waited = 0, 0.0

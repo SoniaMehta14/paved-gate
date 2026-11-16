@@ -7,7 +7,7 @@ concurrent per-question calls) but must answer every question.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Annotated, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
@@ -94,3 +94,20 @@ class FastEvaluator(Protocol):
     async def evaluate(self, state: EvaluatorState, questions: Mapping[str, Question]) -> EvaluationResult: ...
 
     async def aclose(self) -> None: ...
+
+
+class MediaPart(_Frozen):
+    """An image or document sent alongside the text state. `data` is the raw file content."""
+
+    mime_type: str
+    data: bytes
+    name: str = ""
+
+
+@runtime_checkable
+class MultimodalEvaluator(FastEvaluator, Protocol):
+    """A FastEvaluator that can also read images or documents in the same call."""
+
+    async def evaluate_media(
+        self, state: str, media: Sequence[MediaPart], questions: Mapping[str, Question]
+    ) -> EvaluationResult: ...

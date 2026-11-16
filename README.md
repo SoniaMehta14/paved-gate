@@ -42,6 +42,7 @@ request ─▶│ detect PII ─▶ mask ─▶ FastEvaluator: 1 request, 3 type
 - [Classification eval](#classification-eval)
 - [NVIDIA OpenShell integration](#nvidia-openshell-integration)
 - [Harness² edit adoption gate](#harness-edit-adoption-gate)
+- [Multimodal gate](#multimodal-gate)
 - [Project layout](#project-layout)
 - [Limitations](#limitations)
 - [Troubleshooting](#troubleshooting)
@@ -68,7 +69,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync --all-extras                 # install with FastAPI, Anthropic, OpenAI, and Gemini extras
-uv run pytest                        # 195 tests
+uv run pytest                        # 215 tests
 uv run python examples/server.py     # demo server on :8000, Jev in mock mode, no keys needed
 ```
 
@@ -920,6 +921,41 @@ bodies, and all paths are relative to the run directory.
 
 ---
 
+## Multimodal gate
+
+The [multimodal gate](src/paved_gate/integrations/multimodal_gate/) checks an image or a PDF together with the text
+it should agree with, in one evaluator call. Typed Truth, Choice and Score checks from
+[`policy/multimodal_gate.policy.yaml`](policy/multimodal_gate.policy.yaml) decide **allow**, **review** or **block**.
+The shipped policy asks three things of a published report or review document:
+
+* **synthetic_label** (Truth): is it clearly marked as synthetic? Below 0.7, it is held for review.
+* **overall_decision** (Choice): which decision does it state? If it differs from `--expect`, it is blocked.
+* **legibility** (Score): is the text readable? Below level 3 of 5, it is held for review.
+
+```bash
+uv run python -m paved_gate.integrations.multimodal_gate docs/harness2/1_synthetic_fixture.png \
+    --expect overall_decision=reject                    # mock: no key, no network
+uv run python -m paved_gate.integrations.multimodal_gate tests/fixtures/multimodal/synthetic_policy.pdf --mode live
+```
+
+This needs an evaluator that reads media. Gemini Decision 1 accepts images and PDFs in the same call as the text.
+TypeSafe documents PNG and JPEG input for Jev and calls it not yet production ready, and the Jev adapter in this
+repository sends text only, so the gate refuses it with a clear error. In mock mode the answers are keyword
+heuristics over the file's name, type and size, not a reading of the file.
+
+* Accepted files: PNG, JPEG, WebP and PDF, checked by suffix and by their leading bytes.
+* The size limit (`max_media_bytes`, 10 MB by default) is checked from the file system before the file is read or
+  encoded; the adapter checks its own limit again before base64 encoding.
+* The audit record (`logs/multimodal_gate.audit.jsonl`, event `multimodal_decision`) keeps the file's name, type,
+  size and sha256, the text's sha256, and the typed answers. It never stores the file or the text.
+* Evaluator failures follow `fail_mode`: closed blocks, open holds for review.
+
+Test artifacts: the published synthetic report screenshot, and a one page synthetic PDF written by
+[`examples/multimodal_gate/make_pdf.py`](examples/multimodal_gate/make_pdf.py). Neither carries metadata; the
+tests check both.
+
+---
+
 ## Project layout
 
 ```
@@ -960,10 +996,13 @@ policy/harness2_adoption.policy.yaml     default adoption policy for Harness² h
 examples/harness2/demo.policy.yaml       example policy for the Harness² demo
 examples/harness2/synthetic_run.py       writes the synthetic guardrail fixture (hand written, not from Harness²)
 examples/harness2/reports.sh             builds the three adoption gate reports into results/harness2/
+src/paved_gate/integrations/multimodal_gate/   image or PDF plus text checks in one call (Gemini Decision 1)
+policy/multimodal_gate.policy.yaml       Truth, Choice and Score checks for published reports and documents
+examples/multimodal_gate/make_pdf.py     writes the synthetic test PDF (no metadata)
 scripts/baselines.py              assumed values for --simulate-missing (never a measurement)
 docs/benchmark/                   committed sample: dashboard.png, sample-results.json, sample-dashboard.html
 package.json                      npm task aliases (benchmark, benchmark:dashboard, dashboard, eval:estimate, eval:dashboard, test)
-tests/                            195 tests: decision branches, Jev contract, Gemini Decision adapter and benchmark, masking, handlers, middleware, latency, benchmark report, classification eval, OpenShell middleware and benchmark helpers, Harness² adoption gate
+tests/                            215 tests: decision branches, Jev contract, Gemini Decision adapter and benchmark, multimodal gate, masking, handlers, middleware, latency, benchmark report, classification eval, OpenShell middleware and benchmark helpers, Harness² adoption gate
 ```
 
 Development: `uv run pytest`, `uv run mypy src tests examples`, `uv run ruff check .` (mypy `--strict`).

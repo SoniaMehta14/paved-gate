@@ -34,6 +34,7 @@ from paved_gate import (
 )
 from paved_gate.evaluator.gemini_decision import (
     GeminiDecisionEvaluator,
+    Input,
     RateLimitedError,
     state_text,
     to_gemini_question,
@@ -86,8 +87,9 @@ class FakeDecisions:
         self.calls: list[Call] = []
 
     async def create(
-        self, *, input: str, model: str, questions: dict[str, dict[str, JsonValue]], timeout: float
+        self, *, input: Input, model: str, questions: dict[str, dict[str, JsonValue]], timeout: float
     ) -> object:
+        assert isinstance(input, str)  # these tests send text only
         self.calls.append(Call(input, model, questions, timeout))
         outcome = self.outcomes.pop(0) if len(self.outcomes) > 1 else self.outcomes[0]
         if isinstance(outcome, Exception):

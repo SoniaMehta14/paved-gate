@@ -186,4 +186,47 @@ class HarnessAdoptionEntry(BaseModel):
     experience: dict[str, str] | None
 
 
-AuditRecord = GateDecisionEntry | SensitiveDataEvent | EgressDecisionEntry | HarnessAdoptionEntry
+class MultimodalArtifact(BaseModel):
+    name: str
+    mime_type: str
+    bytes: int
+    sha256: str
+
+
+class MultimodalCheckResult(BaseModel):
+    name: str
+    kind: Literal["truth", "choice", "score"]
+    passed: bool
+    on_fail: Literal["review", "block"]
+    value: float | str | None
+    threshold: float
+    expected: str | None
+    reason: str
+
+
+class MultimodalDecisionEntry(BaseModel):
+    """One multimodal gate decision over an image or PDF plus text.
+
+    Never stores the file or the text: only the artifact's name, type, size and sha256, the text's sha256,
+    and the typed answers.
+    """
+
+    event: Literal["multimodal_decision"] = "multimodal_decision"
+    ts: str = Field(default_factory=_now)
+    request_id: str
+    policy_name: str
+    policy_hash: str
+    artifact: MultimodalArtifact
+    text_sha256: str | None
+    decision: Literal["allow", "review", "block"]
+    reasons: list[str]
+    checks: list[MultimodalCheckResult]
+    evaluator: EvaluatorInfo | None
+    latency: LatencyInfo
+    usage: UsageInfo
+    error: str | None = None
+
+
+AuditRecord = (
+    GateDecisionEntry | SensitiveDataEvent | EgressDecisionEntry | HarnessAdoptionEntry | MultimodalDecisionEntry
+)
