@@ -64,7 +64,7 @@ pythonpath = ["src", ".", "scripts", "evals/support_tickets", "evals/redteam"]
 [tool.mypy]
 strict = true
 python_version = "3.12"  # numpy (via scikit-learn) ships 3.12-syntax stubs; runtime still supports 3.11
-mypy_path = "src"
+mypy_path = "src:scripts:evals/support_tickets:evals/redteam"
 
 [[tool.mypy.overrides]]
 module = ["anthropic.*", "openai.*"]
