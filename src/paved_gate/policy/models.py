@@ -99,6 +99,9 @@ class PrivacyConfig(_Strict):
     mask_before_evaluate: bool = True
     detectors: list[DetectorName] = Field(default_factory=lambda: list(ALL_DETECTORS))
     local_detection_counts_as_sensitive: bool = True
+    # strict: also ask whether the request discloses someone's personal or health data to a party not entitled to
+    # it, and block it as POLICY_VIOLATION when that is likely and the request is sensitive. Off by default.
+    strict: bool = False
 
 
 class AuditConfig(_Strict):

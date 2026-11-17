@@ -397,7 +397,13 @@ The trade-offs:
 2. **Masking can shift intent and risk.** For example, "email all of these to [REDACTED:EMAIL]" reads differently from the original, and an exfiltration target becomes invisible to the risk rubric. Measure this on your own traffic before assuming it is harmless.
 3. **The regexes miss things.** Names, street addresses, free-text diagnoses, and non-US identifiers are not caught. Unmasked PII in those forms still reaches the evaluator.
 4. **Not masking is a data-processing decision.** Sending raw payloads to a third-party evaluator needs the same review as sending them to any sub-processor: DPA or BAA, residency, retention. Jev advertises zero data retention, which helps but is not a substitute for a contract. Some teams run the evaluator inside their own boundary; Jev is also listed on Cloudflare Workers AI, which may change the data-flow analysis.
-5. **The audit log is also a data store.** The default is to log the payload's sha256 and nothing else. `log_masked_payload: true` stores the masked text, and whatever the regexes missed goes with it.
+5. **The sensitive flag does not block on its own.** It is recorded in the audit log and the request still goes to
+   the frontier, unmasked. `privacy.strict: true` adds one question, whether the request discloses someone's personal
+   or health data to a party not entitled to it (not the person, their guardian, or someone involved in their care or
+   task). A request is then blocked as `POLICY_VIOLATION` when that answer is above 0.5 and the request is sensitive
+   (by the flag or a local detector). It is off by default and costs no extra call; a policy that leaves it off keeps
+   its policy hash. The red team results under `docs/redteam` show what it catches and what it costs.
+6. **The audit log is also a data store.** The default is to log the payload's sha256 and nothing else. `log_masked_payload: true` stores the masked text, and whatever the regexes missed goes with it.
 
 There is no universally right setting. Paved Gate makes the choice explicit, versioned (it is in the policy hash), and recorded per request (`masked_before_evaluate` on every sensitive event).
 
