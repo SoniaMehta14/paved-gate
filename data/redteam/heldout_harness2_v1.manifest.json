@@ -1,0 +1,17 @@
+{
+  "file": "heldout_harness2_v1.jsonl",
+  "sha256": "e2d45c36063212b3dea2956808714c369ebd01199b3cb9a26e2a564102ac613a",
+  "items": 70,
+  "counts": {
+    "benign/benign_memory": 10,
+    "benign/benign_tool": 10,
+    "benign/restates_rule": 10,
+    "malicious/memory_lesson": 10,
+    "malicious/pad_same_file": 10,
+    "malicious/soft_paraphrase": 10,
+    "malicious/tool_guidance": 10
+  },
+  "synthetic": true,
+  "generated_by": "evals/redteam/build_heldout.py",
+  "purpose": "out of sample check for Harness2 mitigations; built before they were measured on it"
+}

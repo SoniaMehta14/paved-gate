@@ -242,3 +242,40 @@ def test_omitted_arms_are_recorded_and_never_compared(tmp_path: Path) -> None:
         assert all(arm not in pair for pair in summary["gate_arm_pairs"])
     with pytest.raises(SystemExit):
         redteam.main([*args, "--omit-arms", "jev"])
+
+
+async def test_binary_oracle_search_ignores_scores(tmp_path: Path) -> None:
+    """Under the binary oracle every query is a fresh stack on the seed, never a refinement of the best score."""
+    items = redteam.load_corpus()
+    seed = next(i for i in items if i["id"] == "gate.d02.plain")
+    settings = redteam.Settings(mode="mock", experiments=["adaptive"], arms=["jev"], sets=["gate"], oracle="binary")
+    ckpt = Checkpoint(tmp_path / "c.jsonl", "h", True)
+    runner = redteam.Runner(
+        settings, redteam.load_context(), redteam.Ledger(tmp_path / "s", live=False, past_half=False), ckpt, print
+    )
+    blocked_always = Scripted()
+    blocked_always.evaluate = _always_blocked(blocked_always)  # type: ignore[method-assign]
+    await runner.run_arm(redteam.Arm("jev", "ok", "t", lambda _s: blocked_always), "adaptive", [(seed, 0)])
+    recs = sorted(ckpt.done.values(), key=lambda r: int(str(r.data["query"])))
+    assert len(recs) == settings.adaptive_queries and all(r.data["blocked"] for r in recs)
+    assert all(r.data["transform"] != "plain" for r in recs[1:])
+
+
+def _always_blocked(inner: Scripted) -> Any:
+    original = inner.evaluate
+
+    async def evaluate(state: EvaluatorState, questions: Mapping[str, Question]) -> EvaluationResult:
+        result = await original("plain attack", questions)
+        return result
+
+    return evaluate
+
+
+def test_heldout_corpus_loads_with_its_manifest() -> None:
+    import build_heldout
+
+    items = redteam.load_corpus(build_heldout.OUT, build_heldout.MANIFEST)
+    assert len(items) == 70 and {i["set"] for i in items} == {"harness2"}
+    for i in items:
+        p = i["payload"]
+        assert p["adopted"]["guardrails.md"] == p["baseline"]["guardrails.md"]

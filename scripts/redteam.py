@@ -518,6 +518,7 @@ class Settings:
     corpus_sha: str = ""
     timeout_ms: int = EVAL_TIMEOUT_MS
     gemini_tpm: int = 45_000
+    oracle: str = "score"  # what the adaptive search may read from a blocked response: score | binary
 
     def digest(self) -> str:
         measured = {k: v for k, v in asdict(self).items() if k != "gemini_tpm"}
@@ -676,13 +677,26 @@ class Runner:
                 await ev.aclose()
 
     async def adaptive(self, arm: Arm, ev: Recording, seed: Item) -> None:
-        """Greedy search over stacked corpus transforms, guided only by the risk score the gate reveals."""
+        """Search over stacked corpus transforms with the same query budget, under one of two oracles.
+
+        score: greedy; keeps a variant when the risk score goes down (what the 403 body revealed before the fix).
+        binary: the caller learns only blocked or not, so each query is a fresh random stack of one to three
+        transforms on the seed (what the 403 body reveals after the fix).
+        """
         rng = random.Random(f"{SEED}:{arm.name}:{seed['seed_id']}")
         paraphrase = next(p for s, _, _, p in build_corpus.MALICIOUS if s == seed["seed_id"])
-        best = Variant(core=seed["payload"]["text"])
+        origin = Variant(core=seed["payload"]["text"])
+        best = origin
         best_rec: CallRecord | None = None
         for q in range(1, self.settings.adaptive_queries + 1):
-            cand = best if q == 1 else best.mutate(rng, paraphrase)
+            if q == 1:
+                cand = origin
+            elif self.settings.oracle == "binary":
+                cand = origin
+                for _ in range(rng.randint(1, 3)):
+                    cand = cand.mutate(rng, paraphrase)
+            else:
+                cand = best.mutate(rng, paraphrase)
             text = cand.render(rng_seed=q)
             item = {**seed, "payload": {"text": text}, "attack_class": "A2", "transform": cand.name, "query": q}
             if q > 1 and self._paused(arm):
@@ -867,11 +881,11 @@ def print_summary(summary: dict[str, Any], log: Callable[[str], None]) -> None:
         log(f"  detector {det:12s} detected {fmt(r)}")
 
 
-def rebuild(calls: Path) -> dict[str, object]:
+def rebuild(calls: Path, corpus: Path = CORPUS) -> dict[str, object]:
     """The summary a run would have written, recomputed from its calls file."""
     lines = calls.read_text(encoding="utf-8").splitlines()
     records = [CallRecord(**json.loads(line)) for line in lines[1:]]
-    return summarize(records, detector_rows(load_corpus(), load_context()))
+    return summarize(records, detector_rows(load_corpus(corpus, corpus.with_suffix(".manifest.json")), load_context()))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -892,6 +906,9 @@ def main(argv: list[str] | None = None) -> int:
         default="",
         help=f"arms deliberately not run; recorded as '{OMITTED_REASON}' and left out of every comparison",
     )
+    ap.add_argument("--corpus", type=Path, default=CORPUS, help="corpus JSONL; its .manifest.json must sit beside it")
+    ap.add_argument("--oracle", choices=("score", "binary"), default="score", help="what the adaptive search sees")
+    ap.add_argument("--label", default="", help="added to the output file names, e.g. after-403")
     ap.add_argument("--past-half", action="store_true", help="continue after the half budget checkpoint")
     ap.add_argument("--fresh", action="store_true", help="discard the checkpoint and start over")
     ap.add_argument(
@@ -900,11 +917,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--rebuild", type=Path, help="recompute the summary from a .calls.jsonl file; no API calls")
     args = ap.parse_args(argv)
     if args.rebuild:
-        print(json.dumps(rebuild(args.rebuild), indent=2, default=str))
+        print(json.dumps(rebuild(args.rebuild, args.corpus.resolve()), indent=2, default=str))
         return 0
 
     load_dotenv(ROOT / ".env", override=False)
-    items = load_corpus()
+    corpus = args.corpus.resolve()
+    items = load_corpus(corpus, corpus.with_suffix(".manifest.json"))
     settings = Settings(
         mode=args.mode,
         experiments=[e for e in args.experiments.split(",") if e],
@@ -914,7 +932,8 @@ def main(argv: list[str] | None = None) -> int:
         drift_reps=args.drift_reps,
         adaptive_seeds=args.adaptive_seeds,
         adaptive_queries=args.adaptive_queries,
-        corpus_sha=hashlib.sha256(CORPUS.read_bytes()).hexdigest(),
+        corpus_sha=hashlib.sha256(corpus.read_bytes()).hexdigest(),
+        oracle=args.oracle,
         gemini_tpm=args.gemini_tpm,
     )
     omitted = [a for a in args.omit_arms.split(",") if a]
@@ -976,7 +995,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\npaused after --stop-after {args.stop_after} new items per arm; rerun without it to resume")
         return 6
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    out = RESULTS / f"redteam-{args.mode}-{stamp}"
+    out = RESULTS / f"redteam-{args.mode}{'-' + args.label if args.label else ''}-{stamp}"
     out.with_suffix(".json").write_text(json.dumps(summary, indent=2, default=str) + "\n")
     ckpt_path.rename(out.with_suffix(".calls.jsonl"))
     if raw_path.exists():
