@@ -135,6 +135,20 @@ async def test_quota_exhaustion_and_bad_key_are_fatal_and_not_retried() -> None:
         assert exc.value.fatal and len(client.requests) == 1
 
 
+async def test_exhausted_credit_balance_is_fatal_and_not_retried() -> None:
+    """The body OpenAI returned on 2026-11-16 for an account with no credits."""
+    resp: Any = httpx.Response(429, request=httpx.Request("POST", "https://api.openai.com/v1/x"))
+    body = {
+        "message": "You have no credits remaining.",
+        "type": "insufficient_quota",
+        "code": "credit_balance_exhausted",
+    }
+    client = FakeClient(openai.RateLimitError("error", response=resp, body=body), _response('{"choice": "get_refund"}'))
+    with pytest.raises(OpenAIAPIError) as exc:
+        await OpenAIEvaluator(model="gpt-test", client=client).evaluate("x", {"intent": Q})
+    assert exc.value.fatal and len(client.requests) == 1
+
+
 async def test_retries_are_bounded() -> None:
     errors = [_status_error(openai.InternalServerError, 500, None, "0") for _ in range(3)]
     ev = OpenAIEvaluator(model="gpt-test", client=FakeClient(*errors), max_retries=2)

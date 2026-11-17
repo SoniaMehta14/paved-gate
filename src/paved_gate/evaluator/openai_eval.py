@@ -198,7 +198,7 @@ class OpenAIEvaluator:
                 return response, attempt, (time.perf_counter() - started) * 1000
             except openai.RateLimitError as exc:
                 code = _error_code(exc)
-                if code == "insufficient_quota":
+                if _quota_exhausted(exc):
                     raise OpenAIAPIError("OpenAI quota exhausted", code=code, fatal=True) from exc
                 retry_after = exc.response.headers.get("retry-after") if exc.response is not None else None
                 await self._retry_or_raise(attempt, exc, code, retry_after)
@@ -403,6 +403,16 @@ def _raw(response: Any, attempts: int, total_ms: float) -> tuple[dict[str, JsonV
         "total_ms": round(total_ms, 2),
     }
     return raw, input_tokens, output_tokens
+
+
+def _quota_exhausted(exc: Exception) -> bool:
+    """Out of quota or credits. OpenAI has signalled this as code insufficient_quota, and more recently as type
+    insufficient_quota with code credit_balance_exhausted; retrying either only repeats the 429."""
+    body = getattr(exc, "body", None)
+    if not isinstance(body, dict):
+        return False
+    err = body["error"] if isinstance(body.get("error"), dict) else body
+    return "insufficient_quota" in (err.get("code"), err.get("type")) or err.get("code") == "credit_balance_exhausted"
 
 
 def _error_code(exc: Exception) -> str | None:
