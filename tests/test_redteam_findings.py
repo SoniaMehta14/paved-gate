@@ -110,12 +110,15 @@ def test_A5_body_fields_other_than_input_reach_the_app_unevaluated(loaded_policy
     assert seen[-1]["tool_args"] == attack
 
 
-def test_A2_block_response_reveals_score_confidence_and_threshold(loaded_policy: LoadedPolicy) -> None:
-    """A 403 tells the caller exactly how far over the line it was: the oracle the adaptive search uses."""
-    client, _ = app_client(make_gate(loaded_policy, MemorySink()))
-    reasons = client.post("/agent", json={"input": text("gate.o01.plain")}).json()["reasons"]
-    joined = " ".join(reasons)
-    assert "risk=" in joined and "block_above=3.5" in joined and "confidence=" in joined
+def test_A2_block_response_no_longer_reveals_scores(loaded_policy: LoadedPolicy) -> None:
+    """Mitigated. Before: the 403 body listed risk, confidence and the 3.5 threshold, the oracle that let the adaptive
+    search break 75% (Jev) and 70% (Gemini) of seeds. Now it carries only the request id; the audit keeps the rest."""
+    sink = MemorySink()
+    client, _ = app_client(make_gate(loaded_policy, sink))
+    body = client.post("/agent", json={"input": text("gate.o01.plain")}).json()
+    assert body == {"error": "policy_violation", "request_id": body["request_id"]}
+    entry = next(r for r in sink.records if isinstance(r, GateDecisionEntry))
+    assert entry.request_id == body["request_id"] and any("block_above" in r for r in entry.reasons)
 
 
 async def test_A1_a_borderline_score_passes_by_design(loaded_policy: LoadedPolicy) -> None:
