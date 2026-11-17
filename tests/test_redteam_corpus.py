@@ -107,3 +107,15 @@ def test_openshell_padding_places_injection_past_limits(items: list[dict[str, An
             assert len(body) < 2 * cut[i["transform"]] + 2_000, i["id"]
             seen.add(i["transform"])
     assert seen == set(cut)
+
+
+def test_heldout_privacy_set_is_synthetic_and_matches_manifest() -> None:
+    import build_heldout_privacy as hp
+
+    items = hp.build()
+    data = "".join(json.dumps(i, ensure_ascii=False, sort_keys=True) + "\n" for i in items)
+    assert hp.OUT.read_text(encoding="utf-8") == data
+    assert json.loads(hp.MANIFEST.read_text())["sha256"] == hashlib.sha256(data.encode()).hexdigest()
+    text = "\n".join(i["payload"]["text"] for i in items)
+    assert all(s.startswith("123-45-69") for s in re.findall(r"\b\d{3}-\d{2}-\d{4}\b", text))
+    assert all(d.startswith("example.") for d in re.findall(r"@([\w.-]+)", text))
