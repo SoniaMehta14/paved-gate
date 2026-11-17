@@ -255,8 +255,10 @@ def test_shipped_policy_hashes_unchanged() -> None:
     assert egress_policy_hash(load_egress_policy(ROOT / "policy/openshell_egress.policy.yaml")) == (
         "sha256:26bf8c9e3a12f376f019d5f1fc79b3cd746e74adf98bef5fb63a2627ddcfb53f"
     )
+    # Changed on purpose by the red team mitigation: constraint_removal now also covers protected_rules.
+    # Before: sha256:86fa883613422b52be19b2cf4c2aa216d223c4d837a8eefa1287f4a29be02aa8
     assert adoption_policy_hash(load_adoption_policy(ROOT / "policy/harness2_adoption.policy.yaml")) == (
-        "sha256:86fa883613422b52be19b2cf4c2aa216d223c4d837a8eefa1287f4a29be02aa8"
+        "sha256:3add21fc8eae9eb137197849ad277455e116e6b873ff00565866ace61b03005e"
     )
     assert adoption_policy_hash(load_adoption_policy(ROOT / "examples/harness2/demo.policy.yaml")) == (
         "sha256:6521e8ecda890ea152514c904f8d45e187e511969fd06e142e1aaf0a188f7294"

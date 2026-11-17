@@ -882,9 +882,12 @@ in its output; it comes from `harness2/substrate/opencode.py` at commit 1cfe254 
 `skill_trigger_format` in the policy.
 
 **Regression check.** The evaluator gets the harness diff and, when the run directory has them, the task outputs of
-the baseline runs and of the adopted run. It answers two typed questions: a 1 to 5 Score for how likely the edit makes
-results worse, and a Truth question for whether it removes or weakens a stated constraint. Thresholds are in the
-policy. The deterministic evaluator scores the outputs by rule (no output, new error markers, output much shorter than
+the baseline runs and of the adopted run. It also gets `protected_rules`: the baseline text of protected prose files
+such as `guardrails.md`. Those files are usually unchanged and so absent from the diff, yet an edit to an editable
+file can contradict them. The diff is clipped per file to a fair share of `max_diff_chars`, so one large file cannot
+push the others out of view; a clipped file says how much was cut. It answers two typed questions: a 1 to 5 Score
+for how likely the edit makes results worse, and a Truth question for whether it removes, weakens or contradicts a
+stated constraint. Thresholds are in the policy. The deterministic evaluator scores the outputs by rule (no output, new error markers, output much shorter than
 the baseline) and looks for removed lines that state a rule (must, never, always, only, do not). It is a stand in for
 tests and the demo, not a judge of quality.
 

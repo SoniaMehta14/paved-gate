@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from pydantic import JsonValue
@@ -22,6 +23,7 @@ from paved_gate.integrations.harness2.diff import FileChange
 from paved_gate.integrations.harness2.run_dir import Tree
 
 TRUNCATED = "\n[truncated]\n"
+PROTECTED_RULES_CHARS = 8_000  # total budget for the protected rule files shown alongside the diff
 
 
 @dataclass(frozen=True)
@@ -58,10 +60,44 @@ def _by_run(outputs: Tree, limit: int) -> dict[str, JsonValue]:
     return {label: _clip("\n".join(parts), limit) for label, parts in runs.items()}
 
 
+def fair_shares(lengths: list[int], limit: int) -> list[int]:
+    """Split `limit` characters across texts so short ones are kept whole and long ones share what is left."""
+    shares = [0] * len(lengths)
+    remaining = limit
+    order = sorted(range(len(lengths)), key=lambda i: lengths[i])
+    for k, i in enumerate(order):
+        shares[i] = min(lengths[i], remaining // (len(order) - k))
+        remaining -= shares[i]
+    return shares
+
+
+def clip_per_file(texts: list[tuple[str, str]], limit: int) -> str:
+    """Join (path, text) pairs within `limit` characters, clipping each file to a fair share rather than the
+    joined text, so one large file cannot push every later file out of view. A clipped file says so."""
+    shares = fair_shares([len(t) for _, t in texts], limit)
+    out = []
+    for (path, text), share in zip(texts, shares, strict=True):
+        if share < len(text):
+            text = text[:share] + f"\n[truncated: {len(text) - share} of {len(text)} characters of {path} not shown]\n"
+        out.append(text)
+    return "".join(out)
+
+
 def build_state(
-    cfg: RegressionConfig, changes: list[FileChange], baseline_outputs: Tree, adopted_outputs: Tree
+    cfg: RegressionConfig,
+    changes: list[FileChange],
+    baseline_outputs: Tree,
+    adopted_outputs: Tree,
+    protected_rules: Mapping[str, str] | None = None,
 ) -> dict[str, JsonValue]:
-    state: dict[str, JsonValue] = {"diff": _clip("".join(c.unified for c in changes), cfg.max_diff_chars)}
+    """The evaluator's input. `protected_rules` are the baseline text of protected rule files: they are usually
+    unchanged, so they are absent from the diff, yet an edit elsewhere can contradict them."""
+    state: dict[str, JsonValue] = {"diff": clip_per_file([(c.path, c.unified) for c in changes], cfg.max_diff_chars)}
+    if protected_rules:
+        rules = clip_per_file(
+            [(p, f"### {p}\n{t}\n") for p, t in sorted(protected_rules.items())], PROTECTED_RULES_CHARS
+        )
+        state["protected_rules"] = rules
     # With baseline outputs on record, an adopted run that produced nothing is itself evidence.
     if baseline_outputs:
         state["baseline_outputs"] = _by_run(baseline_outputs, cfg.max_output_chars)
@@ -75,8 +111,9 @@ async def run_regression(
     changes: list[FileChange],
     baseline_outputs: Tree,
     adopted_outputs: Tree,
+    protected_rules: Mapping[str, str] | None = None,
 ) -> RegressionOutcome:
-    state = build_state(cfg, changes, baseline_outputs, adopted_outputs)
+    state = build_state(cfg, changes, baseline_outputs, adopted_outputs, protected_rules)
     used_outputs = "baseline_outputs" in state
     started = time.perf_counter()
     try:

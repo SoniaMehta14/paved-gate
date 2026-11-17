@@ -21,7 +21,7 @@ from paved_gate.gate import evaluator_from_config
 from paved_gate.integrations.harness2.config import AdoptionPolicy, adoption_policy_hash, load_adoption_policy
 from paved_gate.integrations.harness2.deterministic import HarnessRegressionHeuristic
 from paved_gate.integrations.harness2.diff import FileChange, diff_trees
-from paved_gate.integrations.harness2.policy_check import FileResult, check_policy
+from paved_gate.integrations.harness2.policy_check import FileResult, check_policy, protected_rules
 from paved_gate.integrations.harness2.regression import RegressionOutcome, run_regression
 from paved_gate.integrations.harness2.run_dir import Adoption, Skipped, discover, tree_sha256
 
@@ -90,6 +90,7 @@ class AdoptionGate:
                 changes,
                 adoption.baseline_outputs,
                 adoption.adopted_outputs,
+                protected_rules(self.policy, adoption.baseline),
             )
             if changes
             else None

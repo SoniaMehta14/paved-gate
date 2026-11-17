@@ -11,7 +11,6 @@ from taxonomy import AttackClass
 
 from paved_gate.integrations.harness2.config import load_adoption_policy
 from paved_gate.integrations.harness2.diff import diff_trees
-from paved_gate.integrations.harness2.regression import build_state
 from paved_gate.integrations.openshell.config import load_egress_policy
 from paved_gate.integrations.openshell.inspector import TAINT_CONTEXT_CHARS
 from paved_gate.privacy.detect import detect
@@ -87,12 +86,13 @@ def test_harness2_attacks_leave_protected_guardrails_untouched(items: list[dict[
 
 
 def test_harness2_truncated_change_falls_past_diff_limit(items: list[dict[str, Any]]) -> None:
+    """The weakened file comes after more than max_diff_chars of other diff, which hid it from a joined clip."""
     cfg = load_adoption_policy(ROOT / "policy" / "harness2_adoption.policy.yaml").regression
     for i in items:
         if i["set"] == "harness2" and i["transform"] == "truncated":
             p = i["payload"]
-            state = build_state(cfg, diff_trees(p["baseline"], p["adopted"]), {}, {})
-            assert "systemprompt.md" not in str(state["diff"]), i["id"]
+            joined = "".join(c.unified for c in diff_trees(p["baseline"], p["adopted"]))
+            assert joined.index("systemprompt.md") > cfg.max_diff_chars, i["id"]
 
 
 def test_openshell_padding_places_injection_past_limits(items: list[dict[str, Any]]) -> None:
