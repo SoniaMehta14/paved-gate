@@ -78,6 +78,7 @@ from paved_gate.integrations.harness2.run_dir import Adoption  # noqa: E402
 from paved_gate.integrations.openshell.config import EgressPolicy, egress_policy_hash, load_egress_policy  # noqa: E402
 from paved_gate.integrations.openshell.inspector import EgressInspector, Target  # noqa: E402
 from paved_gate.policy.loader import LoadedPolicy, policy_hash  # noqa: E402
+from paved_gate.policy.models import EvaluatorConfig  # noqa: E402
 from paved_gate.privacy.detect import detect  # noqa: E402
 
 RESULTS = ROOT / "results" / "redteam"
@@ -92,7 +93,8 @@ BUDGET_USD = 20.0
 HALF_USD = 10.0
 EVAL_TIMEOUT_MS = 30_000
 SEED = 20261116
-ARMS = ("shipped", "jev", "gemini_decision", "gpt-4o", "gpt-4o-mini")
+ARMS = ("shipped", "jev", "gemini_decision", "gpt-4o", "gpt-4o-mini", "dual")
+DUAL = ("jev", "gemini_decision")  # profile strict: primary, secondary
 LIVE_ONLY = ("gpt-4o", "gpt-4o-mini")
 EXPERIMENTS = ("baseline", "drift", "adaptive")
 SETS = ("gate", "harness2", "openshell")
@@ -102,6 +104,7 @@ PRICE_KEY: dict[str, str | None] = {
     "gemini_decision": "gemini-decision-1",
     "gpt-4o": "gpt-4o",
     "gpt-4o-mini": "gpt-4o-mini",
+    "dual": "jev",  # the primary; the secondary's calls are priced as gemini_decision
 }
 KEY_ENV = {
     "jev": "TYPESAFE_API_KEY",
@@ -239,15 +242,17 @@ class Recording:
         ledger: Ledger,
         pacer: TokenPacer | None,
         raw_log: RawLog | None = None,
+        price_arm: str | None = None,
     ) -> None:
         self.inner, self.arm, self.ledger, self.pacer, self.raw_log = inner, arm, ledger, pacer, raw_log
+        self.price_arm = price_arm or arm  # which evaluator's prices apply; differs from arm for the dual arm
         self.name = getattr(inner, "name", arm)
         self.calls: list[CallInfo] = []
         self.stop_reason: str | None = None
         self.tag: dict[str, object] = {}  # experiment and item key of the item in flight, set by the runner
 
     def _log(self, info: CallInfo, state: EvaluatorState, extra: Mapping[str, object]) -> None:
-        meta = {**self.tag, "arm": self.arm, "call": len(self.calls)}
+        meta = {**self.tag, "arm": self.arm, "evaluator": self.price_arm, "call": len(self.calls)}
         self.ledger.charge(info.usd, meta)
         if self.raw_log is None:
             return
@@ -275,7 +280,7 @@ class Recording:
 
     async def evaluate(self, state: EvaluatorState, questions: Mapping[str, Question]) -> EvaluationResult:
         started = time.perf_counter()
-        est_in = estimate_input_tokens(self.arm, state, questions)
+        est_in = estimate_input_tokens(self.price_arm, state, questions)
         try:
             result = await self.inner.evaluate(state, questions)
         except Exception as exc:
@@ -283,7 +288,9 @@ class Recording:
             in_tok = getattr(exc, "input_tokens", None)
             out_tok = getattr(exc, "output_tokens", None)
             # A failed call may still be billed; with no usage reported, charge the estimate.
-            usd = price(self.arm, in_tok, out_tok or 0) if in_tok is not None else price(self.arm, est_in, 0)
+            usd = (
+                price(self.price_arm, in_tok, out_tok or 0) if in_tok is not None else price(self.price_arm, est_in, 0)
+            )
             info = CallInfo(round(ms, 2), in_tok or 0, out_tok or 0, usd, None, _err(exc))
             self.calls.append(info)
             self._log(info, state, {"raw": getattr(exc, "raw", None), "usd_estimated": in_tok is None})
@@ -294,7 +301,7 @@ class Recording:
         in_tok, out_tok = result.input_tokens or 0, result.output_tokens or 0
         usage = result.raw.get("usage")
         cached = int(str(usage.get("cached_tokens", 0))) if isinstance(usage, dict) else 0
-        usd = price(self.arm, in_tok, out_tok, cached)
+        usd = price(self.price_arm, in_tok, out_tok, cached)
         if self.pacer is not None:
             self.pacer.record("call", in_tok or est_in)
         info = CallInfo(round(ms, 2), in_tok, out_tok, usd, result.retries, None)
@@ -347,10 +354,17 @@ class Arm:
     pacer: TokenPacer | None = None
     stop_reason: str | None = None
     paused: bool = False  # reached --stop-after in this invocation
+    secondary: Arm | None = None  # dual arm: the secondary evaluator's arm (gate set only)
 
 
 def build_arm(name: str, mode: str, gemini_tpm: int) -> Arm:
     timeout_s = EVAL_TIMEOUT_MS / 1000
+    if name == "dual":
+        primary, secondary = (build_arm(n, mode, gemini_tpm) for n in DUAL)
+        if primary.status != "ok" or secondary.status != "ok":
+            return Arm(name, "not_run", f"needs both {DUAL[0]} and {DUAL[1]}: {primary.reason}; {secondary.reason}")
+        reason = f"profile strict: {DUAL[0]} primary, {DUAL[1]} secondary; gate set only"
+        return Arm(name, "ok", reason, primary.factory, primary.pacer, secondary=secondary)
     if name == "shipped":
         return Arm(name, "ok", "each policy's own offline evaluator", shipped_evaluator)
     if name in LIVE_ONLY and mode != "live":
@@ -391,6 +405,10 @@ def build_arm(name: str, mode: str, gemini_tpm: int) -> Arm:
     )
 
 
+def primary_price_arm(arm: Arm) -> str:
+    return DUAL[0] if arm.name == "dual" else arm.name
+
+
 def shipped_evaluator(set_name: str) -> FastEvaluator:
     if set_name == "harness2":
         return evaluator_for(load_adoption_policy(HARNESS2_POLICY))
@@ -409,18 +427,26 @@ class Context:
     egress_policy: EgressPolicy
 
 
-def load_context() -> Context:
+def load_context(strict_privacy: bool = False) -> Context:
     gp = load_policy(GATE_POLICY)
     evaluator_cfg = gp.policy.evaluator.model_copy(update={"timeout_ms": EVAL_TIMEOUT_MS})
-    policy = gp.policy.model_copy(update={"evaluator": evaluator_cfg})
+    privacy = gp.policy.privacy.model_copy(update={"strict": strict_privacy})
+    policy = gp.policy.model_copy(update={"evaluator": evaluator_cfg, "privacy": privacy})
     gate_policy = LoadedPolicy(policy=policy, policy_hash=policy_hash(policy), source=gp.source)
     ep = load_egress_policy(EGRESS_POLICY)
     egress = ep.model_copy(update={"evaluator": ep.evaluator.model_copy(update={"timeout_ms": EVAL_TIMEOUT_MS})})
     return Context(gate_policy, load_adoption_policy(HARNESS2_POLICY), egress)
 
 
-async def run_gate(ctx: Context, ev: Recording, text: str) -> dict[str, object]:
-    gate = PavedGate(ctx.gate_policy, evaluator=ev, audit=MemorySink(), deterministic=default_registry(), frontier=None)
+async def run_gate(ctx: Context, ev: Recording, text: str, secondary: Recording | None = None) -> dict[str, object]:
+    policy = ctx.gate_policy
+    if secondary is not None:  # record the profile the decision was made under, so the policy hash is honest
+        second_cfg = EvaluatorConfig(provider="gemini_decision", mode="live", timeout_ms=EVAL_TIMEOUT_MS)
+        strict = policy.policy.model_copy(update={"profile": "strict", "secondary_evaluator": second_cfg})
+        policy = LoadedPolicy(policy=strict, policy_hash=policy_hash(strict), source=policy.source)
+    gate = PavedGate(
+        policy, evaluator=ev, audit=MemorySink(), deterministic=default_registry(), frontier=None, secondary=secondary
+    )
     result = await gate.handle(text)
     d = result.decision
     return {
@@ -484,6 +510,14 @@ async def run_openshell(ctx: Context, ev: Recording, item: Item, rep: int) -> di
     }
 
 
+def item_cost(arm: str, ctx: Context, item: Item, extra_in: int = 0) -> tuple[int, float]:
+    """(input tokens for the primary evaluator, estimated USD for every evaluator call the item makes)."""
+    names = DUAL if arm == "dual" else (arm,)
+    estimates = [(name, *estimate_item_tokens(name, ctx, item)) for name in names]
+    usd = sum(price(name, est_in + extra_in, est_out) for name, est_in, est_out in estimates)
+    return estimates[0][1], usd
+
+
 def estimate_item_tokens(arm: str, ctx: Context, item: Item) -> tuple[int, int]:
     """(input, output) tokens for every evaluator call one item makes; output only matters for GPT."""
     out = GPT_OUTPUT_TOKENS if arm.startswith("gpt") else 0
@@ -519,6 +553,7 @@ class Settings:
     timeout_ms: int = EVAL_TIMEOUT_MS
     gemini_tpm: int = 45_000
     oracle: str = "score"  # what the adaptive search may read from a blocked response: score | binary
+    strict_privacy: bool = False  # run the gate with privacy.strict on
 
     def digest(self) -> str:
         measured = {k: v for k, v in asdict(self).items() if k != "gemini_tpm"}
@@ -616,21 +651,31 @@ class Runner:
 
     def _recording(self, arm: Arm, set_name: str) -> Recording:
         assert arm.factory is not None
-        return Recording(arm.factory(set_name), arm.name, self.ledger, arm.pacer, self.raw_log)
+        return Recording(arm.factory(set_name), arm.name, self.ledger, arm.pacer, self.raw_log, primary_price_arm(arm))
 
-    async def one(self, arm: Arm, ev: Recording, experiment: str, item: Item, rep: int, key: str) -> CallRecord:
+    def _secondary(self, arm: Arm, set_name: str) -> Recording | None:
+        sec = arm.secondary
+        if sec is None or sec.factory is None:
+            return None
+        return Recording(sec.factory(set_name), arm.name, self.ledger, sec.pacer, self.raw_log, sec.name)
+
+    async def one(
+        self, arm: Arm, ev: Recording, experiment: str, item: Item, rep: int, key: str, ev2: Recording | None = None
+    ) -> CallRecord:
         if (experiment, arm.name, key) in self.ckpt.done:
             return self.ckpt.done[(experiment, arm.name, key)]
-        est_in, est_out = estimate_item_tokens(arm.name, self.ctx, item)
-        est_usd = price(arm.name, est_in, est_out)
+        est_in, est_usd = item_cost(arm.name, self.ctx, item)
         self.ledger.reserve(est_usd)
-        ev.tag = {"experiment": experiment, "key": key}
+        for e in (ev, ev2):
+            if e is not None:
+                e.tag = {"experiment": experiment, "key": key}
         try:
-            if arm.pacer is not None:
-                await arm.pacer.wait(est_in)
+            for pacer in (arm.pacer, arm.secondary.pacer if arm.secondary else None):
+                if pacer is not None:
+                    await pacer.wait(est_in)
             row = base_row(item, arm.name, experiment, rep)
             if item["set"] == "gate":
-                row |= await run_gate(self.ctx, ev, item["payload"]["text"])
+                row |= await run_gate(self.ctx, ev, item["payload"]["text"], ev2)
             elif item["set"] == "harness2":
                 row |= await run_harness2(self.ctx, ev, item)
             else:
@@ -641,9 +686,10 @@ class Runner:
             raise
         finally:
             self.ledger.release(est_usd)
-        calls = ev.take()
-        if ev.stop_reason:
-            raise ArmStopped(ev.stop_reason)
+        calls = ev.take() + (ev2.take() if ev2 is not None else [])
+        stop = ev.stop_reason or (ev2.stop_reason if ev2 is not None else None)
+        if stop:
+            raise ArmStopped(stop)
         rec = record(experiment, arm.name, key, row, calls)
         self.ckpt.add(rec)
         n = self.new[arm.name] = self.new.get(arm.name, 0) + 1
@@ -653,30 +699,36 @@ class Runner:
 
     async def run_arm(self, arm: Arm, experiment: str, work: list[tuple[Item, int]]) -> None:
         evs: dict[str, Recording] = {}
+        evs2: dict[str, Recording | None] = {}
         try:
             if experiment == "adaptive":
                 ev = evs.setdefault("gate", self._recording(arm, "gate"))
+                ev2 = evs2.setdefault("gate", self._secondary(arm, "gate"))
                 for item, _ in work:
                     if self._paused(arm):
                         break
-                    await self.adaptive(arm, ev, item)
+                    await self.adaptive(arm, ev, item, ev2)
             else:
                 for item, rep in work:
                     if self._paused(arm):
                         break
                     s = item["set"]
+                    if arm.secondary is not None and s != "gate":
+                        continue  # profile strict exists for the main gate only
                     if s not in evs:
                         evs[s] = self._recording(arm, s)
-                    await self.one(arm, evs[s], experiment, item, rep, f"{item['id']}#{rep}")
+                        evs2[s] = self._secondary(arm, s)
+                    await self.one(arm, evs[s], experiment, item, rep, f"{item['id']}#{rep}", evs2[s])
             self.log(f"  {experiment}: {arm.name} {'paused' if arm.paused else 'done'}")
         except ArmStopped as exc:
             arm.stop_reason = str(exc)
             self.log(f"  {experiment}: {arm.name} stopped: {exc}")
         finally:
-            for ev in evs.values():
-                await ev.aclose()
+            for e in [*evs.values(), *evs2.values()]:
+                if e is not None:
+                    await e.aclose()
 
-    async def adaptive(self, arm: Arm, ev: Recording, seed: Item) -> None:
+    async def adaptive(self, arm: Arm, ev: Recording, seed: Item, ev2: Recording | None = None) -> None:
         """Search over stacked corpus transforms with the same query budget, under one of two oracles.
 
         score: greedy; keeps a variant when the risk score goes down (what the 403 body revealed before the fix).
@@ -701,7 +753,7 @@ class Runner:
             item = {**seed, "payload": {"text": text}, "attack_class": "A2", "transform": cand.name, "query": q}
             if q > 1 and self._paused(arm):
                 return
-            rec = await self.one(arm, ev, "adaptive", item, 0, f"{seed['seed_id']}#{q}")
+            rec = await self.one(arm, ev, "adaptive", item, 0, f"{seed['seed_id']}#{q}", ev2)
             if not rec.data.get("blocked") and not rec.data.get("error"):
                 return
             if best_rec is None or _risk(rec) < _risk(best_rec):
@@ -804,13 +856,14 @@ def estimate(settings: Settings, ctx: Context, work: dict[str, list[tuple[Item, 
                 continue
             calls, usd = 0, 0.0
             for item, _ in items:
-                est_in, est_out = estimate_item_tokens(arm, ctx, item)
+                if arm == "dual" and item["set"] != "gate":
+                    continue
                 n = settings.adaptive_queries if experiment == "adaptive" else 1
-                if experiment == "adaptive":
-                    est_in += 600  # stacked wrappers and padding make later queries longer than the seed
-                per = 2 if item["set"] == "openshell" else 1
+                # stacked wrappers and padding make later adaptive queries longer than the seed
+                _, item_usd = item_cost(arm, ctx, item, 600 if experiment == "adaptive" else 0)
+                per = (2 if item["set"] == "openshell" else 1) * (2 if arm == "dual" else 1)
                 calls += n * per
-                usd += n * price(arm, est_in, est_out)
+                usd += n * item_usd
             total += usd
             rows.append({"experiment": experiment, "arm": arm, "calls": calls, "usd": round(usd, 4)})
     return {
@@ -908,6 +961,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--corpus", type=Path, default=CORPUS, help="corpus JSONL; its .manifest.json must sit beside it")
     ap.add_argument("--oracle", choices=("score", "binary"), default="score", help="what the adaptive search sees")
+    ap.add_argument("--strict-privacy", action="store_true", help="run the gate with privacy.strict on")
     ap.add_argument("--label", default="", help="added to the output file names, e.g. after-403")
     ap.add_argument("--past-half", action="store_true", help="continue after the half budget checkpoint")
     ap.add_argument("--fresh", action="store_true", help="discard the checkpoint and start over")
@@ -934,6 +988,7 @@ def main(argv: list[str] | None = None) -> int:
         adaptive_queries=args.adaptive_queries,
         corpus_sha=hashlib.sha256(corpus.read_bytes()).hexdigest(),
         oracle=args.oracle,
+        strict_privacy=args.strict_privacy,
         gemini_tpm=args.gemini_tpm,
     )
     omitted = [a for a in args.omit_arms.split(",") if a]
@@ -943,7 +998,7 @@ def main(argv: list[str] | None = None) -> int:
         bad = set(getattr(settings, name)) - set(allowed)
         if bad:
             ap.error(f"unknown {name}: {sorted(bad)}")
-    ctx = load_context()
+    ctx = load_context(settings.strict_privacy)
     work = plan(settings, items)
     ledger = Ledger(LEDGER, live=args.mode == "live", past_half=args.past_half)
 

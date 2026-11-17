@@ -279,3 +279,18 @@ def test_heldout_corpus_loads_with_its_manifest() -> None:
     for i in items:
         p = i["payload"]
         assert p["adopted"]["guardrails.md"] == p["baseline"]["guardrails.md"]
+
+
+def test_dual_arm_runs_both_evaluators_through_the_strict_profile(tmp_path: Path) -> None:
+    args = ["--mode", "mock", "--limit", "20", "--experiments", "baseline", "--arms", "dual", "--strict-privacy"]
+    assert redteam.main(args) == 0
+    results = tmp_path / "results"
+    calls = [json.loads(c) for c in next(results.glob("redteam-mock-*.calls.jsonl")).read_text().splitlines()[1:]]
+    assert calls and {c["data"]["set"] for c in calls} == {"gate"} and {c["arm"] for c in calls} == {"dual"}
+    assert all(c["data"]["calls"] == 2 for c in calls)
+    assert all(any(r.startswith("secondary (") for r in c["data"]["reasons"]) for c in calls if not c["data"]["error"])
+    raw = [json.loads(line) for line in next(results.glob("redteam-mock-*.raw.jsonl")).read_text().splitlines()]
+    assert {r["evaluator"] for r in raw} == {"jev", "gemini_decision"}
+    assert all("disclosure" in r["answers"] for r in raw if r["ok"])
+    summary = json.loads(next(results.glob("redteam-mock-*.json")).read_text())
+    assert summary["settings"]["strict_privacy"] is True
