@@ -110,6 +110,7 @@ KEY_ENV = {
     "gpt-4o-mini": "OPENAI_API_KEY",
 }
 GPT_OUTPUT_TOKENS = 80  # estimate for one structured answer to three questions
+OMITTED_REASON = "not run, baseline omitted for budget"
 DRIFT_CLASSES = ("none", "C1", "C2", "C3", "C4", "C6", "A1", "A3")
 
 Item = dict[str, Any]
@@ -845,6 +846,10 @@ def summarize(records: list[CallRecord], detector: list[dict[str, object]]) -> d
 
 
 def print_summary(summary: dict[str, Any], log: Callable[[str], None]) -> None:
+    for name, a in summary.get("arms", {}).items():
+        if a["status"] == "omitted":
+            log(f"{name}: {a['reason']}")
+
     def fmt(r: analyze.Rate) -> str:
         if r["rate"] is None:
             return "n/a"
@@ -882,6 +887,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--adaptive-seeds", type=int, default=20)
     ap.add_argument("--adaptive-queries", type=int, default=15)
     ap.add_argument("--gemini-tpm", type=int, default=45_000)
+    ap.add_argument(
+        "--omit-arms",
+        default="",
+        help=f"arms deliberately not run; recorded as '{OMITTED_REASON}' and left out of every comparison",
+    )
     ap.add_argument("--past-half", action="store_true", help="continue after the half budget checkpoint")
     ap.add_argument("--fresh", action="store_true", help="discard the checkpoint and start over")
     ap.add_argument(
@@ -907,6 +917,9 @@ def main(argv: list[str] | None = None) -> int:
         corpus_sha=hashlib.sha256(CORPUS.read_bytes()).hexdigest(),
         gemini_tpm=args.gemini_tpm,
     )
+    omitted = [a for a in args.omit_arms.split(",") if a]
+    if set(omitted) - set(ARMS) or set(omitted) & set(settings.arms):
+        ap.error("--omit-arms must name known arms that are not also in --arms")
     for name, allowed in (("experiments", EXPERIMENTS), ("arms", ARMS), ("sets", SETS)):
         bad = set(getattr(settings, name)) - set(allowed)
         if bad:
@@ -951,7 +964,9 @@ def main(argv: list[str] | None = None) -> int:
     records = list(ckpt.done.values())
     summary = summarize(records, detector_rows(items, ctx))
     summary["settings"] = asdict(settings)
-    summary["arms"] = {a.name: {"status": a.status, "reason": a.reason, "stopped": a.stop_reason} for a in arms}
+    arm_status = {a.name: {"status": a.status, "reason": a.reason, "stopped": a.stop_reason} for a in arms}
+    arm_status |= {name: {"status": "omitted", "reason": OMITTED_REASON, "stopped": None} for name in omitted}
+    summary["arms"] = arm_status
     summary["eval_timeout_ms"] = EVAL_TIMEOUT_MS
     print_summary(summary, print)
     if stopped:

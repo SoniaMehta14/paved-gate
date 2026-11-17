@@ -230,3 +230,15 @@ def test_stop_after_pauses_then_resumes_and_raw_log_has_every_call(tmp_path: Pat
     assert len(keys) == len(set(keys)) == 32
     raw_all = next(results.glob("redteam-mock-*.raw.jsonl")).read_text().splitlines()
     assert len(raw_all) == sum(json.loads(c)["data"]["calls"] for c in calls)  # no call repeated on resume
+
+
+def test_omitted_arms_are_recorded_and_never_compared(tmp_path: Path) -> None:
+    args = ["--mode", "mock", "--limit", "12", "--experiments", "baseline", "--arms", "shipped,jev"]
+    assert redteam.main([*args, "--omit-arms", "gpt-4o,gpt-4o-mini"]) == 0
+    summary = json.loads(next((tmp_path / "results").glob("redteam-mock-*.json")).read_text())
+    for arm in ("gpt-4o", "gpt-4o-mini"):
+        assert summary["arms"][arm] == {"status": "omitted", "reason": redteam.OMITTED_REASON, "stopped": None}
+        assert all(arm not in arms for arms in summary["baseline"].values())
+        assert all(arm not in pair for pair in summary["gate_arm_pairs"])
+    with pytest.raises(SystemExit):
+        redteam.main([*args, "--omit-arms", "jev"])
