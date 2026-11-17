@@ -185,6 +185,7 @@ Precedence, applied in `PavedGate._decide` ([src/paved_gate/gate.py](src/paved_g
 | 1 | Evaluator error, timeout, or malformed answer | `fail_mode: closed` blocks; `open` goes to frontier | No (closed) |
 | 2 | `intent == POLICY_VIOLATION` | **Blocked** (403) | No |
 | 3 | `risk > block_above` (whatever the route) | **Blocked** (403) | No |
+| 3a | `privacy.strict`, the request is sensitive and `disclosure > 0.5` | **Blocked** (403) as `POLICY_VIOLATION` | No |
 | 4 | `intent == DIRECT_CODE_EXEC` and `confidence ≥ min_confidence` | **Deterministic handler** | No |
 | 4a | DIRECT_CODE_EXEC but confidence is low, or no handler matches | Downgraded to frontier, with the reason logged | Yes |
 | 5 | `intent == FRONTIER_AGENT_REQUIRED` | **Frontier**, with the original unmasked state | Yes |
@@ -198,6 +199,12 @@ Risk is reported on the policy's scale. The evaluator returns a continuous level
 - `unit_convert`: length, mass, temperature, and data sizes (SI and IEC).
 - `json_validate`: reports errors with line and column.
 - `date_diff`: days between two ISO dates.
+
+**Strict profile.** With `profile: strict` and a `secondary_evaluator`, both evaluators answer the same questions
+concurrently, within the same `timeout_ms`. The table above is applied to each; the request is blocked if either
+blocks it, goes to a deterministic handler only if both choose `DIRECT_CODE_EXEC`, and falls to `fail_mode` if either
+fails. Each request costs two evaluator calls and waits for the slower one. On the red team corpus, Jev and Gemini
+Decision 1 each let about 10% of attacks through but only 3% got past both; see `docs/redteam`.
 
 To add your own, implement `DeterministicHandler` (a `name` plus `try_run(text) -> dict | None`) and pass `DeterministicRegistry([...])` to the gate.
 
@@ -220,7 +227,9 @@ questions:
   intent:    { instructions: ..., criteria: {DIRECT_CODE_EXEC: ..., FRONTIER_AGENT_REQUIRED: ..., POLICY_VIOLATION: ...}, min_confidence: 0.6 }
   risk:      { instructions: ..., criteria: ["1 - Benign", ..., "5 - Clear attack"], scale_min: 1, block_above: 3.5 }
   sensitive: { instructions: "Does this request contain, or ask to process, PII or PHI?", threshold: 0.5 }
-privacy:  { mask_before_evaluate: true, detectors: [email, phone, ssn, credit_card, mrn, dob] }
+privacy:  { mask_before_evaluate: true, detectors: [email, phone, ssn, credit_card, mrn, dob] }   # strict: false
+# profile: strict                                     # optional: a second evaluator, either can block
+# secondary_evaluator: { provider: gemini_decision, mode: live }
 audit:    { sink: jsonl, path: ./logs/paved_gate.audit.jsonl, log_masked_payload: false }
 downstream: { provider: anthropic, model: claude-opus-5 }
 ```

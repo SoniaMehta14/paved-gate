@@ -19,7 +19,11 @@ class LoadedPolicy:
 
 # Settings added after the policy format shipped, with their defaults. While a policy leaves one at its default it
 # is left out of the hash, so every policy that does not use it hashes exactly as before.
-_ADDED_SETTINGS: dict[tuple[str, ...], object] = {("privacy", "strict"): False}
+_ADDED_SETTINGS: dict[tuple[str, ...], object] = {
+    ("privacy", "strict"): False,
+    ("profile",): "standard",
+    ("secondary_evaluator",): None,
+}
 
 
 def _drop_unused_additions(data: dict[str, object]) -> dict[str, object]:

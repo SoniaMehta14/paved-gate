@@ -7,7 +7,7 @@ import hashlib
 import time
 import uuid
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Literal
 
@@ -117,10 +117,12 @@ class PavedGate:
         audit: AuditSink,
         deterministic: DeterministicRegistry,
         frontier: FrontierHandler | None,
+        secondary: FastEvaluator | None = None,
     ) -> None:
         self.loaded = policy
         self.policy = policy.policy
         self.evaluator = evaluator
+        self.secondary = secondary  # profile strict: asked the same questions; either one can block
         self.audit = audit
         self.deterministic = deterministic
         self.frontier = frontier
@@ -141,12 +143,23 @@ class PavedGate:
         outbound = mask(text, findings) if privacy.mask_before_evaluate else text
 
         evaluation: EvaluationResult | None = None
+        second: EvaluationResult | None = None
         answers: _Answers | None = None
+        second_answers: _Answers | None = None
         error: str | None = None
         try:
             async with asyncio.timeout(self.policy.evaluator.timeout_ms / 1000):
-                evaluation = await self.evaluator.evaluate(outbound, self.questions)
-            answers = _extract(evaluation, privacy.strict)
+                if self.secondary is None:
+                    first = await self.evaluator.evaluate(outbound, self.questions)
+                else:
+                    first, second = await asyncio.gather(
+                        self.evaluator.evaluate(outbound, self.questions),
+                        self.secondary.evaluate(outbound, self.questions),
+                    )
+            evaluation = first
+            answers = _extract(first, privacy.strict)
+            if second is not None:
+                second_answers = _extract(second, privacy.strict)
         except TimeoutError:
             error = f"evaluator timed out after {self.policy.evaluator.timeout_ms}ms"
         except Exception as exc:  # any evaluator failure is handled by fail_mode
@@ -154,6 +167,8 @@ class PavedGate:
 
         local_flag = bool(detectors) and privacy.local_detection_counts_as_sensitive
         verdict = self._decide(answers, error, local_flag)
+        if second is not None and second_answers is not None and error is None:
+            verdict = _combine(verdict, self._decide(second_answers, None, local_flag), second.model)
         # Pre-routing target: the deterministic registry may still fall through to frontier.
         target: str | None = None
         det: tuple[str, dict[str, JsonValue]] | None = None
@@ -185,7 +200,7 @@ class PavedGate:
             intent_confidence=verdict.intent_confidence,
             risk_score=verdict.risk_score,
             sensitive=sensitive,
-            evaluator_ms=evaluation.latency_ms if evaluation else None,
+            evaluator_ms=max(e.latency_ms for e in (evaluation, second) if e) if evaluation else None,
             gate_ms=gate_ms,
             policy_hash=self.loaded.policy_hash,
         )
@@ -321,6 +336,28 @@ class PavedGate:
 
     async def aclose(self) -> None:
         await self.evaluator.aclose()
+        if self.secondary is not None:
+            await self.secondary.aclose()
+
+
+def _combine(primary: _Verdict, secondary: _Verdict, secondary_model: str) -> _Verdict:
+    """profile strict: block if either evaluator blocks; auto execute only if both chose the deterministic route."""
+    tagged = [f"secondary ({secondary_model}): {r}" for r in secondary.reasons]
+    if primary.outcome == "blocked":
+        return replace(primary, reasons=[*primary.reasons, *tagged])
+    if secondary.outcome == "blocked":
+        return replace(secondary, reasons=[*primary.reasons, *tagged])
+    if primary.outcome == "deterministic" and secondary.outcome != "deterministic":
+        note = "secondary evaluator did not agree on DIRECT_CODE_EXEC; routed to frontier"
+        return _Verdict(
+            "frontier",
+            Route.FRONTIER_AGENT_REQUIRED,
+            [*primary.reasons, *tagged, note],
+            primary.intent_confidence,
+            primary.risk_score,
+            primary.noul,
+        )
+    return replace(primary, reasons=[*primary.reasons, *tagged])
 
 
 def evaluator_from_config(cfg: EvaluatorConfig) -> FastEvaluator:
@@ -368,4 +405,9 @@ def paved_gate(
         audit=audit or sink_from_config(p.audit),
         deterministic=deterministic or default_registry(),
         frontier=frontier_from_config(p.downstream) if frontier == "from_policy" else frontier,
+        secondary=(
+            evaluator_from_config(p.secondary_evaluator)
+            if p.profile == "strict" and p.secondary_evaluator is not None
+            else None
+        ),
     )

@@ -125,3 +125,13 @@ class Policy(_Strict):
     privacy: PrivacyConfig = PrivacyConfig()
     audit: AuditConfig = AuditConfig()
     downstream: DownstreamConfig = DownstreamConfig()
+    # strict: every request also goes to secondary_evaluator, concurrently and within evaluator.timeout_ms. It is
+    # blocked if either evaluator's answers block it, and routed to a deterministic handler only if both agree.
+    profile: Literal["standard", "strict"] = "standard"
+    secondary_evaluator: EvaluatorConfig | None = None
+
+    @model_validator(mode="after")
+    def _strict_needs_secondary(self) -> Self:
+        if self.profile == "strict" and self.secondary_evaluator is None:
+            raise ValueError("profile: strict needs a secondary_evaluator")
+        return self
