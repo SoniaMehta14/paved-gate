@@ -861,7 +861,8 @@ gets the `unmapped_files` access. Removing a file is checked the same way as cha
 
 **Decision.** Any protected change, a failed regression check, or an evaluator failure with `fail_mode: closed` gives
 **reject**. Otherwise any change that needs review, or an evaluator failure with `fail_mode: open`, gives
-**needs_review**. Everything else is **accept**. A composed harness identical to its baseline is accepted without
+**needs_review**, as does an edit whose diff was too large to show the evaluator whole: the evaluator cannot clear
+what it did not see. Everything else is **accept**. A composed harness identical to its baseline is accepted without
 calling the evaluator.
 
 **Skill trigger lines.** When a skill is added, Harness² appends a line like

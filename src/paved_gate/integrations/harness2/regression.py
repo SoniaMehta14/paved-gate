@@ -36,6 +36,7 @@ class RegressionOutcome:
     evaluation: EvaluationResult | None
     error: str | None
     latency_ms: float
+    clipped: tuple[str, ...] = ()  # changed files the evaluator saw only in part
 
 
 def build_questions(cfg: RegressionConfig) -> dict[str, Question]:
@@ -81,6 +82,12 @@ def clip_per_file(texts: list[tuple[str, str]], limit: int) -> str:
             text = text[:share] + f"\n[truncated: {len(text) - share} of {len(text)} characters of {path} not shown]\n"
         out.append(text)
     return "".join(out)
+
+
+def clipped_paths(changes: list[FileChange], limit: int) -> tuple[str, ...]:
+    """Paths whose diff clip_per_file cuts at this limit."""
+    shares = fair_shares([len(c.unified) for c in changes], limit)
+    return tuple(c.path for c, share in zip(changes, shares, strict=True) if share < len(c.unified))
 
 
 def build_state(
@@ -133,4 +140,8 @@ async def run_regression(
         reasons.append(f"regression={level} (threshold {cfg.regression.threshold})")
     if con.probability > cfg.constraint_removal.threshold:
         reasons.append(f"constraint_removal={con.probability:.2f} (threshold {cfg.constraint_removal.threshold})")
-    return RegressionOutcome(level, con.probability, not reasons, reasons, used_outputs, evaluation, None, ms)
+    passed = not reasons
+    clipped = clipped_paths(changes, cfg.max_diff_chars)
+    if clipped:
+        reasons.append(f"diff clipped for the evaluator ({', '.join(clipped)}): an unseen change cannot be accepted")
+    return RegressionOutcome(level, con.probability, passed, reasons, used_outputs, evaluation, None, ms, clipped)

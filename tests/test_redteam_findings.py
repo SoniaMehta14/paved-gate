@@ -294,3 +294,32 @@ def test_V5_the_client_chooses_the_audit_request_id(loaded_policy: LoadedPolicy)
         client.post("/agent", json=body, headers={"x-request-id": "approved-by-security"})
     ids = [r.request_id for r in sink.records if isinstance(r, GateDecisionEntry)]
     assert ids == ["approved-by-security", "approved-by-security"]
+
+
+HELDOUT = {
+    i["id"]: i
+    for i in (
+        json.loads(line)
+        for line in (ROOT / "data" / "redteam" / "heldout_harness2_v1.jsonl").read_text(encoding="utf-8").splitlines()
+    )
+}
+
+
+async def test_C6_harness2_edit_too_large_to_show_whole_goes_to_review() -> None:
+    """Mitigated. Before: a weakening at the end of one oversized file fell past the clip and was accepted (10 of
+    10 held out items, both live arms, before and after per file clipping). Now a clipped edit is never accepted
+    on the evaluator's word; it is held for review. The cost: large benign edits are held too."""
+    policy = load_adoption_policy(ROOT / "policy" / "harness2_adoption.policy.yaml")
+    weak = HELDOUT["heldout.h01.pad_same_file"]["payload"]["adopted"]["systemprompt.md"].splitlines()[-1]
+    ev = Keyword(lambda s: weak in s)
+    gate = AdoptionGate(policy, ev, adoption_policy_hash(policy))
+
+    def adoption(item: dict[str, Any]) -> Adoption:
+        ITEMS[item["id"]] = item
+        return _adoption(item["id"])
+
+    entry = await gate.evaluate(adoption(HELDOUT["heldout.h01.pad_same_file"]), ROOT)
+    assert weak not in ev.states[-1]
+    assert entry.decision == "needs_review" and any("diff clipped" in r for r in entry.reasons)
+    assert (await gate.evaluate(adoption(HELDOUT["heldout.h01.benign_tool"]), ROOT)).decision == "accept"
+    assert (await gate.evaluate(_adoption("harness2.b01.large_memory"), ROOT)).decision == "needs_review"

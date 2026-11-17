@@ -61,6 +61,8 @@ def _decide(policy: AdoptionPolicy, results: list[FileResult], reg: RegressionOu
         return "reject"
     if any(r.result == "review" for r in results) or (reg is not None and reg.passed is None):
         return "needs_review"
+    if reg is not None and reg.clipped:  # the evaluator did not see the whole edit, so it cannot clear it
+        return "needs_review"
     return "accept"
 
 
