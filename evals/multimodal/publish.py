@@ -131,7 +131,7 @@ def export() -> J:
         },
         "arms": run.ARM_LABEL,
         "calls": main["calls"],
-        "counts": main["counts"],
+        "counts": with_edited_png(main["counts"], cases),
         "latency_ms": main["latency_ms"],
         "gemini_latency_ms_by_artifact": main["gemini_latency_ms_by_artifact"],
         "gemini_input_tokens_by_modality": main["gemini_input_tokens_by_modality"],
@@ -155,6 +155,35 @@ def export() -> J:
         },
         "gemini_pdf_text_tokens": pdf_text,
     }
+
+
+def edited_png_counts(cases: list[J]) -> dict[str, dict[str, list[int]]]:
+    """Counts for the edited screenshots only: edited cases sent as PNG, leaving out the edited PDF cases."""
+    counts: dict[str, dict[str, list[int]]] = {}
+    for c in cases:
+        if c["group"] != "edited" or c["mime_type"] != "image/png" or not c["counted"]:
+            continue
+        arms = c["arms"]
+        assert isinstance(arms, dict)
+        for arm, cells in arms.items():
+            for q in QKEYS:
+                ok = cells[q]["correct"]
+                if ok is None:
+                    continue
+                n = counts.setdefault(arm, {}).setdefault(q, [0, 0])
+                n[0] += int(ok)
+                n[1] += 1
+    return counts
+
+
+def with_edited_png(counts: object, cases: list[J]) -> J:
+    assert isinstance(counts, dict)
+    ordered: J = {}
+    for g, v in counts.items():
+        ordered[g] = v
+        if g == "edited_conflict":
+            ordered["edited_png"] = edited_png_counts(cases)
+    return ordered
 
 
 def text_tokens(rec: J) -> int:
@@ -196,6 +225,7 @@ GROUPS = {
     "unedited": "Unedited cases",
     "edited": "Edited cases, all",
     "edited_conflict": "Edited cases where that question's label differs from what the records say",
+    "edited_png": "Edited screenshots only (the edited PNG cases, without the edited PDF cases)",
     "controls": "Legibility controls",
 }
 

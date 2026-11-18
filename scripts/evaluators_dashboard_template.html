@@ -536,7 +536,7 @@
     const QS = Object.keys(QN);
     const MARMS = Object.keys(m.arms);
     const MLABEL = { gemini_decision: "Gemini Decision 1", jev_image: "Jev image (preview)", jev_text: "Jev text only" };
-    const GROUP = { unedited: "Unedited", edited: "Edited, all", edited_conflict: "Edited, label differs from the records", controls: "Legibility controls" };
+    const GROUP = { unedited: "Unedited", edited: "Edited, all", edited_conflict: "Edited, label differs from the records", edited_png: "Edited screenshots only", controls: "Legibility controls" };
     const yn = (v) => v === true ? "yes" : v === false ? "no" : String(v).replace("_", " ");
     const frac = (c) => c ? `${c[0]} of ${c[1]}` : "n/a";
     const root = document.getElementById("mm");

@@ -110,3 +110,23 @@ def test_published_page_matches_the_generator() -> None:
     report = json.loads(REPORT.read_text(encoding="utf-8"))
     expected = render_html(page_data(report, REPORT.name, load(), PUBLISHED.name))
     assert (ROOT / "docs" / "benchmarks" / "index.html").read_text(encoding="utf-8") == expected
+
+
+def test_edited_screenshots_group_counts_only_edited_png_cases() -> None:
+    data = load()
+    cases = data["cases"]
+    assert isinstance(cases, list)
+    picked = [c for c in cases if c["group"] == "edited" and c["mime_type"] == "image/png"]
+    assert len(picked) == 11
+    counts = data["counts"]
+    assert isinstance(counts, dict)
+    assert list(counts) == ["unedited", "edited", "edited_conflict", "edited_png", "controls"]
+    assert counts["edited_png"] == publish.edited_png_counts(cases)
+    for arm in ("gemini_decision", "jev_image", "jev_text"):
+        for q in publish.QKEYS:
+            right = sum(c["arms"][arm][q]["correct"] is True for c in picked)
+            assert counts["edited_png"][arm][q] == [right, 11]
+    # an edited PDF case or an uncounted case must not change the group
+    pdf = next(c for c in cases if c["group"] == "edited" and c["mime_type"] == "application/pdf")
+    extra = {**picked[0], "counted": False}
+    assert publish.edited_png_counts([*picked, pdf, extra]) == counts["edited_png"]
