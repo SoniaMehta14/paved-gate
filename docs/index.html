@@ -63,6 +63,18 @@
   <p class="lede">Published snapshots of live runs of the Paved Gate fast evaluator (Jev): latency and cost against frontier models, classification accuracy on labelled support tickets (a 1,080-ticket eval and the full Bitext benchmark), and Paved Gate as supervisor middleware in NVIDIA OpenShell sandboxes. Also adoption gate reports for Harness² harness edits.</p>
 
   <div class="cards">
+    <a class="card" href="./redteam/">
+      <h2>Red teaming Paved Gate</h2>
+      <p class="when">November 17, 2026 · Jev and Gemini Decision 1 live · synthetic corpus</p>
+      <span class="badge">Live evaluators</span>
+      <p class="desc">Attack classes by trust boundary, attack success with 95% intervals, and before and after results for each mitigation, including the one that did not work. GPT baselines not run.</p>
+      <div class="kpis">
+        <div class="kpi"><div class="v">10% → 3%</div><div class="l">single try attack success,<br>one evaluator vs strict profile</div></div>
+        <div class="kpi"><div class="v">72% → 25%</div><div class="l">attacks broken<br>with 15 retries</div></div>
+      </div>
+      <span class="open">Open report →</span>
+    </a>
+
     <a class="card" href="./benchmark/">
       <h2>Latency and cost benchmark</h2>
       <p class="when">September 27, 2026 · 4 arms × 60 requests</p>

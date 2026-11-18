@@ -43,6 +43,7 @@ request ─▶│ detect PII ─▶ mask ─▶ FastEvaluator: 1 request, 3 type
 - [NVIDIA OpenShell integration](#nvidia-openshell-integration)
 - [Harness² edit adoption gate](#harness-edit-adoption-gate)
 - [Multimodal gate](#multimodal-gate)
+- [Red team](#red-team)
 - [Project layout](#project-layout)
 - [Limitations](#limitations)
 - [Troubleshooting](#troubleshooting)
@@ -1026,6 +1027,35 @@ tests/                            215 tests: decision branches, Jev contract, Ge
 ```
 
 Development: `uv run pytest`, `uv run mypy src tests examples`, `uv run ruff check .` (mypy `--strict`).
+
+---
+
+## Red team
+
+We red teamed the gate itself: how and when it can be fooled, measured with live Jev and Gemini Decision 1 on a
+synthetic corpus, and what each fix did. Report: [docs/redteam](docs/redteam/index.html), plain language summary in
+[docs/redteam/SUMMARY.md](docs/redteam/SUMMARY.md), tables in [docs/redteam/RESULTS.md](docs/redteam/RESULTS.md).
+GPT 4o and GPT 4o mini were not run (baseline omitted for budget).
+
+* **Taxonomy.** Attack classes are grouped by trust boundary (context, action, verification) in
+  [evals/redteam/taxonomy.py](evals/redteam/taxonomy.py), for reuse.
+* **Corpus.** 825 synthetic items from a seeded generator, [evals/redteam/build_corpus.py](evals/redteam/build_corpus.py),
+  plus held out Harness2 and privacy sets, each committed before the related fix was measured on it.
+* **Runner.** [scripts/redteam.py](scripts/redteam.py) sends every item through the real gates and records each
+  decision and raw evaluator response. It keeps a spend ledger with a hard cap and resumes from a checkpoint.
+* **Deterministic findings.** [tests/test_redteam_findings.py](tests/test_redteam_findings.py) pins each finding
+  that needs no model, before and after its fix.
+
+```bash
+uv run python scripts/redteam.py --estimate            # call counts and cost, no API calls
+uv run python scripts/redteam.py --mode mock           # pipeline check, no API calls
+uv run python scripts/redteam.py --mode live --yes     # real API calls
+uv run python evals/redteam/redteam_report.py                  # rebuild docs/redteam from the committed run data
+```
+
+What changed in the library as a result: a blocked request's 403 now carries only the request id; Harness2 clips the
+diff per file, shows the evaluator the protected rule files and holds edits too large to show whole for review;
+`privacy.strict` and `profile: strict` are new opt in policy settings.
 
 ---
 
