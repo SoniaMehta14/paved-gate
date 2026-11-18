@@ -1,0 +1,14 @@
+{
+  "baseline": "redteam-live-20261117T004835Z",
+  "adaptive_binary": "redteam-live-adaptive-binary-20261117T020014Z",
+  "harness2_context": "redteam-live-harness2-after-20261117T015136Z",
+  "harness2_review": "redteam-live-harness2-review-20261118T050217Z",
+  "heldout_before": "redteam-live-heldout-before-20261117T014638Z",
+  "heldout_context": "redteam-live-heldout-after-20261117T024403Z",
+  "heldout_review": "redteam-live-heldout-review-20261118T050626Z",
+  "privacy_before": "redteam-live-privacy-before-20261117T045252Z",
+  "privacy_after": "redteam-live-privacy-after-20261118T044308Z",
+  "strict_privacy_gate": "redteam-live-strict-privacy-20261118T044204Z",
+  "dual": "redteam-live-dual-20261117T172715Z",
+  "dual_adaptive": "redteam-live-dual-adaptive-20261118T042127Z"
+}
