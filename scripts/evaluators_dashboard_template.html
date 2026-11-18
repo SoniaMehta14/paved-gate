@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paved Gate Evaluator Benchmark</title>
+<meta name="description" content="Jev vs Gemini Decision 1 on governance workloads: support ticket classification, Harness² edit adoption and high fanout policy checks, from one live run.">
+<script>
+  // ?theme=light|dark forces a theme (handy for screenshots); otherwise follow the OS.
+  (() => {
+    const t = new URLSearchParams(location.search).get("theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  })();
+</script>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --link: #256abf;
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --badge-live-bg: #e6f4e6;   --badge-live-ink: #006300;
+    --badge-synth-bg: #fdf0d8;  --badge-synth-ink: #7a4b00;
+    --notice-bg: #fdf6e8;       --notice-border: #f0d9a8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10); --link: #86b6ef;
+      --series-1: #3987e5; --series-2: #d95926;
+      --badge-live-bg: #11301a; --badge-live-ink: #7fd67f; --badge-synth-bg: #3a2a0c; --badge-synth-ink: #f3c46b;
+      --notice-bg: #2b2412; --notice-border: #5a4618;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10); --link: #86b6ef;
+    --series-1: #3987e5; --series-2: #d95926;
+    --badge-live-bg: #11301a; --badge-live-ink: #7fd67f; --badge-synth-bg: #3a2a0c; --badge-synth-ink: #f3c46b;
+    --notice-bg: #2b2412; --notice-border: #5a4618;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--link); }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 40px 24px 56px; }
+  @media (max-width: 600px) { .wrap { padding: 24px 16px 40px; } }
+
+  .top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: start; margin-bottom: 24px; }
+  @media (max-width: 860px) { .top { grid-template-columns: minmax(0, 1fr); } }
+  header { min-width: 0; }
+  .delta { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; min-width: 320px; }
+  @media (max-width: 860px) { .delta { min-width: 0; } }
+  .delta-title { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 8px; }
+  .kpis { display: grid; grid-template-columns: auto auto auto; gap: 4px 24px; align-items: baseline; }
+  .kpis .h { font-size: 12px; color: var(--ink-2); }
+  .kpis .arm { font-size: 13px; font-weight: 600; }
+  .kpis .v { font-size: 26px; font-weight: 650; line-height: 1.15; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+  .delta-vs { font-size: 12px; color: var(--ink-2); margin: 10px 0 0; }
+  .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 6px; }
+  h1 { font-size: 28px; line-height: 1.2; font-weight: 650; margin: 0 0 10px; letter-spacing: -0.01em; }
+  .meta { color: var(--ink-2); font-size: 14px; margin: 0 0 10px; }
+  .meta strong { color: var(--ink); font-weight: 600; }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 650;
+    letter-spacing: 0.04em; text-transform: uppercase; background: var(--badge-live-bg); color: var(--badge-live-ink); }
+  .badge.synthetic, .badge.not-live { background: var(--badge-synth-bg); color: var(--badge-synth-ink); }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .notice {
+    background: var(--notice-bg); border: 1px solid var(--notice-border); border-radius: 10px;
+    padding: 12px 16px; font-size: 14px; margin: 0 0 20px; color: var(--ink);
+  }
+  .notice b { font-weight: 650; }
+  .notice ul { margin: 6px 0 0; padding-left: 18px; }
+  .notice li + li { margin-top: 4px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 20px 16px; margin-bottom: 16px; }
+  .card h2 { font-size: 17px; font-weight: 650; margin: 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .card h3 { font-size: 14px; font-weight: 650; margin: 18px 0 6px; }
+  .card .sub { color: var(--ink-2); font-size: 13px; margin: 2px 0 12px; }
+  .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 860px) { .grid-2 { grid-template-columns: minmax(0, 1fr); } }
+  .grid-2 .card { margin-bottom: 0; }
+  .grid-2 + .card, .grid-2 + .grid-2 { margin-top: 16px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); margin: 0 0 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .legend i.light { opacity: 0.45; }
+
+  svg { display: block; width: 100%; overflow: visible; }
+  svg text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .tick { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .row-label { fill: var(--ink); font-size: 13px; font-weight: 600; }
+  @media (max-width: 600px) { .row-label { font-size: 11.5px; } .value { font-size: 11.5px; } }
+  .value { fill: var(--ink); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .gridline { stroke: var(--grid); stroke-width: 1; }
+  .baseline { stroke: var(--axis); stroke-width: 1; }
+  .whisker { stroke-width: 2; stroke-linecap: round; }
+
+  .tooltip {
+    position: fixed; pointer-events: none; z-index: 10; background: var(--ink); color: var(--surface);
+    font-size: 13px; padding: 6px 10px; border-radius: 6px; white-space: nowrap; opacity: 0; transition: opacity 80ms;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .table-scroll { overflow-x: auto; }
+  th, td { text-align: left; padding: 9px 6px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  th { font-size: 12px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; vertical-align: bottom; }
+  td.arm { white-space: nowrap; font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td .ci { color: var(--ink-2); font-size: 12px; }
+  tr:last-child td { border-bottom: none; }
+  tr.jev td.arm { color: var(--series-1); }
+  tr.gemini_decision td.arm { color: var(--series-2); }
+  .table-note { color: var(--ink-2); font-size: 12px; margin: 10px 0 0; }
+
+  ul.caveats { margin: 6px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--ink-2); }
+  ul.caveats li + li { margin-top: 6px; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--grid); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <header>
+      <p class="eyebrow">Paved Gate · Evaluator benchmark</p>
+      <h1 id="title"></h1>
+      <p class="meta" id="meta"></p>
+      <div class="badges" id="badges"></div>
+    </header>
+    <aside class="delta" aria-label="Headline numbers">
+      <p class="delta-title">Support tickets</p>
+      <div class="kpis" id="kpis"></div>
+      <p class="delta-vs" id="kpi-note"></p>
+    </aside>
+  </div>
+
+  <div class="notice" id="notice"></div>
+
+  <section class="card" aria-labelledby="acc-title">
+    <h2 id="acc-title">Support ticket classification</h2>
+    <p class="sub" id="acc-sub"></p>
+    <div class="legend">
+      <span><i style="background: var(--series-1)"></i>Jev</span>
+      <span><i style="background: var(--series-2)"></i>Gemini Decision 1</span>
+      <span>Dot = accuracy · line = bootstrap 95% interval</span>
+    </div>
+    <div id="acc-chart"></div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Arm</th><th class="num">Accuracy<br>95% CI</th><th class="num">Macro F1</th><th class="num">ECE, top<br>probability</th>
+            <th class="num">ECE, own<br>confidence field</th><th class="num">p50 ms</th><th class="num">p95 ms</th><th class="num">Calls</th><th class="num">Errors</th>
+          </tr>
+        </thead>
+        <tbody id="tickets-body"></tbody>
+      </table>
+    </div>
+    <p class="table-note">ECE uses 10 equal width bins over the top class probability, computed the same way for both arms. The own confidence field is each API's own number and is not comparable between them. Latency excludes calls that needed a retry: <span id="tickets-excluded"></span>.</p>
+  </section>
+
+  <div class="grid-2">
+    <section class="card" aria-labelledby="paired-title">
+      <h2 id="paired-title">Is the accuracy gap real?</h2>
+      <p class="sub" id="paired-sub"></p>
+      <table>
+        <tbody id="paired-body"></tbody>
+      </table>
+      <p class="table-note" id="paired-note"></p>
+    </section>
+    <section class="card" aria-labelledby="lat-title">
+      <h2 id="lat-title">Latency per ticket</h2>
+      <p class="sub">Milliseconds, one call per ticket, sent one at a time. Lower is faster.</p>
+      <div class="legend">
+        <span><i style="background: var(--ink-2)"></i>p50</span>
+        <span><i class="light" style="background: var(--ink-2)"></i>p95</span>
+      </div>
+      <div id="lat-chart"></div>
+    </section>
+  </div>
+
+  <section class="card" aria-labelledby="h2-title">
+    <h2 id="h2-title">Harness² edit adoption <span class="badge synthetic">Synthetic cases</span></h2>
+    <p class="sub" id="h2-sub"></p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Arm</th><th class="num">Guardrail weakening<br>caught</th><th class="num">Empty output<br>caught</th>
+            <th class="num">Benign edits<br>flagged</th><th class="num">Errors</th><th class="num">p50 ms</th><th class="num">p95 ms</th>
+          </tr>
+        </thead>
+        <tbody id="h2-body"></tbody>
+      </table>
+    </div>
+    <p class="table-note">The 30 cases are small synthetic edits labelled by construction, 10 per category. Read them as counts; they are not a basis for ranking the evaluators.</p>
+  </section>
+
+  <section class="card" aria-labelledby="fan-title">
+    <h2 id="fan-title">High fanout policy check</h2>
+    <p class="sub" id="fan-sub"></p>
+    <div class="legend">
+      <span><i style="background: var(--series-1)"></i>Jev</span>
+      <span><i style="background: var(--series-2)"></i>Gemini Decision 1</span>
+      <span>p50 latency per decision: per call p50 divided by questions per call</span>
+    </div>
+    <div id="fan-chart"></div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Arm</th><th class="num">Questions<br>per call</th><th class="num">Calls</th><th class="num">p50 ms<br>per call</th><th class="num">p95 ms<br>per call</th>
+            <th class="num">p50 ms<br>per decision</th><th class="num">Median<br>input tokens</th><th class="num">USD per<br>1,000 decisions</th>
+          </tr>
+        </thead>
+        <tbody id="fan-body"></tbody>
+      </table>
+    </div>
+    <p class="table-note" id="fan-note"></p>
+  </section>
+
+  <section class="card" aria-labelledby="caveats-title">
+    <h2 id="caveats-title">Setup and caveats</h2>
+    <ul class="caveats" id="caveats"></ul>
+  </section>
+
+  <footer id="footer"></footer>
+</div>
+<div class="tooltip" id="tooltip" role="tooltip"></div>
+<script id="results-data" type="application/json">/*__RESULTS__*/null</script>
+<script>
+(() => {
+  "use strict";
+  const data = JSON.parse(document.getElementById("results-data").textContent);
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const ARMS = Object.keys(data.arm_labels).filter((a) => data.arms[a]);
+  const COLOR = { jev: "var(--series-1)", gemini_decision: "var(--series-2)" };
+  const label = (a) => data.arm_labels[a] ?? a;
+
+  const el = (tag, attrs = {}, ...children) => {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+    for (const c of children) node.append(c);
+    return node;
+  };
+  const svgEl = (tag, attrs = {}, text) => {
+    const node = document.createElementNS(SVGNS, tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+  const fmtInt = (v) => v.toLocaleString("en-US");
+  const pct = (v, d = 1) => `${(v * 100).toFixed(d)}%`;
+  const fmtMs = (v) => v >= 100 ? v.toFixed(0) : v.toFixed(1);
+  const fmtP = (p) => p < 0.001 ? p.toExponential(1) : p.toFixed(3);
+  const td = (text, cls = "num") => el("td", { class: cls }, text);
+  const armCell = (a) => el("td", { class: "arm" }, label(a));
+  const date = new Date(data.date);
+  const dateText = date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+  const live = data.mode === "live";
+
+  // ------------------------------------------------------------ header
+  document.getElementById("title").textContent = data.title;
+  const models = ARMS.map((a) => `${label(a)} ${data.models[a]}`).join(" · ");
+  document.getElementById("meta").append(
+    "Run ", el("strong", {}, dateText), ` (${data.date.slice(11, 16)} UTC) · ${models}` +
+    (data.calls_total ? ` · ${fmtInt(data.calls_total)} recorded API calls` : ""),
+  );
+  const badges = document.getElementById("badges");
+  for (const a of ARMS) {
+    const ok = live && data.arms[a].status === "ok";
+    badges.append(el("span", { class: ok ? "badge" : "badge not-live" }, `${label(a)}: ${ok ? "live" : data.mode}`));
+  }
+
+  // ------------------------------------------------------------ headline numbers
+  const t = data.tickets;
+  const kpis = document.getElementById("kpis");
+  kpis.append(el("span", { class: "h" }, ""), el("span", { class: "h" }, "Accuracy"), el("span", { class: "h" }, "p50 latency"));
+  for (const a of ARMS) {
+    const r = t.arms[a];
+    kpis.append(
+      el("span", { class: "arm", style: `color: ${COLOR[a]}` }, label(a)),
+      el("span", { class: "v" }, pct(r.accuracy)),
+      el("span", { class: "v" }, `${fmtMs(r.latency.p50_ms)} ms`),
+    );
+  }
+  const pa = t.paired_accuracy;
+  document.getElementById("kpi-note").textContent =
+    `${fmtInt(pa.n)} labelled tickets per arm. Paired McNemar p = ${fmtP(pa.p_value)}, from one run.`;
+
+  // ------------------------------------------------------------ read with care
+  const s = data.settings;
+  const items = el("ul");
+  items.append(el("li", {}, el("b", {}, "One live run. "),
+    "Every number comes from a single run on one day. Network, region and provider load all move latency, so read the latency figures as this run's, not as typical."));
+  if (s.resumed_from_checkpoint) {
+    items.append(el("li", {}, el("b", {}, "Resumed from a checkpoint. "),
+      `The run stopped once on a Gemini rate limit. ${fmtInt(s.calls_restored)}` +
+      (data.calls_total ? ` of ${fmtInt(data.calls_total)}` : "") +
+      " calls were timed in the first session and kept; the rest were timed in the second."));
+  }
+  if (s.gemini_tier) {
+    items.append(el("li", {}, el("b", {}, `Gemini on the ${s.gemini_tier} tier. `),
+      `Gemini calls were paced to ${fmtInt(s.gemini_tpm)} input tokens per minute, waiting before each call outside the timed section; Jev was not paced. ` +
+      "Gemini cost below uses the paid tier list price, although this run's Gemini calls cost nothing."));
+  }
+  const [jci, gci] = [t.arms.jev.accuracy_ci95, t.arms.gemini_decision.accuracy_ci95];
+  const overlap = jci[0] <= gci[1] && gci[0] <= jci[1];
+  items.append(el("li", {}, el("b", {}, "The accuracy gap is small. "),
+    `Gemini Decision 1 answered ${fmtInt(pa.only_gemini_decision_correct)} tickets correctly that Jev missed, and Jev ${fmtInt(pa.only_jev_correct)} the other way ` +
+    `(p = ${fmtP(pa.p_value)}, one uncorrected test).` + (overlap ? " The 95% intervals overlap." : "")));
+  items.append(el("li", {}, el("b", {}, "Not like for like everywhere. "),
+    "The two APIs use different retry policies and report confidence differently, and the Harness² cases are synthetic. The full list is under Setup and caveats."));
+  document.getElementById("notice").append(el("b", {}, "Read with care:"), items);
+
+  // ------------------------------------------------------------ tooltip
+  const tip = document.getElementById("tooltip");
+  const showTip = (evt, text) => {
+    tip.textContent = text;
+    tip.style.opacity = "1";
+    const pad = 12, w = tip.offsetWidth;
+    tip.style.left = `${Math.min(evt.clientX + pad, window.innerWidth - w - 8)}px`;
+    tip.style.top = `${evt.clientY + pad}px`;
+  };
+  const hideTip = () => { tip.style.opacity = "0"; };
+  const hover = (node, text) => {
+    node.addEventListener("mousemove", (e) => showTip(e, text));
+    node.addEventListener("mouseleave", hideTip);
+    node.append(svgEl("title", {}, text));
+  };
+
+  function niceScale(v, target = 5) {
+    if (!(v > 0)) return { max: 1, step: 0.2 };
+    const raw = v / target;
+    const base = 10 ** Math.floor(Math.log10(raw));
+    const step = [1, 2, 2.5, 5, 10].map((k) => k * base).find((s) => s >= raw);
+    return { max: Math.ceil(v / step) * step, step };
+  }
+  function barPath(x, y, w, h) {
+    const r = Math.min(4, w, h / 2);
+    if (w <= 0) return "";
+    return `M${x},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x} Z`;
+  }
+  const labelWidth = (w) => w < 520 ? 130 : 160;
+
+  function frame(container, rows, rowH, ticks, x) {
+    const width = container.clientWidth || 600;
+    const top = 6, bottom = 24;
+    const height = top + rows * rowH + bottom;
+    const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, height, role: "img" });
+    for (const tk of ticks) {
+      svg.append(svgEl("line", { class: "gridline", x1: x(tk.v), x2: x(tk.v), y1: top, y2: top + rows * rowH }));
+      svg.append(svgEl("text", { class: "tick", x: x(tk.v), y: height - 6, "text-anchor": "middle" }, tk.text));
+    }
+    return { svg, top, width };
+  }
+
+  // Dot = point estimate, whisker = 95% interval. The axis spans the data, not zero, and every tick is labelled.
+  function dotChart(container, rows) {
+    container.textContent = "";
+    const width = container.clientWidth || 600;
+    const lw = labelWidth(width), right = 64, rowH = 30;
+    const lo = Math.floor(Math.min(...rows.map((r) => r.lo)) * 100 - 0.5);
+    const hi = Math.min(100, Math.ceil(Math.max(...rows.map((r) => r.hi)) * 100 + 0.5));
+    const x = (v) => lw + ((v - lo) / (hi - lo)) * (width - lw - right);
+    const plotW = width - lw - right;
+    const step = [1, 2, 5].find((st) => plotW / ((hi - lo) / st) >= 40) ?? 5;
+    const ticks = [];
+    for (let v = lo; v <= hi; v += step) ticks.push({ v, text: `${v}%` });
+    const { svg, top } = frame(container, rows.length, rowH, ticks, x);
+    svg.setAttribute("aria-label", "Ticket accuracy by arm with bootstrap 95% interval");
+    rows.forEach((r, i) => {
+      const cy = top + i * rowH + rowH / 2;
+      svg.append(svgEl("text", { class: "row-label", x: 0, y: cy + 4 }, r.label));
+      const g = svgEl("g");
+      g.append(svgEl("line", { class: "whisker", x1: x(r.lo * 100), x2: x(r.hi * 100), y1: cy, y2: cy, stroke: r.color }));
+      g.append(svgEl("circle", { cx: x(r.v * 100), cy, r: 5.5, fill: r.color }));
+      g.append(svgEl("rect", { x: lw, y: cy - rowH / 2, width: plotW, height: rowH, fill: "transparent" }));
+      hover(g, `${r.label}: ${pct(r.v, 2)} (95% CI ${pct(r.lo, 2)} to ${pct(r.hi, 2)})`);
+      svg.append(g);
+      svg.append(svgEl("text", { class: "value", x: width - right + 10, y: cy + 4 }, pct(r.v)));
+    });
+    container.append(svg);
+  }
+
+  // Bars from zero; one or more series per row.
+  function barChart(container, rows, fmt, tickFmt, aria) {
+    container.textContent = "";
+    const width = container.clientWidth || 600;
+    const lw = labelWidth(width), right = 70;
+    const nSeries = rows[0].values.length, barH = 12, gap = 3;
+    const rowH = nSeries * barH + (nSeries - 1) * gap + 14;
+    const target = Math.max(2, Math.min(5, Math.floor((width - lw - right) / 70)));
+    const { max, step } = niceScale(Math.max(...rows.flatMap((r) => r.values.map((v) => v.v))), target);
+    const x = (v) => lw + (v / max) * (width - lw - right);
+    const ticks = [];
+    for (let i = 0; i * step <= max + step / 2; i++) {
+      const v = Number((i * step).toPrecision(6));
+      ticks.push({ v, text: tickFmt(v) });
+    }
+    const { svg, top } = frame(container, rows.length, rowH, ticks, x);
+    svg.setAttribute("aria-label", aria);
+    rows.forEach((r, i) => {
+      const y0 = top + i * rowH + 7;
+      svg.append(svgEl("text", { class: "row-label", x: 0, y: y0 + (rowH - 14) / 2 + 4 }, r.label));
+      r.values.forEach((sv, j) => {
+        const y = y0 + j * (barH + gap);
+        const p = svgEl("path", { d: barPath(x(0), y, Math.max(1, x(sv.v) - x(0)), barH), fill: sv.color, "fill-opacity": sv.opacity ?? 1 });
+        hover(p, `${r.label}, ${sv.name}: ${fmt(sv.v)}`);
+        svg.append(p);
+        svg.append(svgEl("text", { class: "value", x: x(sv.v) + 6, y: y + barH - 2 }, fmt(sv.v)));
+      });
+    });
+    svg.append(svgEl("line", { class: "baseline", x1: x(0), x2: x(0), y1: top, y2: top + rows.length * rowH }));
+    container.append(svg);
+  }
+
+  // ------------------------------------------------------------ tables
+  document.getElementById("acc-sub").textContent =
+    `${fmtInt(pa.n)} labelled tickets from the public Bitext sample, one call per ticket per arm. ` +
+    "The axis starts just below the lowest interval, not at zero.";
+  const ci = (pair, f) => el("span", { class: "ci" }, `${f(pair[0])} to ${f(pair[1])}`);
+  const tb = document.getElementById("tickets-body");
+  for (const a of ARMS) {
+    const r = t.arms[a];
+    tb.append(el("tr", { class: a }, armCell(a),
+      el("td", { class: "num" }, pct(r.accuracy, 2), el("br"), ci(r.accuracy_ci95, (v) => pct(v, 2))),
+      td(r.macro_f1.toFixed(3)),
+      el("td", { class: "num" }, r.ece_top_probability.toFixed(3), el("br"), ci(r.ece_top_probability_ci95, (v) => v.toFixed(3))),
+      td(r.ece_confidence_field.toFixed(3)),
+      td(fmtMs(r.latency.p50_ms)), td(fmtMs(r.latency.p95_ms)),
+      td(fmtInt(r.calls)), td(fmtInt(r.errors)),
+    ));
+  }
+
+  document.getElementById("tickets-excluded").textContent =
+    ARMS.map((a) => `${fmtInt(t.arms[a].latency.excluded_retried)} for ${label(a)}`).join(", ");
+
+  document.getElementById("paired-sub").textContent =
+    `Exact two sided McNemar test over the ${fmtInt(pa.n)} tickets both arms answered. Only the tickets where they disagree on correctness enter the p value.`;
+  const pb = document.getElementById("paired-body");
+  const pRow = (name, v) => el("tr", {}, el("td", {}, name), td(v));
+  pb.append(
+    pRow("Both correct", fmtInt(pa.both_correct)),
+    pRow("Only Jev correct", fmtInt(pa.only_jev_correct)),
+    pRow("Only Gemini Decision 1 correct", fmtInt(pa.only_gemini_decision_correct)),
+    pRow("Both wrong", fmtInt(pa.both_wrong)),
+    pRow("p value", fmtP(pa.p_value)),
+  );
+  document.getElementById("paired-note").textContent =
+    `The arms gave the same label on ${fmtInt(t.agreement.agree)} of ${fmtInt(t.agreement.n)} tickets (${pct(t.agreement.rate)}). ` +
+    `p is ${pa.p_value < 0.05 ? "below" : "above"} 0.05, but this is one test on one run; a second run could land either side of it.`;
+
+  const h = data.harness2;
+  document.getElementById("h2-sub").textContent =
+    `Should the gate flag this harness edit? ${fmtInt(h.agreement.n)} cases, one call each. The arms agreed on ${fmtInt(h.agreement.agree)} of ${fmtInt(h.agreement.n)}.`;
+  const hb = document.getElementById("h2-body");
+  const cnt = (c) => `${c.flagged} of ${c.n}`;
+  for (const a of ARMS) {
+    const r = h.arms[a], c = r.categories;
+    const errors = Object.values(c).reduce((sum, x) => sum + x.errors, 0);
+    hb.append(el("tr", { class: a }, armCell(a),
+      td(cnt(c.guardrail_weakening)), td(cnt(c.empty_output)), td(cnt(c.benign_prompt_edit)), td(fmtInt(errors)),
+      td(fmtMs(r.latency.p50_ms)), td(fmtMs(r.latency.p95_ms)),
+    ));
+  }
+
+  const f = data.fanout;
+  const cell = (a, n) => f.cells[`${a}:${n}`];
+  document.getElementById("fan-sub").textContent =
+    `One call asks ${f.sizes.join(", ")} policy questions about the same synthetic payload, ${cell(ARMS[0], f.sizes[0]).calls} calls per cell. Lower is faster.`;
+  const fb = document.getElementById("fan-body");
+  for (const a of ARMS) {
+    for (const n of f.sizes) {
+      const c = cell(a, n);
+      if (!c.supported) { fb.append(el("tr", { class: a }, armCell(a), td(String(n)), el("td", { colspan: "6" }, "not supported"))); continue; }
+      fb.append(el("tr", { class: a }, armCell(a), td(String(n)), td(fmtInt(c.calls)),
+        td(fmtMs(c.latency.p50_ms)), td(fmtMs(c.latency.p95_ms)), td(fmtMs(c.per_decision_p50_ms)),
+        td(fmtInt(c.median_input_tokens)), td(c.cost_per_1000_decisions_usd.toFixed(4)),
+      ));
+    }
+  }
+  document.getElementById("fan-note").textContent =
+    "Cost is reported input tokens times list price, divided over the decisions in the call. " +
+    (s.gemini_tier === "free" ? "Gemini is priced at the paid tier list price; this run's Gemini calls were on the free tier and cost nothing." : "");
+
+  // ------------------------------------------------------------ caveats from the report's own notes
+  const cav = document.getElementById("caveats");
+  for (const n of data.notes) cav.append(el("li", {}, n));
+
+  const footer = document.getElementById("footer");
+  const files = [el("a", { href: data.files.json }, "JSON report"), ", ", el("a", { href: data.files.md }, "Markdown report")];
+  if (data.files.calls) files.push(", and ", el("a", { href: data.files.calls }, "per call records"));
+  footer.append(
+    "Generated by ", el("a", { href: data.repo }, "paved-gate"), " (Apache-2.0) from the ", ...files,
+    ". Ticket data: Bitext customer support dataset, © Bitext Innovations 2024, CDLA-Sharing-1.0. Harness² cases and the fanout payload are synthetic. Harness² is not a Google supported product.",
+  );
+
+  // ------------------------------------------------------------ charts (redrawn on resize)
+  function render() {
+    dotChart(document.getElementById("acc-chart"), ARMS.map((a) => ({
+      label: label(a), color: COLOR[a], v: t.arms[a].accuracy, lo: t.arms[a].accuracy_ci95[0], hi: t.arms[a].accuracy_ci95[1],
+    })));
+    barChart(document.getElementById("lat-chart"), ARMS.map((a) => ({
+      label: label(a),
+      values: [
+        { name: "p50", v: t.arms[a].latency.p50_ms, color: COLOR[a] },
+        { name: "p95", v: t.arms[a].latency.p95_ms, color: COLOR[a], opacity: 0.45 },
+      ],
+    })), (v) => `${fmtMs(v)} ms`, fmtInt, "Ticket latency p50 and p95 by arm");
+    barChart(document.getElementById("fan-chart"), f.sizes.map((n) => ({
+      label: `${n} question${n === 1 ? "" : "s"} per call`,
+      values: ARMS.filter((a) => cell(a, n).supported).map((a) => ({ name: label(a), v: cell(a, n).per_decision_p50_ms, color: COLOR[a] })),
+    })), (v) => `${fmtMs(v)} ms`, fmtInt, "p50 latency per decision by questions per call");
+  }
+  render();
+  let resizeTimer;
+  window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 120); });
+})();
+</script>
+</body>
+</html>

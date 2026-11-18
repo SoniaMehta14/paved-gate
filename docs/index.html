@@ -141,6 +141,18 @@
       </div>
       <span class="open">Open report →</span>
     </a>
+
+    <a class="card" href="./benchmarks/">
+      <h2>Jev vs Gemini Decision 1</h2>
+      <p class="when">November 16, 2026 · 2 arms × 1,080 tickets, 30 Harness² edits, fanout 1 to 50</p>
+      <span class="badge">Both arms live</span>
+      <p class="desc">Ticket classification accuracy and calibration, Harness² edit flags and latency per decision as questions per call grow. One run, Gemini on the free tier.</p>
+      <div class="kpis">
+        <div class="kpi"><div class="v">92.2%</div><div class="l">Jev accuracy<br>(Gemini 94.0%, p = 0.032)</div></div>
+        <div class="kpi"><div class="v">89 ms</div><div class="l">Jev p50 per ticket<br>(Gemini 257 ms)</div></div>
+      </div>
+      <span class="open">Open dashboard →</span>
+    </a>
   </div>
 
   <p class="note">In the October 1 support ticket classification eval (1,080 tickets), the accuracy differences are not statistically significant at that sample size (paired McNemar test on the <a href="./eval/predictions.jsonl">published per-ticket predictions</a>: p = 0.33 vs GPT-4o, p = 0.12 vs GPT-4o mini). This does not apply to the Bitext full benchmark, which has its own paired tests. Every run is one machine's snapshot, with list prices verified on the run date; see each dashboard's caveats before quoting a figure. The Harness² reports come from an unofficial integration; Harness² is not a Google supported product.</p>
