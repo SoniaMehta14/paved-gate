@@ -32,8 +32,8 @@ def _escape(text: str) -> str:
     return text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
 
 
-def build_pdf(lines: list[str]) -> bytes:
-    ops = ["BT", "/F1 14 Tf", "72 740 Td", "18 TL"]
+def build_pdf(lines: list[str], font_size: float = 14, leading: float = 18) -> bytes:
+    ops = ["BT", f"/F1 {font_size:g} Tf", "72 740 Td", f"{leading:g} TL"]
     for line in lines:
         ops.append(f"({_escape(line)}) Tj T*")
     ops.append("ET")
