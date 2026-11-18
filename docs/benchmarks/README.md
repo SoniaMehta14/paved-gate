@@ -12,6 +12,16 @@ from its checkpoint, so some calls were timed in the first session and the rest 
 | [`evaluators-live-20261116T192356Z.json`](evaluators-live-20261116T192356Z.json) | The same report as JSON, with every stamp (mode, date, model IDs, SDK version, settings, retry policies, pacing, tier, resume) |
 | [`evaluators-live-20261116T192356Z.calls.jsonl`](evaluators-live-20261116T192356Z.calls.jsonl) | One record per API call: workload, evaluator, item ID, latency, retries, reported tokens, and the predicted and true labels or scores. It holds no ticket text, keys or paths |
 
+| [`index.html`](index.html) | The Pages dashboard for both runs, built by [`scripts/evaluators_dashboard.py`](../../scripts/evaluators_dashboard.py) from the JSON files here |
+| [`multimodal-live-20261118.json`](multimodal-live-20261118.json) | The live multimodal test of November 18, 2026, sanitized: case IDs, edit names, file hashes, labels, what the records say, every answer with its probability, latency, tokens and cost. It holds no images, PDFs, audit records, keys or paths |
+| [`multimodal-live-20261118.md`](multimodal-live-20261118.md) | The same multimodal results as Markdown, with the caveats |
+
+The multimodal files are written by [`evals/multimodal/publish.py`](../../evals/multimodal/publish.py) from the raw run results,
+which stay out of git. The edited report images and PDF variants are not committed either:
+[`evals/multimodal/build_cases.py`](../../evals/multimodal/build_cases.py) regenerates them from the published report
+pages and [`examples/multimodal_gate/make_pdf.py`](../../examples/multimodal_gate/make_pdf.py), and the `sha256` of
+each case in the JSON lets you check a rebuild.
+
 The ticket items are IDs into the public Bitext sample already in [`data/eval/`](../../data/eval/) (CDLA Sharing 1.0).
 The Harness² cases and the fanout payload are synthetic.
 

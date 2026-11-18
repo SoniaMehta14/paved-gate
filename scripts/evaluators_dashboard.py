@@ -2,9 +2,12 @@
 
     uv run python scripts/evaluators_dashboard.py docs/benchmarks/<report>.json            # writes <report>.html
     uv run python scripts/evaluators_dashboard.py docs/benchmarks/<report>.json --publish  # writes docs/benchmarks/
+    uv run python scripts/evaluators_dashboard.py docs/benchmarks/<report>.json --publish \
+        --multimodal docs/benchmarks/multimodal-live-<date>.json                           # adds the multimodal test
 
-Reads the JSON written by scripts/benchmark_evaluators.py. Every number on the page comes from that file;
-the page makes no network requests.
+Reads the JSON written by scripts/benchmark_evaluators.py and, optionally, the sanitized multimodal results
+written by evals/multimodal/publish.py. Every number on the page comes from those files; the page makes no
+network requests.
 """
 
 from __future__ import annotations
@@ -31,7 +34,9 @@ def obj(v: object) -> J:
     return v
 
 
-def page_data(report: J, json_name: str) -> dict[str, object]:
+def page_data(
+    report: J, json_name: str, multimodal: J | None = None, multimodal_name: str | None = None
+) -> dict[str, object]:
     workloads = obj(report["workloads"])
     rebuilt = obj(report["rebuilt"]) if "rebuilt" in report else None
     files = {"json": json_name, "md": str(Path(json_name).with_suffix(".md"))}
@@ -52,6 +57,10 @@ def page_data(report: J, json_name: str) -> dict[str, object]:
         "calls_total": rebuilt["calls_read"] if rebuilt is not None else None,
         "files": files,
         "repo": REPO_URL,
+        "multimodal": multimodal,
+        "multimodal_files": (
+            {"json": multimodal_name, "md": str(Path(multimodal_name).with_suffix(".md"))} if multimodal_name else None
+        ),
     }
 
 
@@ -68,10 +77,13 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("report", type=Path, help="JSON written by scripts/benchmark_evaluators.py")
     ap.add_argument("--publish", action="store_true", help="write docs/benchmarks/index.html (GitHub Pages)")
+    ap.add_argument("--multimodal", type=Path, help="sanitized multimodal results from evals/multimodal/publish.py")
     args = ap.parse_args()
     src: Path = args.report
     report = json.loads(src.read_text(encoding="utf-8"))
-    html = render_html(page_data(report, src.name))
+    mm: Path | None = args.multimodal
+    multimodal = json.loads(mm.read_text(encoding="utf-8")) if mm else None
+    html = render_html(page_data(report, src.name, multimodal, mm.name if mm else None))
     out = PUBLISH_DIR / "index.html" if args.publish else src.with_suffix(".html")
     out.write_text(html, encoding="utf-8")
     print(f"Dashboard: {out}")
