@@ -317,7 +317,9 @@ class Recording:
 
     @staticmethod
     def _fatal(exc: Exception) -> bool:
-        if isinstance(exc, RateLimitedError):
+        """Errors that say nothing about the evaluator's judgement: quotas, credentials and a lost connection.
+        The arm stops and the item is not checkpointed, so a rerun repeats it."""
+        if isinstance(exc, RateLimitedError) or _network_failure(exc):
             return True
         if isinstance(exc, JevAPIError) and exc.status in (401, 403, 429):
             return True
@@ -325,6 +327,20 @@ class Recording:
 
     async def aclose(self) -> None:
         await self.inner.aclose()
+
+
+NETWORK_ERRORS = ("ConnectError", "ConnectTimeout", "ReadError", "APIConnectionError", "gaierror")
+
+
+def _network_failure(exc: BaseException) -> bool:
+    """True when the call never got an answer because the network failed (DNS, refused or dropped connection).
+    The adapters wrap these in EvaluatorError, so look along the cause chain and at the message."""
+    seen: BaseException | None = exc
+    while seen is not None:
+        if isinstance(seen, OSError) or type(seen).__name__ in NETWORK_ERRORS:
+            return True
+        seen = seen.__cause__ or seen.__context__
+    return any(name in str(exc) for name in NETWORK_ERRORS)
 
 
 def _err(exc: BaseException) -> str:

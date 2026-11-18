@@ -294,3 +294,30 @@ def test_dual_arm_runs_both_evaluators_through_the_strict_profile(tmp_path: Path
     assert all("disclosure" in r["answers"] for r in raw if r["ok"])
     summary = json.loads(next(results.glob("redteam-mock-*.json")).read_text())
     assert summary["settings"]["strict_privacy"] is True
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        RuntimeError("Jev request failed: ConnectError('[Errno 8] nodename nor servname provided, or not known')"),
+        RuntimeError("Gemini Decisions request failed (APIConnectionError): Connection error."),
+    ],
+)
+async def test_a_lost_connection_stops_the_arm_instead_of_recording_an_error(tmp_path: Path, exc: Exception) -> None:
+    rec = redteam.Recording(
+        Scripted(fail=exc), "jev", redteam.Ledger(tmp_path / "s", live=False, past_half=False), None
+    )
+    with pytest.raises(RuntimeError):
+        await rec.evaluate("x", {})
+    assert rec.stop_reason is not None
+
+
+async def test_a_wrapped_os_error_is_a_network_failure() -> None:
+    try:
+        try:
+            raise OSError(8, "nodename nor servname provided")
+        except OSError as inner:
+            raise RuntimeError("request failed") from inner
+    except RuntimeError as outer:
+        assert redteam._network_failure(outer)
+    assert not redteam._network_failure(RuntimeError("model returned no answer"))
