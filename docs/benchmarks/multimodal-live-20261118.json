@@ -189,6 +189,62 @@
         ]
       }
     },
+    "edited_png": {
+      "gemini_decision": {
+        "synthetic_label": [
+          10,
+          11
+        ],
+        "overall_decision": [
+          11,
+          11
+        ],
+        "rejected_exactly_2": [
+          9,
+          11
+        ],
+        "legibility_ok": [
+          11,
+          11
+        ]
+      },
+      "jev_image": {
+        "synthetic_label": [
+          11,
+          11
+        ],
+        "overall_decision": [
+          11,
+          11
+        ],
+        "rejected_exactly_2": [
+          11,
+          11
+        ],
+        "legibility_ok": [
+          11,
+          11
+        ]
+      },
+      "jev_text": {
+        "synthetic_label": [
+          9,
+          11
+        ],
+        "overall_decision": [
+          4,
+          11
+        ],
+        "rejected_exactly_2": [
+          8,
+          11
+        ],
+        "legibility_ok": [
+          11,
+          11
+        ]
+      }
+    },
     "controls": {
       "gemini_decision": {
         "legibility_ok": [

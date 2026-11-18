@@ -37,6 +37,14 @@ Run finished 2026-11-18T05:48:29+00:00 UTC; the PDF as PNG run finished 2026-11-
 | Jev 1.14, image preview (image + records) | 2 of 2 | 7 of 7 | 3 of 3 | n/a |
 | Jev 1.14, text only (records only, cannot see the artifact) | 1 of 3 | 0 of 9 | 0 of 3 | n/a |
 
+### Edited screenshots only (the edited PNG cases, without the edited PDF cases)
+
+| Arm | Synthetic label | Banner decision | Exactly 2 rejected | Legible |
+| :- | -: | -: | -: | -: |
+| Gemini Decision 1 (image or PDF + records) | 10 of 11 | 11 of 11 | 9 of 11 | 11 of 11 |
+| Jev 1.14, image preview (image + records) | 11 of 11 | 11 of 11 | 11 of 11 | 11 of 11 |
+| Jev 1.14, text only (records only, cannot see the artifact) | 9 of 11 | 4 of 11 | 8 of 11 | 11 of 11 |
+
 ### Legibility controls
 
 | Arm | Synthetic label | Banner decision | Exactly 2 rejected | Legible |
