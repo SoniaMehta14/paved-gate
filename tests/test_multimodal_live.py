@@ -20,6 +20,7 @@ sys.path.insert(0, str(ROOT / "examples" / "multimodal_gate"))
 
 import build_cases  # noqa: E402
 import jev_image  # noqa: E402
+import pdf_png  # noqa: E402
 import run  # noqa: E402
 from make_pdf import LINES, build_pdf  # noqa: E402
 from questions import QUESTIONS  # noqa: E402
@@ -248,3 +249,122 @@ def test_over_white_composites_transparent_pixels() -> None:
 def test_pdf_builder_default_output_is_unchanged() -> None:
     fixture = Path(__file__).parent / "fixtures" / "multimodal" / "synthetic_policy.pdf"
     assert build_pdf(LINES) == fixture.read_bytes()
+
+
+# ------------------------------------------------------------------------------------------------ PDF as PNG
+
+
+def full_answers(
+    synthetic: float, probs: dict[str, float], rejected2: float, levels: dict[str, float]
+) -> dict[str, object]:
+    choice = max(probs, key=probs.__getitem__)
+    score = sum(int(k) * p for k, p in levels.items())
+    return {
+        "synthetic_label": {"type": "noul", "noul": synthetic},
+        "overall_decision": {"type": "choice", "choice": choice, "probabilities": probs, "confidence": probs[choice]},
+        "rejected_exactly_2": {"type": "noul", "noul": rejected2},
+        "legibility": {"type": "score", "score": score, "probabilities": levels, "confidence": max(levels.values())},
+    }
+
+
+def test_probabilities_put_every_answer_on_the_half_cutoff_scale() -> None:
+    a = full_answers(
+        0.55,
+        {"accept": 0.1, "needs_review": 0.7, "reject": 0.2},
+        0.05,
+        {"0": 0.1, "1": 0.3, "2": 0.25, "3": 0.25, "4": 0.1},
+    )
+    p = pdf_png.probabilities(a)
+    assert p["synthetic_label"] == 0.55
+    assert p["overall_decision"] == 0.7  # the chosen option's probability
+    assert p["rejected_exactly_2"] == 0.05
+    assert p["legibility_ok"] == pytest.approx(0.6)  # levels 3, 4 and 5 are indexes 2, 3 and 4
+
+
+def write_jsonl(path: Path, records: list[dict[str, object]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("".join(json.dumps(r) + "\n" for r in records), encoding="utf-8")
+
+
+def test_pdf_png_report_marks_close_calls_and_counts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    cases_dir, out = tmp_path / "cases", tmp_path / "pdf_png"
+    manifest: dict[str, object] = {
+        "record_texts": {"pdf": json.dumps([{"namespace": "synthetic_oc", "decision": "needs_review"}])},
+        "cases": [
+            case(
+                "pdf_a",
+                ["decision_accept"],
+                {
+                    "synthetic_label": True,
+                    "overall_decision": "accept",
+                    "rejected_exactly_2": False,
+                    "legibility_ok": True,
+                },
+                text_key="pdf",
+                mime_type="application/pdf",
+            ),
+            case("pdf_tiny", ["4pt"], {}, text_key="pdf", mime_type="application/pdf", control=True, counted=False),
+        ],
+    }
+    cases_dir.mkdir()
+    (cases_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    monkeypatch.setattr(run, "CASES", cases_dir)
+    monkeypatch.setattr(pdf_png, "OUT", out)
+    monkeypatch.setattr(pdf_png, "MAIN_CALLS", tmp_path / "run" / "calls.jsonl")
+    main_settings = run.settings_hash((cases_dir / "manifest.json").read_bytes())
+    rendered: list[dict[str, object]] = [{"id": "pdf_a", "sha256": "1"}, {"id": "pdf_tiny", "sha256": "2"}]
+    settings = pdf_png.digest(rendered)
+    sure = full_answers(0.95, {"accept": 0.98, "needs_review": 0.01, "reject": 0.01}, 0.02, {"4": 1.0})
+    near = full_answers(0.55, {"accept": 0.02, "needs_review": 0.97, "reject": 0.01}, 0.45, {"1": 0.5, "2": 0.5})
+
+    def rec(cid: str, arm: str, a: dict[str, object], s: str, tokens: int) -> dict[str, object]:
+        return {
+            "settings": s,
+            "case": cid,
+            "arm": arm,
+            "at": "2026-11-18T00:00:00+00:00",
+            "latency_ms": 100.0,
+            "input_tokens": tokens,
+            "answers": a,
+            "usage": {"input_tokens_by_modality": []},
+        }
+
+    write_jsonl(
+        tmp_path / "run" / "calls.jsonl",
+        [
+            rec("pdf_a", "gemini_decision", sure, main_settings, 2114),
+            rec("pdf_a", "jev_text", near, main_settings, 1603),
+            rec("pdf_tiny", "gemini_decision", near, main_settings, 2114),
+            rec("pdf_tiny", "jev_text", near, main_settings, 1603),
+        ],
+    )
+    write_jsonl(
+        out / "calls.jsonl",
+        [
+            rec("pdf_a", "gemini_png", sure, settings, 2573),
+            rec("pdf_a", "jev_png", sure, settings, 6549),
+            rec("pdf_tiny", "gemini_png", near, settings, 2573),
+            rec("pdf_tiny", "jev_png", near, settings, 6549),
+        ],
+    )
+    r = pdf_png.build_report(manifest, rendered, settings)
+    counts = obj(r["counts"])
+    assert obj(obj(counts["edited"])["jev_text"])["overall_decision"] == [0, 1]  # follows the record
+    assert obj(obj(counts["edited"])["jev_png"])["overall_decision"] == [1, 1]
+    assert "recorded_only" not in counts
+    # near: synthetic 0.55, rejected 0.45 and legibility 0.5 are close; the choice at 0.97 is not
+    assert obj(r["close_calls"]) == {"gemini_pdf": 0, "gemini_png": 0, "jev_png": 0, "jev_text": 3}
+    row = obj(lst(r["rows"])[0])
+    cell = obj(obj(obj(row["columns"])["jev_text"])["synthetic_label"])
+    assert cell == {"answer": True, "p": 0.55, "close": True, "correct": True}
+    assert "(close)" in pdf_png.cell(cell)
+    assert obj(r["jev_image_tokens"])["median"] == 4946
+    assert "none was refused" in str(r["limit_note"])
+
+
+def test_close_call_boundary() -> None:
+    def close(p: float) -> bool:
+        return abs(p - 0.5) <= pdf_png.CLOSE
+
+    assert close(0.4) and close(0.6) and close(0.5)
+    assert not close(0.39) and not close(0.61)
