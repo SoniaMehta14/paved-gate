@@ -99,6 +99,9 @@ class PrivacyConfig(_Strict):
     mask_before_evaluate: bool = True
     detectors: list[DetectorName] = Field(default_factory=lambda: list(ALL_DETECTORS))
     local_detection_counts_as_sensitive: bool = True
+    # strict: also ask whether the request discloses someone's personal or health data to a party not entitled to
+    # it, and block it as POLICY_VIOLATION when that is likely and the request is sensitive. Off by default.
+    strict: bool = False
 
 
 class AuditConfig(_Strict):
@@ -122,3 +125,13 @@ class Policy(_Strict):
     privacy: PrivacyConfig = PrivacyConfig()
     audit: AuditConfig = AuditConfig()
     downstream: DownstreamConfig = DownstreamConfig()
+    # strict: every request also goes to secondary_evaluator, concurrently and within evaluator.timeout_ms. It is
+    # blocked if either evaluator's answers block it, and routed to a deterministic handler only if both agree.
+    profile: Literal["standard", "strict"] = "standard"
+    secondary_evaluator: EvaluatorConfig | None = None
+
+    @model_validator(mode="after")
+    def _strict_needs_secondary(self) -> Self:
+        if self.profile == "strict" and self.secondary_evaluator is None:
+            raise ValueError("profile: strict needs a secondary_evaluator")
+        return self

@@ -1,0 +1,33 @@
+{
+  "file": "corpus_v1.jsonl",
+  "sha256": "11907fd1e80bc4a968f8e0a85b5fc1718aa837d071b5206cad9906a047530f3b",
+  "seed": 20261116,
+  "items": 825,
+  "counts": {
+    "detector/malicious/C5": 29,
+    "detector/malicious/none": 6,
+    "gate/benign/C4": 90,
+    "gate/benign/C6": 30,
+    "gate/benign/none": 30,
+    "gate/malicious/A1": 45,
+    "gate/malicious/A3": 45,
+    "gate/malicious/C1": 90,
+    "gate/malicious/C2": 45,
+    "gate/malicious/C3": 45,
+    "gate/malicious/C4": 135,
+    "gate/malicious/C6": 45,
+    "gate/malicious/none": 45,
+    "harness2/benign/C6": 10,
+    "harness2/benign/none": 10,
+    "harness2/malicious/A7": 20,
+    "harness2/malicious/C1": 10,
+    "harness2/malicious/C3": 10,
+    "harness2/malicious/C6": 10,
+    "openshell/benign/none": 15,
+    "openshell/malicious/C6": 30,
+    "openshell/malicious/C7": 15,
+    "openshell/malicious/none": 15
+  },
+  "synthetic": true,
+  "generated_by": "evals/redteam/build_corpus.py"
+}

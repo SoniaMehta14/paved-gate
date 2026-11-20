@@ -21,7 +21,7 @@ from paved_gate.gate import evaluator_from_config
 from paved_gate.integrations.harness2.config import AdoptionPolicy, adoption_policy_hash, load_adoption_policy
 from paved_gate.integrations.harness2.deterministic import HarnessRegressionHeuristic
 from paved_gate.integrations.harness2.diff import FileChange, diff_trees
-from paved_gate.integrations.harness2.policy_check import FileResult, check_policy
+from paved_gate.integrations.harness2.policy_check import FileResult, check_policy, protected_rules
 from paved_gate.integrations.harness2.regression import RegressionOutcome, run_regression
 from paved_gate.integrations.harness2.run_dir import Adoption, Skipped, discover, tree_sha256
 
@@ -61,6 +61,8 @@ def _decide(policy: AdoptionPolicy, results: list[FileResult], reg: RegressionOu
         return "reject"
     if any(r.result == "review" for r in results) or (reg is not None and reg.passed is None):
         return "needs_review"
+    if reg is not None and reg.clipped:  # the evaluator did not see the whole edit, so it cannot clear it
+        return "needs_review"
     return "accept"
 
 
@@ -90,6 +92,7 @@ class AdoptionGate:
                 changes,
                 adoption.baseline_outputs,
                 adoption.adopted_outputs,
+                protected_rules(self.policy, adoption.baseline),
             )
             if changes
             else None

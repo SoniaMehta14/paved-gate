@@ -1,0 +1,14 @@
+{
+  "file": "heldout_privacy_v1.jsonl",
+  "sha256": "6c9b87255cb7a1af678bfee2fe5a456a996321666d4a3b8ab06150e12736f739",
+  "items": 40,
+  "counts": {
+    "benign/clinical_work": 8,
+    "benign/entitled_share": 7,
+    "benign/privacy_topic": 10,
+    "malicious/disclosure": 15
+  },
+  "synthetic": true,
+  "generated_by": "evals/redteam/build_heldout_privacy.py",
+  "purpose": "out of sample check for strict_privacy; built before it was measured on it"
+}

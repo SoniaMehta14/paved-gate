@@ -7,7 +7,7 @@ import hashlib
 import time
 import uuid
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Literal
 
@@ -53,17 +53,27 @@ from paved_gate.types import (
     Route,
 )
 
-INTENT, RISK, SENSITIVE = "intent", "risk", "sensitive"
+INTENT, RISK, SENSITIVE, DISCLOSURE = "intent", "risk", "sensitive", "disclosure"
+DISCLOSURE_INSTRUCTIONS = (
+    "Does this request ask to send, show, publish or hand over personal or health information about a person to "
+    "someone who is not that person, their guardian, or a professional directly involved in their care or in the "
+    "task the person asked for? Keeping the data in its own record, working on it, or returning it to its owner "
+    "is not a disclosure."
+)
+DISCLOSURE_THRESHOLD = 0.5  # strictly above this, together with a sensitive request, blocks under privacy.strict
 DEFAULT_POLICY_PATH = Path("policy/paved_gate.policy.yaml")
 
 
 def build_questions(policy: Policy) -> dict[str, Question]:
     q = policy.questions
-    return {
+    questions: dict[str, Question] = {
         INTENT: ChoiceQuestion(instructions=q.intent.instructions, criteria=dict(q.intent.criteria)),
         RISK: ScoreQuestion(instructions=q.risk.instructions, criteria=list(q.risk.criteria)),
         SENSITIVE: TruthQuestion(instructions=q.sensitive.instructions),
     }
+    if policy.privacy.strict:
+        questions[DISCLOSURE] = TruthQuestion(instructions=DISCLOSURE_INSTRUCTIONS)
+    return questions
 
 
 @dataclass(frozen=True)
@@ -71,17 +81,21 @@ class _Answers:
     intent: ChoiceAnswer
     risk: ScoreAnswer
     sensitive: TruthAnswer
+    disclosure: TruthAnswer | None = None
 
 
-def _extract(evaluation: EvaluationResult) -> _Answers:
-    """Validate that the evaluator answered all three questions with the right types."""
+def _extract(evaluation: EvaluationResult, strict_privacy: bool = False) -> _Answers:
+    """Validate that the evaluator answered every question asked with the right types."""
     a = evaluation.answers
     intent, risk, sensitive = a.get(INTENT), a.get(RISK), a.get(SENSITIVE)
     if not (isinstance(intent, ChoiceAnswer) and isinstance(risk, ScoreAnswer) and isinstance(sensitive, TruthAnswer)):
         raise EvaluatorError("evaluator did not return intent/risk/sensitive answers of the expected types")
     if intent.choice not in {r.value for r in Route}:
         raise EvaluatorError(f"unknown intent route {intent.choice!r}")
-    return _Answers(intent, risk, sensitive)
+    disclosure = a.get(DISCLOSURE)
+    if strict_privacy and not isinstance(disclosure, TruthAnswer):
+        raise EvaluatorError("evaluator did not answer the disclosure question that privacy.strict asks")
+    return _Answers(intent, risk, sensitive, disclosure if isinstance(disclosure, TruthAnswer) else None)
 
 
 @dataclass(frozen=True)
@@ -103,10 +117,12 @@ class PavedGate:
         audit: AuditSink,
         deterministic: DeterministicRegistry,
         frontier: FrontierHandler | None,
+        secondary: FastEvaluator | None = None,
     ) -> None:
         self.loaded = policy
         self.policy = policy.policy
         self.evaluator = evaluator
+        self.secondary = secondary  # profile strict: asked the same questions; either one can block
         self.audit = audit
         self.deterministic = deterministic
         self.frontier = frontier
@@ -127,18 +143,32 @@ class PavedGate:
         outbound = mask(text, findings) if privacy.mask_before_evaluate else text
 
         evaluation: EvaluationResult | None = None
+        second: EvaluationResult | None = None
         answers: _Answers | None = None
+        second_answers: _Answers | None = None
         error: str | None = None
         try:
             async with asyncio.timeout(self.policy.evaluator.timeout_ms / 1000):
-                evaluation = await self.evaluator.evaluate(outbound, self.questions)
-            answers = _extract(evaluation)
+                if self.secondary is None:
+                    first = await self.evaluator.evaluate(outbound, self.questions)
+                else:
+                    first, second = await asyncio.gather(
+                        self.evaluator.evaluate(outbound, self.questions),
+                        self.secondary.evaluate(outbound, self.questions),
+                    )
+            evaluation = first
+            answers = _extract(first, privacy.strict)
+            if second is not None:
+                second_answers = _extract(second, privacy.strict)
         except TimeoutError:
             error = f"evaluator timed out after {self.policy.evaluator.timeout_ms}ms"
         except Exception as exc:  # any evaluator failure is handled by fail_mode
             error = f"evaluator error: {type(exc).__name__}: {exc}"
 
-        verdict = self._decide(answers, error)
+        local_flag = bool(detectors) and privacy.local_detection_counts_as_sensitive
+        verdict = self._decide(answers, error, local_flag)
+        if second is not None and second_answers is not None and error is None:
+            verdict = _combine(verdict, self._decide(second_answers, None, local_flag), second.model)
         # Pre-routing target: the deterministic registry may still fall through to frontier.
         target: str | None = None
         det: tuple[str, dict[str, JsonValue]] | None = None
@@ -159,7 +189,6 @@ class PavedGate:
             target = f"frontier:{self.frontier.provider}" if self.frontier else "frontier:passthrough"
 
         noul_flag = verdict.noul is not None and verdict.noul >= self.policy.questions.sensitive.threshold
-        local_flag = bool(detectors) and privacy.local_detection_counts_as_sensitive
         sensitive = noul_flag or local_flag
         gate_ms = round((time.perf_counter() - started) * 1000, 2)
 
@@ -171,7 +200,7 @@ class PavedGate:
             intent_confidence=verdict.intent_confidence,
             risk_score=verdict.risk_score,
             sensitive=sensitive,
-            evaluator_ms=evaluation.latency_ms if evaluation else None,
+            evaluator_ms=max(e.latency_ms for e in (evaluation, second) if e) if evaluation else None,
             gate_ms=gate_ms,
             policy_hash=self.loaded.policy_hash,
         )
@@ -195,7 +224,7 @@ class PavedGate:
         response = await self.frontier.respond(state) if self.frontier else None
         return Frontier(decision=decision, state=state, response=response)
 
-    def _decide(self, answers: _Answers | None, error: str | None) -> _Verdict:
+    def _decide(self, answers: _Answers | None, error: str | None, local_sensitive: bool = False) -> _Verdict:
         q = self.policy.questions
         if answers is None:
             reason = f"{error}; fail_mode={self.policy.evaluator.fail_mode}"
@@ -216,6 +245,19 @@ class PavedGate:
             return _Verdict("blocked", route, [*reasons, "blocked: intent is POLICY_VIOLATION"], *v)
         if risk_score > q.risk.block_above:
             return _Verdict("blocked", route, [*reasons, "blocked: risk above threshold"], *v)
+        disclosure = answers.disclosure
+        if self.policy.privacy.strict and disclosure is not None:
+            sensitive = local_sensitive or noul.probability >= q.sensitive.threshold
+            reasons.append(
+                f"disclosure={disclosure.probability:.2f} (strict privacy, block_above={DISCLOSURE_THRESHOLD})"
+            )
+            if sensitive and disclosure.probability > DISCLOSURE_THRESHOLD:
+                return _Verdict(
+                    "blocked",
+                    Route.POLICY_VIOLATION,
+                    [*reasons, "blocked: strict privacy, discloses personal or health data"],
+                    *v,
+                )
         if route is Route.DIRECT_CODE_EXEC:
             if intent.confidence >= q.intent.min_confidence:
                 return _Verdict("deterministic", route, reasons, *v)
@@ -294,6 +336,28 @@ class PavedGate:
 
     async def aclose(self) -> None:
         await self.evaluator.aclose()
+        if self.secondary is not None:
+            await self.secondary.aclose()
+
+
+def _combine(primary: _Verdict, secondary: _Verdict, secondary_model: str) -> _Verdict:
+    """profile strict: block if either evaluator blocks; auto execute only if both chose the deterministic route."""
+    tagged = [f"secondary ({secondary_model}): {r}" for r in secondary.reasons]
+    if primary.outcome == "blocked":
+        return replace(primary, reasons=[*primary.reasons, *tagged])
+    if secondary.outcome == "blocked":
+        return replace(secondary, reasons=[*primary.reasons, *tagged])
+    if primary.outcome == "deterministic" and secondary.outcome != "deterministic":
+        note = "secondary evaluator did not agree on DIRECT_CODE_EXEC; routed to frontier"
+        return _Verdict(
+            "frontier",
+            Route.FRONTIER_AGENT_REQUIRED,
+            [*primary.reasons, *tagged, note],
+            primary.intent_confidence,
+            primary.risk_score,
+            primary.noul,
+        )
+    return replace(primary, reasons=[*primary.reasons, *tagged])
 
 
 def evaluator_from_config(cfg: EvaluatorConfig) -> FastEvaluator:
@@ -341,4 +405,9 @@ def paved_gate(
         audit=audit or sink_from_config(p.audit),
         deterministic=deterministic or default_registry(),
         frontier=frontier_from_config(p.downstream) if frontier == "from_policy" else frontier,
+        secondary=(
+            evaluator_from_config(p.secondary_evaluator)
+            if p.profile == "strict" and p.secondary_evaluator is not None
+            else None
+        ),
     )

@@ -425,3 +425,29 @@ async def test_cli_writes_audit_records(tmp_path: Path, capsys: pytest.CaptureFi
     entry = HarnessAdoptionEntry.model_validate_json(record.read_text())
     assert entry.decision == "accept" and entry.policy_name == "harness2_adoption_demo"
     assert str(tmp_path) not in record.read_text()
+
+
+def test_fair_shares_keep_short_files_whole() -> None:
+    from paved_gate.integrations.harness2.regression import clip_per_file, fair_shares
+
+    assert fair_shares([100, 20_000, 300], 1_000) == [100, 600, 300]
+    assert fair_shares([10, 10], 1_000) == [10, 10]
+    assert sum(fair_shares([5_000] * 7, 16_000)) <= 16_000
+    text = clip_per_file([("a.md", "x" * 50), ("b.md", "y" * 5_000), ("c.md", "short")], 1_000)
+    assert "x" * 50 in text and text.endswith("short")
+    assert "[truncated: " in text and "of b.md not shown]" in text
+
+
+def test_protected_rules_are_prose_files_with_protected_access() -> None:
+    from paved_gate.integrations.harness2.config import load_adoption_policy
+    from paved_gate.integrations.harness2.policy_check import access_of, protected_rules
+
+    policy = load_adoption_policy(Path(__file__).resolve().parent.parent / "policy" / "harness2_adoption.policy.yaml")
+    baseline = {
+        "guardrails.md": "- Never delete files.\n",
+        "scripts/run.py": "print('x')\n",
+        "systemprompt.md": "Be careful.\n",
+        "sub_agents/a.md": "Review me.\n",
+    }
+    assert protected_rules(policy, baseline) == {"guardrails.md": "- Never delete files.\n"}
+    assert [access_of(policy, p) for p in sorted(baseline)] == ["protected", "protected", "review", "editable"]

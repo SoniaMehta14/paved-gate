@@ -17,9 +17,29 @@ class LoadedPolicy:
     source: str
 
 
+# Settings added after the policy format shipped, with their defaults. While a policy leaves one at its default it
+# is left out of the hash, so every policy that does not use it hashes exactly as before.
+_ADDED_SETTINGS: dict[tuple[str, ...], object] = {
+    ("privacy", "strict"): False,
+    ("profile",): "standard",
+    ("secondary_evaluator",): None,
+}
+
+
+def _drop_unused_additions(data: dict[str, object]) -> dict[str, object]:
+    for path, default in _ADDED_SETTINGS.items():
+        node: object = data
+        for key in path[:-1]:
+            node = node.get(key) if isinstance(node, dict) else None
+        if isinstance(node, dict) and node.get(path[-1], default) == default:
+            node.pop(path[-1], None)
+    return data
+
+
 def policy_hash(policy: Policy) -> str:
     """sha256 of the validated, canonicalised policy, so formatting changes don't alter it."""
-    canonical = json.dumps(policy.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
+    data = _drop_unused_additions(policy.model_dump(mode="json"))
+    canonical = json.dumps(data, sort_keys=True, separators=(",", ":"))
     return "sha256:" + hashlib.sha256(canonical.encode()).hexdigest()
 
 

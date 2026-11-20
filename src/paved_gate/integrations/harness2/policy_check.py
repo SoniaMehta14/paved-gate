@@ -53,6 +53,28 @@ def component_of(policy: AdoptionPolicy, path: str) -> str | None:
     return None
 
 
+def access_of(policy: AdoptionPolicy, path: str) -> Access:
+    """The access a path gets: the first matching path rule, else its component, else unmapped_files."""
+    for rule in policy.rules:
+        if fnmatchcase(path, rule.pattern):
+            return rule.access
+    component = component_of(policy, path)
+    return policy.unmapped_files if component is None else policy.components[component].access
+
+
+RULE_FILE_SUFFIXES = (".md", ".txt")
+
+
+def protected_rules(policy: AdoptionPolicy, baseline: Tree) -> dict[str, str]:
+    """Baseline text of protected prose files (guardrails and the like), the invariants an edit must not
+    contradict. Protected code (scripts, plugins) is left out: it states no rules for the evaluator to compare."""
+    return {
+        path: text
+        for path, text in sorted(baseline.items())
+        if path.endswith(RULE_FILE_SUFFIXES) and access_of(policy, path) == "protected"
+    }
+
+
 def _resolve(policy: AdoptionPolicy, change: FileChange) -> FileResult:
     path = change.path
     component = component_of(policy, path)

@@ -1,7 +1,7 @@
 """ASGI middleware for FastAPI / Starlette (requires the `fastapi` extra).
 
 Gated paths are evaluated before the app sees them:
-  blocked       -> 403, the app is never called
+  blocked       -> 403 with only the request id (reasons and scores stay in the audit log), the app is never called
   deterministic -> 200 with the handler output, the app is never called
   frontier      -> 200 with the frontier response if the gate has a frontier handler;
                    otherwise the request continues to the app with the GateResult on
@@ -80,12 +80,10 @@ class PavedGateMiddleware:
         out_headers = _gate_headers(result)
 
         if isinstance(result, Blocked):
+            # No reasons, scores or thresholds: they let a caller tune an attack to pass. Operators read the full
+            # decision from the audit record by request_id.
             response = JSONResponse(
-                {
-                    "error": "policy_violation",
-                    "request_id": result.decision.request_id,
-                    "reasons": result.decision.reasons,
-                },
+                {"error": "policy_violation", "request_id": result.decision.request_id},
                 status_code=403,
                 headers=out_headers,
             )

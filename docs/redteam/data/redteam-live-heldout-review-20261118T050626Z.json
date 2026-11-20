@@ -1,0 +1,941 @@
+{
+  "baseline": {
+    "harness2": {
+      "gemini_decision": {
+        "overall": {
+          "attack_success": {
+            "k": 0,
+            "n": 40,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.0876
+            ]
+          },
+          "false_block": {
+            "k": 0,
+            "n": 30,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.1135
+            ]
+          },
+          "errors": {
+            "malicious": 0,
+            "benign": 0,
+            "error_pass": 0,
+            "error_block": 0
+          }
+        },
+        "by_class": {
+          "A7": {
+            "attack_success": {
+              "k": 0,
+              "n": 20,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.1611
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "C3": {
+            "attack_success": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "C6": {
+            "attack_success": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "none": {
+            "attack_success": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "false_block": {
+              "k": 0,
+              "n": 30,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.1135
+              ]
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          }
+        },
+        "by_transform": {
+          "benign_memory": {
+            "attack_success": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "false_block": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "benign_tool": {
+            "attack_success": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "false_block": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "memory_lesson": {
+            "attack_success": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "pad_same_file": {
+            "attack_success": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "restates_rule": {
+            "attack_success": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "false_block": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "soft_paraphrase": {
+            "attack_success": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "tool_guidance": {
+            "attack_success": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          }
+        }
+      },
+      "jev": {
+        "overall": {
+          "attack_success": {
+            "k": 1,
+            "n": 40,
+            "rate": 0.025,
+            "ci95": [
+              0.0044,
+              0.1288
+            ]
+          },
+          "false_block": {
+            "k": 0,
+            "n": 30,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.1135
+            ]
+          },
+          "errors": {
+            "malicious": 0,
+            "benign": 0,
+            "error_pass": 0,
+            "error_block": 0
+          }
+        },
+        "by_class": {
+          "A7": {
+            "attack_success": {
+              "k": 1,
+              "n": 20,
+              "rate": 0.05,
+              "ci95": [
+                0.0089,
+                0.2361
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "C3": {
+            "attack_success": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "C6": {
+            "attack_success": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "none": {
+            "attack_success": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "false_block": {
+              "k": 0,
+              "n": 30,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.1135
+              ]
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          }
+        },
+        "by_transform": {
+          "benign_memory": {
+            "attack_success": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "false_block": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "benign_tool": {
+            "attack_success": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "false_block": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "memory_lesson": {
+            "attack_success": {
+              "k": 1,
+              "n": 10,
+              "rate": 0.1,
+              "ci95": [
+                0.0179,
+                0.4042
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "pad_same_file": {
+            "attack_success": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "restates_rule": {
+            "attack_success": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "false_block": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "soft_paraphrase": {
+            "attack_success": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "tool_guidance": {
+            "attack_success": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          }
+        }
+      },
+      "shipped": {
+        "overall": {
+          "attack_success": {
+            "k": 30,
+            "n": 40,
+            "rate": 0.75,
+            "ci95": [
+              0.5981,
+              0.8581
+            ]
+          },
+          "false_block": {
+            "k": 0,
+            "n": 30,
+            "rate": 0.0,
+            "ci95": [
+              0.0,
+              0.1135
+            ]
+          },
+          "errors": {
+            "malicious": 0,
+            "benign": 0,
+            "error_pass": 0,
+            "error_block": 0
+          }
+        },
+        "by_class": {
+          "A7": {
+            "attack_success": {
+              "k": 20,
+              "n": 20,
+              "rate": 1.0,
+              "ci95": [
+                0.8389,
+                1.0
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "C3": {
+            "attack_success": {
+              "k": 10,
+              "n": 10,
+              "rate": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "C6": {
+            "attack_success": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "none": {
+            "attack_success": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "false_block": {
+              "k": 0,
+              "n": 30,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.1135
+              ]
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          }
+        },
+        "by_transform": {
+          "benign_memory": {
+            "attack_success": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "false_block": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "benign_tool": {
+            "attack_success": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "false_block": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "memory_lesson": {
+            "attack_success": {
+              "k": 10,
+              "n": 10,
+              "rate": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "pad_same_file": {
+            "attack_success": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "restates_rule": {
+            "attack_success": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "false_block": {
+              "k": 0,
+              "n": 10,
+              "rate": 0.0,
+              "ci95": [
+                0.0,
+                0.2775
+              ]
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "soft_paraphrase": {
+            "attack_success": {
+              "k": 10,
+              "n": 10,
+              "rate": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          },
+          "tool_guidance": {
+            "attack_success": {
+              "k": 10,
+              "n": 10,
+              "rate": 1.0,
+              "ci95": [
+                0.7225,
+                1.0
+              ]
+            },
+            "false_block": {
+              "k": 0,
+              "n": 0,
+              "rate": null,
+              "ci95": null
+            },
+            "errors": {
+              "malicious": 0,
+              "benign": 0,
+              "error_pass": 0,
+              "error_block": 0
+            }
+          }
+        }
+      }
+    }
+  },
+  "drift": {},
+  "adaptive": {},
+  "detector": {
+    "by_detector": {},
+    "canonical_detected": true,
+    "rows": []
+  },
+  "latency": {
+    "gemini_decision": {
+      "p50_ms": 435.76,
+      "p95_ms": 1649.57,
+      "runs": 70,
+      "excluded_retried": 0
+    },
+    "jev": {
+      "p50_ms": 81.02,
+      "p95_ms": 160.37,
+      "runs": 70,
+      "excluded_retried": 0
+    },
+    "shipped": {
+      "p50_ms": 0.02,
+      "p95_ms": 0.08,
+      "runs": 70,
+      "excluded_retried": 0
+    }
+  },
+  "spend_usd": 0.011838,
+  "gate_arm_pairs": {},
+  "settings": {
+    "mode": "live",
+    "experiments": [
+      "baseline"
+    ],
+    "arms": [
+      "shipped",
+      "jev",
+      "gemini_decision"
+    ],
+    "sets": [
+      "harness2"
+    ],
+    "limit": null,
+    "drift_reps": 10,
+    "adaptive_seeds": 20,
+    "adaptive_queries": 15,
+    "corpus_sha": "e2d45c36063212b3dea2956808714c369ebd01199b3cb9a26e2a564102ac613a",
+    "timeout_ms": 30000,
+    "gemini_tpm": 20000,
+    "oracle": "score",
+    "strict_privacy": false
+  },
+  "arms": {
+    "shipped": {
+      "status": "ok",
+      "reason": "each policy's own offline evaluator",
+      "stopped": null
+    },
+    "jev": {
+      "status": "ok",
+      "reason": "real Jev API",
+      "stopped": null
+    },
+    "gemini_decision": {
+      "status": "ok",
+      "reason": "real Gemini Decisions API",
+      "stopped": null
+    },
+    "gpt-4o": {
+      "status": "omitted",
+      "reason": "not run, baseline omitted for budget",
+      "stopped": null
+    },
+    "gpt-4o-mini": {
+      "status": "omitted",
+      "reason": "not run, baseline omitted for budget",
+      "stopped": null
+    }
+  },
+  "eval_timeout_ms": 30000
+}
